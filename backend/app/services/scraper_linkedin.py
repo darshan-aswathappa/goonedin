@@ -1,114 +1,146 @@
+import re
 import httpx
 import logging
 import urllib.parse
 from bs4 import BeautifulSoup
+from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
-# We are using the JobCreate model now, just like you wanted
-from app.models.job import JobCreate 
+from app.models.job import JobCreate
 
 settings = get_settings()
 logger = logging.getLogger("VelocityScraper")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "application/vnd.linkedin.normalized+json+2.1",
-    "X-Li-Lang": "en_US",
-    "X-Li-User-Agent": "LIAuthLibrary:3.2.4 com.linkedin.LinkedIn:8.8.1 iPhone:8.3",
-    "X-RestLi-Protocol-Version": "2.0.0"
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
 }
 
-async def fetch_linkedin_jobs(keywords: str = None):
+
+def parse_posted_at(time_tag) -> datetime | None:
     """
-    Hits the public LinkedIn guest API to find jobs.
-    Parses the HTML response into real JobCreate objects.
+    Parses a LinkedIn <time> tag into a timezone-aware datetime.
+    Tries the datetime attribute first, then falls back to the text content.
     """
-    # Use the keywords you give me, or fall back to the settings
-    search_term = keywords or (settings.JOB_TITLE_WATCHLIST[0] if settings.JOB_TITLE_WATCHLIST else "Software Engineer")
-    
+    if not time_tag:
+        return None
+
+    now = datetime.now(timezone.utc)
+
+    # Try the datetime attribute — recent jobs often have a full ISO datetime here
+    dt_str = time_tag.get("datetime", "").strip()
+    if dt_str and "T" in dt_str:
+        try:
+            return datetime.fromisoformat(dt_str.replace("Z", "+00:00"))
+        except ValueError:
+            pass
+
+    # Fall back to parsing the human-readable text ("5 minutes ago", "2 hours ago", etc.)
+    text = time_tag.get_text(strip=True).lower()
+
+    if "just now" in text or "moment" in text:
+        return now
+
+    m = re.search(r"(\d+)\s+minute", text)
+    if m:
+        return now - timedelta(minutes=int(m.group(1)))
+
+    m = re.search(r"(\d+)\s+hour", text)
+    if m:
+        return now - timedelta(hours=int(m.group(1)))
+
+    m = re.search(r"(\d+)\s+day", text)
+    if m:
+        return now - timedelta(days=int(m.group(1)))
+
+    # Last resort: just a date string like "2024-01-15"
+    if dt_str:
+        try:
+            return datetime.strptime(dt_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+
+    return None
+
+
+async def fetch_linkedin_jobs(keywords: str = None) -> list[JobCreate]:
+    """
+    Hits the public LinkedIn guest API and parses the HTML response
+    into a list of JobCreate objects with real posted_at timestamps.
+    """
+    search_term = keywords or (settings.TARGET_KEYWORDS[0] if settings.TARGET_KEYWORDS else "Software Engineer")
     encoded_keywords = urllib.parse.quote(search_term)
-    
-    # We are hitting the guest API. It returns HTML <li> elements.
     url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={encoded_keywords}&start=0"
 
     logger.info(f"Pinging LinkedIn Guest API for: {search_term}")
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
-            response = await client.get(url, headers=HEADERS, timeout=10.0)
-            
+            response = await client.get(url, headers=HEADERS, timeout=15.0)
+
             if response.status_code != 200:
                 logger.error(f"LinkedIn API Error: {response.status_code}")
                 return []
 
-            if response.text:
-                logger.info("Successfully retrieved raw job data from LinkedIn! Parsing HTML...")
-                
-                # Parse the HTML soup
-                soup = BeautifulSoup(response.text, "html.parser")
-                job_cards = soup.find_all("li")
-                
-                parsed_jobs = []
-                
-                for card in job_cards:
-                    try:
-                        # 1. Extract Title
-                        title_tag = card.find("h3", class_="base-search-card__title")
-                        title = title_tag.get_text(strip=True) if title_tag else "Unknown Title"
+            if not response.text:
+                return []
 
-                        # 2. Extract Company
-                        company_tag = card.find("h4", class_="base-search-card__subtitle")
-                        company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
+            logger.info("Successfully retrieved raw job data from LinkedIn! Parsing HTML...")
 
-                        # 3. Extract Location
-                        location_tag = card.find("span", class_="job-search-card__location")
-                        location = location_tag.get_text(strip=True) if location_tag else "Unknown Location"
+            soup = BeautifulSoup(response.text, "html.parser")
+            job_cards = soup.find_all("li")
+            parsed_jobs = []
 
-                        # 4. Extract URL & External ID
-                        link_tag = card.find("a", class_="base-card__full-link")
-                        job_url = link_tag["href"] if link_tag else ""
-                        
-                        # We need a unique ID. LinkedIn URLs usually look like:
-                        # .../view/3762829191/...
-                        # So we try to grab that number.
-                        external_id = "unknown"
-                        if job_url:
-                            # Remove query parameters first
-                            clean_url = job_url.split("?")[0]
-                            # The ID is usually the last part of the path or embedded
-                            # Let's try to grab the numeric ID from the URL string
-                            import re
-                            id_match = re.search(r"-(\d+)\?", job_url) or re.search(r"/(\d+)/?$", clean_url)
-                            if id_match:
-                                external_id = id_match.group(1)
-                            else:
-                                # Fallback: use the whole URL as ID if we can't find a number
-                                external_id = job_url[-20:] 
+            for card in job_cards:
+                try:
+                    title_tag = card.find("h3", class_="base-search-card__title")
+                    title = title_tag.get_text(strip=True) if title_tag else None
+                    if not title:
+                        continue  # skip empty/malformed cards
 
-                        # 5. Create the JobCreate Object
-                        # I'm filling in defaults for fields we don't have yet (like salary)
-                        job_obj = JobCreate(
-                            title=title,
-                            company=company,
-                            location=location,
-                            url=job_url,
-                            source="LinkedIn",
-                            external_id=external_id,
-                            description=f"Job at {company} in {location}", # Placeholder
-                            salary_min=0, # Default
-                            salary_max=0, # Default
-                            currency="USD" # Default
-                        )
-                        parsed_jobs.append(job_obj)
-                        
-                    except Exception as parse_err:
-                        # If a single card is malformed, just skip it and keep going
-                        logger.warning(f"Failed to parse a job card: {parse_err}")
+                    company_tag = card.find("h4", class_="base-search-card__subtitle")
+                    company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
+
+                    location_tag = card.find("span", class_="job-search-card__location")
+                    location = location_tag.get_text(strip=True) if location_tag else "Unknown Location"
+
+                    link_tag = card.find("a", class_="base-card__full-link")
+                    job_url = link_tag["href"].split("?")[0] if link_tag else ""
+                    if not job_url:
                         continue
 
-                logger.info(f"Parsed {len(parsed_jobs)} real jobs successfully.")
-                return parsed_jobs
-            
-            return []
+                    # Extract numeric LinkedIn job ID from the URL
+                    external_id = None
+                    id_match = re.search(r"-(\d+)$", job_url) or re.search(r"/(\d+)/?$", job_url)
+                    if id_match:
+                        external_id = id_match.group(1)
+                    else:
+                        # Also try data-entity-urn on the card div
+                        urn = card.find("div", attrs={"data-entity-urn": True})
+                        if urn:
+                            external_id = urn["data-entity-urn"].split(":")[-1]
+                    if not external_id:
+                        continue
+
+                    time_tag = card.find("time")
+                    posted_at = parse_posted_at(time_tag)
+
+                    parsed_jobs.append(JobCreate(
+                        title=title,
+                        company=company,
+                        location=location,
+                        url=job_url,
+                        source="LinkedIn",
+                        external_id=external_id,
+                        posted_at=posted_at,
+                    ))
+
+                except Exception as parse_err:
+                    logger.warning(f"Failed to parse a job card: {parse_err}")
+                    continue
+
+            logger.info(f"Parsed {len(parsed_jobs)} jobs for '{search_term}'.")
+            return parsed_jobs
 
         except Exception as e:
             logger.error(f"Scraping failed: {str(e)}")
