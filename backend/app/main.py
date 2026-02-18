@@ -10,7 +10,6 @@ from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
 from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
-from app.services.scraper_glassdoor import fetch_glassdoor_jobs
 from app.services.notification import send_telegram_alert
 from app.api.websocket import manager
 
