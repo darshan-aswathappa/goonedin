@@ -60,10 +60,10 @@ async def run_scraper_loop():
             li_jobs = await fetch_linkedin_jobs(keywords=settings.TARGET_KEYWORDS[0])
             
             # 2. Scrape Glassdoor
-            gd_jobs = await fetch_glassdoor_jobs(keywords=settings.TARGET_KEYWORDS[0])
+            #gd_jobs = await fetch_glassdoor_jobs(keywords=settings.TARGET_KEYWORDS[0])
             
-            all_jobs = li_jobs + gd_jobs
-            
+            #all_jobs = li_jobs + gd_jobs
+            all_jobs = li_jobs  # For now, just LinkedIn until we add Glassdoor back in
             new_finds = 0
             
             for job in all_jobs:
