@@ -17,7 +17,6 @@ async def send_telegram_alert(job: JobCreate):
 
     # Formatting the message to be sexy and readable
     message = (
-        f"🚀 <b>VELOCITY HIT</b> 🚀\n\n"
         f"<b>Role:</b> {job.title}\n"
         f"<b>Company:</b> {job.company}\n"
         f"<b>Location:</b> {job.location}\n"

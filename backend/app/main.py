@@ -79,14 +79,6 @@ def matches_target_keywords(job) -> bool:
     return any(kw.lower() in title_lower for kw in settings.TARGET_KEYWORDS)
 
 
-def matches_target_location(job) -> bool:
-    """Returns True if the job location matches one of our target locations, or is remote."""
-    location_lower = job.location.lower()
-    if "remote" in location_lower:
-        return True
-    return any(loc.lower() in location_lower for loc in settings.TARGET_LOCATIONS)
-
-
 async def is_already_seen(job_key: str) -> bool:
     """Checks Redis. Falls back to False (allow alert) if Redis is unavailable."""
     try:
@@ -114,12 +106,29 @@ async def run_scraper_loop():
         try:
             all_jobs = []
 
-            # Scrape every keyword x location combination
-            for keyword in settings.TARGET_KEYWORDS:
-                for location in settings.TARGET_LOCATIONS:
-                    jobs = await fetch_linkedin_jobs(keywords=keyword, location=location)
-                    all_jobs.extend(jobs)
-                    await asyncio.sleep(2)  # small pause between requests
+            # Scrape every keyword x location combination in parallel
+            results = await asyncio.gather(
+                *[
+                    fetch_linkedin_jobs(keywords=kw, location="United States")
+                    for kw in settings.TARGET_KEYWORDS
+                ]
+            )
+
+            total_calls = len(results)
+            failed = sum(1 for r in results if r["failed"])
+            passed = total_calls - failed
+            retried = sum(1 for r in results if r["retries"] > 0)
+            retried_and_passed = sum(1 for r in results if r["retries"] > 0 and not r["failed"])
+            success_rate = (passed / total_calls * 100) if total_calls else 0
+
+            for r in results:
+                all_jobs.extend(r["jobs"])
+
+            logger.info(
+                f"Cycle stats: {total_calls} calls | {passed} passed | {failed} failed | "
+                f"{retried} retried | {retried_and_passed} passed after retry | "
+                f"{success_rate:.1f}% success rate"
+            )
 
             new_finds = 0
 
@@ -130,10 +139,6 @@ async def run_scraper_loop():
 
                 # 2. Title must contain a target keyword
                 if not matches_target_keywords(job):
-                    continue
-
-                # 3. Location must match a target location (or be remote)
-                if not matches_target_location(job):
                     continue
 
                 job_key = f"seen_job:{job.source}:{job.external_id}"

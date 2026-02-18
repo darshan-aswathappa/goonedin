@@ -1,4 +1,5 @@
 import re
+import asyncio
 import httpx
 import logging
 import urllib.parse
@@ -63,11 +64,12 @@ def parse_posted_at(time_tag) -> datetime | None:
     return None
 
 
-async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> list[JobCreate]:
+async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> dict:
     """
     Hits the public LinkedIn guest API and parses the HTML response
     into a list of JobCreate objects with real posted_at timestamps.
     Uses filters: sortBy=DD (date), f_TPR=r300 (last 5 min), f_JT=F (full-time), f_E=2,3 (entry/associate).
+    Returns dict with keys: jobs, retries, failed.
     """
     search_term = keywords or (settings.TARGET_KEYWORDS[0] if settings.TARGET_KEYWORDS else "Software Engineer")
     search_location = location or "United States"
@@ -81,21 +83,36 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> lis
         f"&start=0"
         f"&f_JT=F"
         f"&f_E=2,3"
+        f"&f_WT=1,2,3"
         f"&location={encoded_location}"
     )
 
     logger.info(f"Pinging LinkedIn Guest API for: {search_term} in {search_location}")
 
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    max_retries = 3
+    retries_used = 0
+    async with httpx.AsyncClient(follow_redirects=True, proxy=proxy) as client:
         try:
-            response = await client.get(url, headers=HEADERS, timeout=15.0)
+            response = None
+            for attempt in range(1, max_retries + 1):
+                try:
+                    response = await client.get(url, headers=HEADERS, timeout=15.0)
+                    break
+                except (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError) as retry_err:
+                    retries_used = attempt
+                    if attempt < max_retries:
+                        logger.warning(f"Retry {attempt}/{max_retries} for '{search_term}' in '{search_location}': {type(retry_err).__name__}")
+                        await asyncio.sleep(1 * attempt)
+                    else:
+                        raise
 
             if response.status_code != 200:
                 logger.error(f"LinkedIn API Error: {response.status_code}")
-                return []
+                return {"jobs": [], "retries": retries_used, "failed": True}
 
             if not response.text:
-                return []
+                return {"jobs": [], "retries": retries_used, "failed": False}
 
             logger.info("Successfully retrieved raw job data from LinkedIn! Parsing HTML...")
 
@@ -112,6 +129,11 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> lis
 
                     company_tag = card.find("h4", class_="base-search-card__subtitle")
                     company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
+
+                    # Skip jobs from blocked companies
+                    if any(blocked.lower() in company.lower() for blocked in settings.BLOCKED_COMPANIES):
+                        logger.info(f"Skipping job from blocked company: {company}")
+                        continue
 
                     location_tag = card.find("span", class_="job-search-card__location")
                     location = location_tag.get_text(strip=True) if location_tag else "Unknown Location"
@@ -151,9 +173,9 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> lis
                     logger.warning(f"Failed to parse a job card: {parse_err}")
                     continue
 
-            logger.info(f"Parsed {len(parsed_jobs)} jobs for '{search_term}'.")
-            return parsed_jobs
+            logger.info(f"OK '{search_term}' in '{search_location}': {len(parsed_jobs)} jobs parsed.")
+            return {"jobs": parsed_jobs, "retries": retries_used, "failed": False}
 
         except Exception as e:
-            logger.error(f"Scraping failed: {str(e)}")
-            return []
+            logger.error(f"Scraping FAILED for '{search_term}' in '{search_location}': {type(e).__name__}: {e}")
+            return {"jobs": [], "retries": retries_used, "failed": True}
