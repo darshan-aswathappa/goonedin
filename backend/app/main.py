@@ -21,7 +21,8 @@ logger = logging.getLogger("VelocityMain")
 settings = get_settings()
 
 # How recent a job must be to trigger an alert
-JOB_RECENCY_MINUTES = 10
+# f_TPR=r300 in the LinkedIn URL already filters to last 5 min, so we use a generous window
+JOB_RECENCY_MINUTES = 600
 # How long to remember a seen job (prevents re-alerting across restarts)
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 24  # 24 hours
 
@@ -113,11 +114,12 @@ async def run_scraper_loop():
         try:
             all_jobs = []
 
-            # Scrape every target keyword, not just the first one
+            # Scrape every keyword x location combination
             for keyword in settings.TARGET_KEYWORDS:
-                jobs = await fetch_linkedin_jobs(keywords=keyword)
-                all_jobs.extend(jobs)
-                await asyncio.sleep(2)  # small pause between keyword requests
+                for location in settings.TARGET_LOCATIONS:
+                    jobs = await fetch_linkedin_jobs(keywords=keyword, location=location)
+                    all_jobs.extend(jobs)
+                    await asyncio.sleep(2)  # small pause between requests
 
             new_finds = 0
 
@@ -160,7 +162,7 @@ async def run_scraper_loop():
         except Exception as e:
             logger.error(f"Main loop error: {e}")
 
-        await asyncio.sleep(30)
+        await asyncio.sleep(240)  # 4 min — overlaps the 5-min API window by 1 min
 
 
 @app.get("/")

@@ -63,16 +63,28 @@ def parse_posted_at(time_tag) -> datetime | None:
     return None
 
 
-async def fetch_linkedin_jobs(keywords: str = None) -> list[JobCreate]:
+async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> list[JobCreate]:
     """
     Hits the public LinkedIn guest API and parses the HTML response
     into a list of JobCreate objects with real posted_at timestamps.
+    Uses filters: sortBy=DD (date), f_TPR=r300 (last 5 min), f_JT=F (full-time), f_E=2,3 (entry/associate).
     """
     search_term = keywords or (settings.TARGET_KEYWORDS[0] if settings.TARGET_KEYWORDS else "Software Engineer")
+    search_location = location or "United States"
     encoded_keywords = urllib.parse.quote(search_term)
-    url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={encoded_keywords}&start=0"
+    encoded_location = urllib.parse.quote_plus(search_location)
+    url = (
+        f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
+        f"?keywords={encoded_keywords}"
+        f"&sortBy=DD"
+        f"&f_TPR=r300"
+        f"&start=0"
+        f"&f_JT=F"
+        f"&f_E=2,3"
+        f"&location={encoded_location}"
+    )
 
-    logger.info(f"Pinging LinkedIn Guest API for: {search_term}")
+    logger.info(f"Pinging LinkedIn Guest API for: {search_term} in {search_location}")
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
