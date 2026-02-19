@@ -1,0 +1,153 @@
+"use client";
+
+import { useEffect } from "react";
+import { useJobsStore } from "@/store/jobs";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { JobList } from "./JobList";
+import { ConnectionStatus } from "./ConnectionStatus";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Toaster } from "@/components/ui/sonner";
+import {
+  Briefcase,
+  Linkedin,
+  Sparkles,
+  Globe,
+} from "lucide-react";
+
+export function JobsDashboard() {
+  useWebSocket();
+
+  const jobs = useJobsStore((state) => state.jobs);
+  const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
+  const jobrightJobs = useJobsStore((state) => state.jobrightJobs);
+  const jobrightMinisitesJobs = useJobsStore(
+    (state) => state.jobrightMinisitesJobs
+  );
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-50 border-b border-border/40 bg-background/80 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
+                <Briefcase className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight">
+                  Job Tracker
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Real-time job notifications
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="gap-1.5">
+                <Sparkles className="h-3 w-3" />
+                {jobs.length} jobs
+              </Badge>
+              <ConnectionStatus />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-6">
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="mb-6 grid w-full grid-cols-4 bg-muted/50 p-1">
+            <TabsTrigger
+              value="all"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">All</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {jobs.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="linkedin"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Linkedin className="h-4 w-4" />
+              <span className="hidden sm:inline">LinkedIn</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {linkedinJobs.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="jobright"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Briefcase className="h-4 w-4" />
+              <span className="hidden sm:inline">Jobright</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {jobrightJobs.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger
+              value="minisites"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Mini Sites</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {jobrightMinisitesJobs.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all" className="mt-0">
+            <JobList
+              jobs={jobs}
+              emptyMessage="No jobs yet. Waiting for opportunities..."
+            />
+          </TabsContent>
+
+          <TabsContent value="linkedin" className="mt-0">
+            <JobList
+              jobs={linkedinJobs}
+              emptyMessage="No LinkedIn jobs yet. They'll appear here when found."
+            />
+          </TabsContent>
+
+          <TabsContent value="jobright" className="mt-0">
+            <JobList
+              jobs={jobrightJobs}
+              emptyMessage="No Jobright recommendations yet. Keep watching!"
+            />
+          </TabsContent>
+
+          <TabsContent value="minisites" className="mt-0">
+            <JobList
+              jobs={jobrightMinisitesJobs}
+              emptyMessage="No Mini Sites jobs yet. Fresh postings will show up here."
+            />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          className: "bg-card border-border",
+        }}
+      />
+    </div>
+  );
+}
