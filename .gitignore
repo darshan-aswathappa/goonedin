@@ -1,6 +1,28 @@
-/backend/.env
+# Environment files (contain secrets)
+.env
+*.env
+backend/.env
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Claude/Cursor
 .claude
-/backend/app/__pycache__
-/backend/app/services/__pycache__
-/backend/app/api/__pycache__
-/backend/app/core/__pycache__
+.cursor
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
