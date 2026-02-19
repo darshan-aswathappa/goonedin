@@ -134,13 +134,15 @@ async def run_scraper_loop():
             new_finds = 0
 
             for job in all_jobs:
-                # 1. Must have been posted within the last 10 minutes
-                if not is_recent(job.posted_at):
-                    continue
+                # Jobright jobs are pre-filtered by score (>= 92), skip time/keyword filters
+                if job.source != "Jobright":
+                    # 1. Must have been posted within the last 10 minutes
+                    if not is_recent(job.posted_at):
+                        continue
 
-                # 2. Title must contain a target keyword
-                if not matches_target_keywords(job):
-                    continue
+                    # 2. Title must contain a target keyword
+                    if not matches_target_keywords(job):
+                        continue
 
                 job_key = f"seen_job:{job.source}:{job.external_id}"
 
