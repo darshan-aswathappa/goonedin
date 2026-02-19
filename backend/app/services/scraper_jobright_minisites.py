@@ -162,6 +162,10 @@ async def fetch_jobright_minisites_jobs() -> dict:
                     if not title:
                         continue
 
+                    if any(kw in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                        logger.debug(f"Skipping job with filtered title: {title}")
+                        continue
+
                     company_name = company.get("companyName") or "Unknown"
 
                     if any(blocked.lower() in company_name.lower() for blocked in settings.BLOCKED_COMPANIES):

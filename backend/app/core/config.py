@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     TARGET_KEYWORDS: list[str]
     TARGET_LOCATIONS: list[str]
     BLOCKED_COMPANIES: list[str] = []
+    TITLE_FILTER_KEYWORDS: list[str] = []
 
     # --- PROXY & NETWORK ---
     # This is critical for the "hacky" speed. We need rotating IPs.

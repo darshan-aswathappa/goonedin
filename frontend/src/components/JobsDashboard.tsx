@@ -5,6 +5,7 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
 import { JobList } from "./JobList";
 import { ConnectionStatus } from "./ConnectionStatus";
+import { ServerTime } from "./ServerTime";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
   RefreshCw,
   Loader2,
   Building,
+  Building2,
 } from "lucide-react";
 
 export function JobsDashboard() {
@@ -30,6 +32,7 @@ export function JobsDashboard() {
     (state) => state.jobrightMinisitesJobs
   );
   const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
+  const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
   const isLoading = useJobsStore((state) => state.isLoading);
 
   return (
@@ -51,6 +54,7 @@ export function JobsDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <ServerTime />
               <Badge variant="secondary" className="gap-1.5">
                 <Sparkles className="h-3 w-3" />
                 {jobs.length} jobs
@@ -77,7 +81,7 @@ export function JobsDashboard() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-5 bg-muted/50 p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-6 bg-muted/50 p-1">
             <TabsTrigger
               value="all"
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -143,6 +147,19 @@ export function JobsDashboard() {
                 {fidelityJobs.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger
+              value="statestreet"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Building2 className="h-4 w-4" />
+              <span className="hidden sm:inline">State Street</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {statestreetJobs.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-0">
@@ -177,6 +194,13 @@ export function JobsDashboard() {
             <JobList
               jobs={fidelityJobs}
               emptyMessage="No Fidelity jobs yet. Jobs posted today will appear here."
+            />
+          </TabsContent>
+
+          <TabsContent value="statestreet" className="mt-0">
+            <JobList
+              jobs={statestreetJobs}
+              emptyMessage="No State Street jobs yet. Fresh postings will appear here."
             />
           </TabsContent>
         </Tabs>

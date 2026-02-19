@@ -127,6 +127,10 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> dic
                     if not title:
                         continue  # skip empty/malformed cards
 
+                    if any(kw in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                        logger.debug(f"Skipping job with filtered title: {title}")
+                        continue
+
                     company_tag = card.find("h4", class_="base-search-card__subtitle")
                     company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
 

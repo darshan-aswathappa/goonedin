@@ -29,6 +29,8 @@ function getSourceColor(source: string) {
       return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
     case "Fidelity":
       return "bg-green-500/20 text-green-400 border-green-500/30";
+    case "StateStreet":
+      return "bg-orange-500/20 text-orange-400 border-orange-500/30";
     default:
       return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
   }
@@ -53,7 +55,11 @@ export function JobCard({ job }: JobCardProps) {
           variant="outline"
           className={`mt-2 w-fit ${getSourceColor(job.source)}`}
         >
-          {job.source === "JobrightMiniSites" ? "Jobright Mini" : job.source}
+          {job.source === "JobrightMiniSites"
+            ? "Jobright Mini"
+            : job.source === "StateStreet"
+            ? "State Street"
+            : job.source}
         </Badge>
       </CardHeader>
 

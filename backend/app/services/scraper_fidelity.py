@@ -117,6 +117,10 @@ async def fetch_fidelity_jobs() -> dict:
                     if not title:
                         continue
 
+                    if any(kw in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                        logger.debug(f"Skipping job with filtered title: {title}")
+                        continue
+
                     posted_on = job.get("postedOn", "")
                     if not is_posted_today(posted_on):
                         continue
