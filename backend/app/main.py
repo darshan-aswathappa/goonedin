@@ -28,7 +28,7 @@ settings = get_settings()
 # f_TPR=r300 in the LinkedIn URL already filters to last 5 min, so we use a generous window
 JOB_RECENCY_MINUTES = 600
 # How long to remember a seen job (prevents re-alerting across restarts)
-SEEN_JOB_TTL_SECONDS = 60 * 90  # 1 hour 30 minutes
+SEEN_JOB_TTL_SECONDS = 60 * 60 * 2  # 1 hour 30 minutes
 FIDELITY_TTL_SECONDS = 24 * 60 * 60  # 24 hours for Fidelity jobs
 
 redis_client: aioredis.Redis = None
