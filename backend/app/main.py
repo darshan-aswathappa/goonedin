@@ -14,6 +14,7 @@ from app.services.scraper_jobright import fetch_jobright_jobs
 from app.services.scraper_jobright_minisites import fetch_jobright_minisites_jobs
 from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.scraper_statestreet import fetch_statestreet_jobs
+from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.notification import send_telegram_alert
 from app.api.websocket import manager
 
@@ -100,6 +101,16 @@ async def mark_as_seen(job_key: str, job_data: dict = None):
         logger.warning(f"Redis write failed for {job_key}: {e}")
 
 
+async def mark_as_seen_permanent(job_key: str, job_data: dict = None):
+    """Writes the job key to Redis with no TTL (stays forever)."""
+    try:
+        import json
+        value = json.dumps(job_data) if job_data else "1"
+        await redis_client.set(job_key, value)
+    except Exception as e:
+        logger.warning(f"Redis write failed for {job_key}: {e}")
+
+
 async def run_scraper_loop():
     """
     The heartbeat. Scrapes all target keywords every 30 seconds,
@@ -121,6 +132,7 @@ async def run_scraper_loop():
                 fetch_jobright_minisites_jobs(),  # Public API for newgrad SWE jobs
                 fetch_fidelity_jobs(),  # Fidelity Investments career page
                 fetch_statestreet_jobs(),  # State Street career page
+                fetch_mathworks_jobs(),  # MathWorks career page (Playwright)
             )
 
             total_calls = len(results)
@@ -134,8 +146,9 @@ async def run_scraper_loop():
             minisites_recent_jobs = []
             fidelity_jobs = []
             statestreet_jobs = []
+            mathworks_jobs = []
             for r in results:
-                # For mini-sites, Fidelity, and State Street, only use recent_jobs
+                # For mini-sites, Fidelity, State Street, and MathWorks, only use recent_jobs
                 if "recent_jobs" in r and r["recent_jobs"]:
                     first_job = r["recent_jobs"][0] if r["recent_jobs"] else None
                     if first_job and first_job.source == "JobrightMiniSites":
@@ -144,6 +157,8 @@ async def run_scraper_loop():
                         fidelity_jobs.extend(r["recent_jobs"])
                     elif first_job and first_job.source == "StateStreet":
                         statestreet_jobs.extend(r["recent_jobs"])
+                    elif first_job and first_job.source == "MathWorks":
+                        mathworks_jobs.extend(r["recent_jobs"])
                     else:
                         all_jobs.extend(r["jobs"])
                 else:
@@ -250,6 +265,26 @@ async def run_scraper_loop():
 
                 logger.info(f"New Target (StateStreet): {job.title} @ {job.company} ({job.location})")
 
+            # Process MathWorks jobs (no posted date, infinite TTL to avoid re-alerting)
+            for job in mathworks_jobs:
+                job_key = f"seen_job:{job.source}:{job.external_id}"
+
+                if await is_already_seen(job_key):
+                    continue
+
+                job_dict = job.model_dump(mode="json")
+                await mark_as_seen_permanent(job_key, job_dict)
+                new_finds += 1
+
+                await manager.broadcast({
+                    "type": "NEW_JOB",
+                    "data": job_dict
+                })
+
+                await send_telegram_alert(job)
+
+                logger.info(f"New Target (MathWorks): {job.title} @ {job.company} ({job.location})")
+
             if new_finds == 0:
                 logger.debug("No new targets found this cycle.")
 
@@ -305,6 +340,6 @@ async def get_jobs():
     except Exception as e:
         logger.error(f"Error fetching jobs from Redis: {e}")
     
-    # Sort by posted_at (most recent first)
-    jobs.sort(key=lambda x: x.get("posted_at", ""), reverse=True)
+    # Sort by posted_at (most recent first), handling None values
+    jobs.sort(key=lambda x: x.get("posted_at") or "", reverse=True)
     return {"jobs": jobs, "count": len(jobs)}

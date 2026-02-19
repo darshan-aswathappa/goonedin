@@ -31,6 +31,8 @@ function getSourceColor(source: string) {
       return "bg-green-500/20 text-green-400 border-green-500/30";
     case "StateStreet":
       return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+    case "MathWorks":
+      return "bg-red-500/20 text-red-400 border-red-500/30";
     default:
       return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
   }
@@ -59,6 +61,8 @@ export function JobCard({ job }: JobCardProps) {
             ? "Jobright Mini"
             : job.source === "StateStreet"
             ? "State Street"
+            : job.source === "MathWorks"
+            ? "MathWorks"
             : job.source}
         </Badge>
       </CardHeader>

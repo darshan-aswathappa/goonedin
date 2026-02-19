@@ -19,6 +19,7 @@ import {
   Loader2,
   Building,
   Building2,
+  Calculator,
 } from "lucide-react";
 
 export function JobsDashboard() {
@@ -33,6 +34,7 @@ export function JobsDashboard() {
   );
   const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
   const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
+  const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
   const isLoading = useJobsStore((state) => state.isLoading);
 
   return (
@@ -81,7 +83,7 @@ export function JobsDashboard() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-6 bg-muted/50 p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-7 bg-muted/50 p-1">
             <TabsTrigger
               value="all"
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -160,6 +162,19 @@ export function JobsDashboard() {
                 {statestreetJobs.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger
+              value="mathworks"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Calculator className="h-4 w-4" />
+              <span className="hidden sm:inline">MathWorks</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {mathworksJobs.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-0">
@@ -201,6 +216,13 @@ export function JobsDashboard() {
             <JobList
               jobs={statestreetJobs}
               emptyMessage="No State Street jobs yet. Fresh postings will appear here."
+            />
+          </TabsContent>
+
+          <TabsContent value="mathworks" className="mt-0">
+            <JobList
+              jobs={mathworksJobs}
+              emptyMessage="No MathWorks jobs yet. New postings will appear here."
             />
           </TabsContent>
         </Tabs>
