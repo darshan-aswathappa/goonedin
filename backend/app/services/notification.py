@@ -16,13 +16,24 @@ async def send_telegram_alert(job: JobCreate):
         return
 
     # Formatting the message to be sexy and readable
-    message = (
-        f"<b>Role:</b> {job.title}\n"
-        f"<b>Company:</b> {job.company}\n"
-        f"<b>Location:</b> {job.location}\n"
-        f"<b>Source:</b> {job.source}\n\n"
-        f"🔗 <a href='{job.url}'><b>APPLY NOW</b></a>"
-    )
+    lines = [
+        f"<b>Role:</b> {job.title}",
+        f"<b>Company:</b> {job.company}",
+        f"<b>Location:</b> {job.location}",
+    ]
+    
+    # Show salary and work_model only for JobrightMiniSites
+    if job.source == "JobrightMiniSites":
+        if job.salary:
+            lines.append(f"<b>Salary:</b> {job.salary}")
+        if job.work_model:
+            lines.append(f"<b>Work Model:</b> {job.work_model}")
+    
+    lines.append(f"<b>Source:</b> {job.source}")
+    lines.append("")
+    lines.append(f"🔗 <a href='{job.url}'><b>APPLY NOW</b></a>")
+    
+    message = "\n".join(lines)
 
     url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
     

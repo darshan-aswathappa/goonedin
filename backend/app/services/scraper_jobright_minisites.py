@@ -169,9 +169,10 @@ async def fetch_jobright_minisites_jobs() -> dict:
                         continue
 
                     location = job.get("jobLocation") or "Unknown"
-                    work_model = job.get("workModel", "")
-                    if work_model:
-                        location = f"{location} ({work_model})"
+                    work_model = job.get("workModel") or None
+                    
+                    # Extract salary info
+                    salary = job.get("salary") or job.get("salaryRange") or job.get("salaryDesc") or None
 
                     job_url = job.get("originalUrl") or job.get("applyLink")
                     if not job_url:
@@ -196,6 +197,8 @@ async def fetch_jobright_minisites_jobs() -> dict:
                         source="JobrightMiniSites",
                         external_id=external_id,
                         posted_at=posted_at,
+                        salary=salary,
+                        work_model=work_model,
                     )
 
                     parsed_jobs.append(job_create)
