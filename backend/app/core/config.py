@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # --- DATABASE (Optional for now, but good for logging seen jobs) ---
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+    # --- JOBRIGHT.AI CREDENTIALS ---
+    JOBRIGHT_EMAIL: str = os.getenv("JOBRIGHT_EMAIL", "")
+    JOBRIGHT_PASSWORD: str = os.getenv("JOBRIGHT_PASSWORD", "")
+    JOBRIGHT_COOKIES: str = os.getenv("JOBRIGHT_COOKIES", "")
+
     class Config:
         case_sensitive = True
         env_file = ".env"
