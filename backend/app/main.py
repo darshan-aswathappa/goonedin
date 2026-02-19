@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_jobright import fetch_jobright_jobs
+from app.services.scraper_jobright_minisites import fetch_jobright_minisites_jobs
 from app.services.notification import send_telegram_alert
 from app.api.websocket import manager
 
@@ -106,13 +107,14 @@ async def run_scraper_loop():
         try:
             all_jobs = []
 
-            # Scrape LinkedIn (per keyword) + Jobright (once, uses user profile recommendations)
+            # Scrape LinkedIn (per keyword) + Jobright recommend + Jobright mini-sites
             results = await asyncio.gather(
                 *[
                     fetch_linkedin_jobs(keywords=kw, location="United States")
                     for kw in settings.TARGET_KEYWORDS
                 ],
                 fetch_jobright_jobs(),  # Jobright recommend API doesn't need keywords
+                fetch_jobright_minisites_jobs(),  # Public API for newgrad SWE jobs
             )
 
             total_calls = len(results)
@@ -122,8 +124,14 @@ async def run_scraper_loop():
             retried_and_passed = sum(1 for r in results if r["retries"] > 0 and not r["failed"])
             success_rate = (passed / total_calls * 100) if total_calls else 0
 
+            # Collect jobs from all sources
+            minisites_recent_jobs = []
             for r in results:
-                all_jobs.extend(r["jobs"])
+                # For mini-sites, only use recent_jobs (posted < 5 min)
+                if "recent_jobs" in r:
+                    minisites_recent_jobs.extend(r["recent_jobs"])
+                else:
+                    all_jobs.extend(r["jobs"])
 
             logger.info(
                 f"Cycle stats: {total_calls} calls | {passed} passed | {failed} failed | "
@@ -133,6 +141,7 @@ async def run_scraper_loop():
 
             new_finds = 0
 
+            # Process regular jobs (LinkedIn, Jobright recommend)
             for job in all_jobs:
                 # Jobright jobs are pre-filtered by score (>= 92), skip time/keyword filters
                 if job.source != "Jobright":
@@ -146,7 +155,7 @@ async def run_scraper_loop():
 
                 job_key = f"seen_job:{job.source}:{job.external_id}"
 
-                # 4. Must not have been alerted before (Redis dedup, survives restarts)
+                # Must not have been alerted before (Redis dedup, survives restarts)
                 if await is_already_seen(job_key):
                     continue
 
@@ -163,6 +172,25 @@ async def run_scraper_loop():
                 await send_telegram_alert(job)
 
                 logger.info(f"New Target Acquired: {job.title} @ {job.company} ({job.location})")
+
+            # Process mini-sites jobs (only recent ones, posted < 5 min)
+            for job in minisites_recent_jobs:
+                job_key = f"seen_job:{job.source}:{job.external_id}"
+
+                if await is_already_seen(job_key):
+                    continue
+
+                await mark_as_seen(job_key)
+                new_finds += 1
+
+                await manager.broadcast({
+                    "type": "NEW_JOB",
+                    "data": job.model_dump(mode="json")
+                })
+
+                await send_telegram_alert(job)
+
+                logger.info(f"New Target (MiniSites): {job.title} @ {job.company} ({job.location})")
 
             if new_finds == 0:
                 logger.debug("No new targets found this cycle.")
