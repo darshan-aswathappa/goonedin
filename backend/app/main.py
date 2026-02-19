@@ -25,7 +25,7 @@ settings = get_settings()
 # f_TPR=r300 in the LinkedIn URL already filters to last 5 min, so we use a generous window
 JOB_RECENCY_MINUTES = 600
 # How long to remember a seen job (prevents re-alerting across restarts)
-SEEN_JOB_TTL_SECONDS = 60 * 60 * 24  # 24 hours
+SEEN_JOB_TTL_SECONDS = 60 * 60 * 2  # 2 hours
 
 redis_client: aioredis.Redis = None
 
@@ -88,10 +88,12 @@ async def is_already_seen(job_key: str) -> bool:
         return False
 
 
-async def mark_as_seen(job_key: str):
-    """Writes the job key to Redis with a 24hr TTL."""
+async def mark_as_seen(job_key: str, job_data: dict = None):
+    """Writes the job key to Redis with a 24hr TTL, storing full job data."""
     try:
-        await redis_client.setex(job_key, SEEN_JOB_TTL_SECONDS, "1")
+        import json
+        value = json.dumps(job_data) if job_data else "1"
+        await redis_client.setex(job_key, SEEN_JOB_TTL_SECONDS, value)
     except Exception as e:
         logger.warning(f"Redis write failed for {job_key}: {e}")
 
@@ -159,13 +161,14 @@ async def run_scraper_loop():
                 if await is_already_seen(job_key):
                     continue
 
-                await mark_as_seen(job_key)
+                job_dict = job.model_dump(mode="json")
+                await mark_as_seen(job_key, job_dict)
                 new_finds += 1
 
                 # Broadcast to WebSocket (frontend)
                 await manager.broadcast({
                     "type": "NEW_JOB",
-                    "data": job.model_dump(mode="json")
+                    "data": job_dict
                 })
 
                 # Fire Telegram alert
@@ -180,12 +183,13 @@ async def run_scraper_loop():
                 if await is_already_seen(job_key):
                     continue
 
-                await mark_as_seen(job_key)
+                job_dict = job.model_dump(mode="json")
+                await mark_as_seen(job_key, job_dict)
                 new_finds += 1
 
                 await manager.broadcast({
                     "type": "NEW_JOB",
-                    "data": job.model_dump(mode="json")
+                    "data": job_dict
                 })
 
                 await send_telegram_alert(job)
@@ -208,3 +212,32 @@ def read_root():
         "message": "I am watching everything for you, LO.",
         "recency_filter_minutes": JOB_RECENCY_MINUTES,
     }
+
+
+@app.get("/jobs")
+async def get_jobs():
+    """Fetch all jobs currently stored in Redis."""
+    import json
+    jobs = []
+    try:
+        cursor = 0
+        while True:
+            cursor, keys = await redis_client.scan(cursor, match="seen_job:*", count=100)
+            for key in keys:
+                try:
+                    value = await redis_client.get(key)
+                    if value and value != "1":
+                        job_data = json.loads(value)
+                        ttl = await redis_client.ttl(key)
+                        job_data["ttl"] = ttl
+                        jobs.append(job_data)
+                except (json.JSONDecodeError, Exception):
+                    continue
+            if cursor == 0:
+                break
+    except Exception as e:
+        logger.error(f"Error fetching jobs from Redis: {e}")
+    
+    # Sort by posted_at (most recent first)
+    jobs.sort(key=lambda x: x.get("posted_at", ""), reverse=True)
+    return {"jobs": jobs, "count": len(jobs)}

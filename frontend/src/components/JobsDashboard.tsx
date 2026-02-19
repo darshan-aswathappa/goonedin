@@ -1,23 +1,26 @@
 "use client";
 
-import { useEffect } from "react";
 import { useJobsStore } from "@/store/jobs";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useJobsApi } from "@/hooks/useJobsApi";
 import { JobList } from "./JobList";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import {
   Briefcase,
   Linkedin,
   Sparkles,
   Globe,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 
 export function JobsDashboard() {
   useWebSocket();
+  const { refetch } = useJobsApi();
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
@@ -25,6 +28,7 @@ export function JobsDashboard() {
   const jobrightMinisitesJobs = useJobsStore(
     (state) => state.jobrightMinisitesJobs
   );
+  const isLoading = useJobsStore((state) => state.isLoading);
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,6 +53,20 @@ export function JobsDashboard() {
                 <Sparkles className="h-3 w-3" />
                 {jobs.length} jobs
               </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={refetch}
+                disabled={isLoading}
+                className="h-8 w-8"
+                title="Refresh jobs"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+              </Button>
               <ConnectionStatus />
             </div>
           </div>

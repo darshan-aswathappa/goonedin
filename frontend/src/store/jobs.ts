@@ -13,6 +13,7 @@ export interface Job {
   work_model?: string;
   is_new: boolean;
   created_at?: string;
+  ttl?: number;
 }
 
 interface JobsState {
@@ -21,8 +22,11 @@ interface JobsState {
   jobrightJobs: Job[];
   jobrightMinisitesJobs: Job[];
   connectionStatus: "connecting" | "connected" | "disconnected";
+  isLoading: boolean;
   addJob: (job: Job) => void;
+  setJobs: (jobs: Job[]) => void;
   setConnectionStatus: (status: "connecting" | "connected" | "disconnected") => void;
+  setLoading: (loading: boolean) => void;
   clearJobs: () => void;
 }
 
@@ -32,6 +36,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   jobrightJobs: [],
   jobrightMinisitesJobs: [],
   connectionStatus: "disconnected",
+  isLoading: true,
 
   addJob: (job) =>
     set((state) => {
@@ -54,7 +59,17 @@ export const useJobsStore = create<JobsState>((set) => ({
       };
     }),
 
+  setJobs: (jobs) =>
+    set(() => ({
+      jobs,
+      linkedinJobs: jobs.filter((j) => j.source === "LinkedIn"),
+      jobrightJobs: jobs.filter((j) => j.source === "Jobright"),
+      jobrightMinisitesJobs: jobs.filter((j) => j.source === "JobrightMiniSites"),
+    })),
+
   setConnectionStatus: (status) => set({ connectionStatus: status }),
+  
+  setLoading: (isLoading) => set({ isLoading }),
 
   clearJobs: () =>
     set({
