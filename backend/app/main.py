@@ -12,6 +12,7 @@ from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_jobright import fetch_jobright_jobs
 from app.services.scraper_jobright_minisites import fetch_jobright_minisites_jobs
+from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.notification import send_telegram_alert
 from app.api.websocket import manager
 
@@ -109,7 +110,7 @@ async def run_scraper_loop():
         try:
             all_jobs = []
 
-            # Scrape LinkedIn (per keyword) + Jobright recommend + Jobright mini-sites
+            # Scrape LinkedIn (per keyword) + Jobright recommend + Jobright mini-sites + Fidelity
             results = await asyncio.gather(
                 *[
                     fetch_linkedin_jobs(keywords=kw, location="United States")
@@ -117,6 +118,7 @@ async def run_scraper_loop():
                 ],
                 fetch_jobright_jobs(),  # Jobright recommend API doesn't need keywords
                 fetch_jobright_minisites_jobs(),  # Public API for newgrad SWE jobs
+                fetch_fidelity_jobs(),  # Fidelity Investments career page
             )
 
             total_calls = len(results)
@@ -128,10 +130,17 @@ async def run_scraper_loop():
 
             # Collect jobs from all sources
             minisites_recent_jobs = []
+            fidelity_jobs = []
             for r in results:
-                # For mini-sites, only use recent_jobs (posted < 5 min)
-                if "recent_jobs" in r:
-                    minisites_recent_jobs.extend(r["recent_jobs"])
+                # For mini-sites and Fidelity, only use recent_jobs
+                if "recent_jobs" in r and r["recent_jobs"]:
+                    first_job = r["recent_jobs"][0] if r["recent_jobs"] else None
+                    if first_job and first_job.source == "JobrightMiniSites":
+                        minisites_recent_jobs.extend(r["recent_jobs"])
+                    elif first_job and first_job.source == "Fidelity":
+                        fidelity_jobs.extend(r["recent_jobs"])
+                    else:
+                        all_jobs.extend(r["jobs"])
                 else:
                     all_jobs.extend(r["jobs"])
 
@@ -195,6 +204,26 @@ async def run_scraper_loop():
                 await send_telegram_alert(job)
 
                 logger.info(f"New Target (MiniSites): {job.title} @ {job.company} ({job.location})")
+
+            # Process Fidelity jobs (posted today)
+            for job in fidelity_jobs:
+                job_key = f"seen_job:{job.source}:{job.external_id}"
+
+                if await is_already_seen(job_key):
+                    continue
+
+                job_dict = job.model_dump(mode="json")
+                await mark_as_seen(job_key, job_dict)
+                new_finds += 1
+
+                await manager.broadcast({
+                    "type": "NEW_JOB",
+                    "data": job_dict
+                })
+
+                await send_telegram_alert(job)
+
+                logger.info(f"New Target (Fidelity): {job.title} @ {job.company} ({job.location})")
 
             if new_finds == 0:
                 logger.debug("No new targets found this cycle.")

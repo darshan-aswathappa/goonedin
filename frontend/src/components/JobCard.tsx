@@ -27,6 +27,8 @@ function getSourceColor(source: string) {
       return "bg-purple-500/20 text-purple-400 border-purple-500/30";
     case "JobrightMiniSites":
       return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+    case "Fidelity":
+      return "bg-green-500/20 text-green-400 border-green-500/30";
     default:
       return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
   }
@@ -39,15 +41,6 @@ export function JobCard({ job }: JobCardProps) {
 
   return (
     <Card className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5">
-      {job.is_new && (
-        <div className="absolute right-3 top-3">
-          <Badge className="gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30">
-            <Sparkles className="h-3 w-3" />
-            New
-          </Badge>
-        </div>
-      )}
-
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">

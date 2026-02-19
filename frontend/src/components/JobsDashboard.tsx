@@ -16,6 +16,7 @@ import {
   Globe,
   RefreshCw,
   Loader2,
+  Building,
 } from "lucide-react";
 
 export function JobsDashboard() {
@@ -28,6 +29,7 @@ export function JobsDashboard() {
   const jobrightMinisitesJobs = useJobsStore(
     (state) => state.jobrightMinisitesJobs
   );
+  const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
   const isLoading = useJobsStore((state) => state.isLoading);
 
   return (
@@ -75,7 +77,7 @@ export function JobsDashboard() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-4 bg-muted/50 p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-5 bg-muted/50 p-1">
             <TabsTrigger
               value="all"
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -128,6 +130,19 @@ export function JobsDashboard() {
                 {jobrightMinisitesJobs.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger
+              value="fidelity"
+              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+            >
+              <Building className="h-4 w-4" />
+              <span className="hidden sm:inline">Fidelity</span>
+              <Badge
+                variant="secondary"
+                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+              >
+                {fidelityJobs.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-0">
@@ -155,6 +170,13 @@ export function JobsDashboard() {
             <JobList
               jobs={jobrightMinisitesJobs}
               emptyMessage="No Mini Sites jobs yet. Fresh postings will show up here."
+            />
+          </TabsContent>
+
+          <TabsContent value="fidelity" className="mt-0">
+            <JobList
+              jobs={fidelityJobs}
+              emptyMessage="No Fidelity jobs yet. Jobs posted today will appear here."
             />
           </TabsContent>
         </Tabs>

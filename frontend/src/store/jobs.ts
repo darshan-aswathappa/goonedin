@@ -7,7 +7,7 @@ export interface Job {
   company: string;
   location: string;
   url: string;
-  source: "LinkedIn" | "Jobright" | "JobrightMiniSites";
+  source: "LinkedIn" | "Jobright" | "JobrightMiniSites" | "Fidelity";
   posted_at?: string;
   salary?: string;
   work_model?: string;
@@ -21,6 +21,7 @@ interface JobsState {
   linkedinJobs: Job[];
   jobrightJobs: Job[];
   jobrightMinisitesJobs: Job[];
+  fidelityJobs: Job[];
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
   addJob: (job: Job) => void;
@@ -35,6 +36,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   linkedinJobs: [],
   jobrightJobs: [],
   jobrightMinisitesJobs: [],
+  fidelityJobs: [],
   connectionStatus: "disconnected",
   isLoading: true,
 
@@ -56,6 +58,9 @@ export const useJobsStore = create<JobsState>((set) => ({
         jobrightMinisitesJobs: job.source === "JobrightMiniSites" 
           ? [job, ...state.jobrightMinisitesJobs] 
           : state.jobrightMinisitesJobs,
+        fidelityJobs: job.source === "Fidelity"
+          ? [job, ...state.fidelityJobs]
+          : state.fidelityJobs,
       };
     }),
 
@@ -65,6 +70,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       linkedinJobs: jobs.filter((j) => j.source === "LinkedIn"),
       jobrightJobs: jobs.filter((j) => j.source === "Jobright"),
       jobrightMinisitesJobs: jobs.filter((j) => j.source === "JobrightMiniSites"),
+      fidelityJobs: jobs.filter((j) => j.source === "Fidelity"),
     })),
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
@@ -77,5 +83,6 @@ export const useJobsStore = create<JobsState>((set) => ({
       linkedinJobs: [],
       jobrightJobs: [],
       jobrightMinisitesJobs: [],
+      fidelityJobs: [],
     }),
 }));
