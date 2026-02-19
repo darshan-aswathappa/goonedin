@@ -29,6 +29,7 @@ settings = get_settings()
 JOB_RECENCY_MINUTES = 600
 # How long to remember a seen job (prevents re-alerting across restarts)
 SEEN_JOB_TTL_SECONDS = 60 * 90  # 1 hour 30 minutes
+FIDELITY_TTL_SECONDS = 24 * 60 * 60  # 24 hours for Fidelity jobs
 
 redis_client: aioredis.Redis = None
 
@@ -91,12 +92,13 @@ async def is_already_seen(job_key: str) -> bool:
         return False
 
 
-async def mark_as_seen(job_key: str, job_data: dict = None):
-    """Writes the job key to Redis with a 24hr TTL, storing full job data."""
+async def mark_as_seen(job_key: str, job_data: dict = None, ttl_seconds: int = None):
+    """Writes the job key to Redis with a TTL, storing full job data."""
     try:
         import json
+        ttl = ttl_seconds if ttl_seconds is not None else SEEN_JOB_TTL_SECONDS
         value = json.dumps(job_data) if job_data else "1"
-        await redis_client.setex(job_key, SEEN_JOB_TTL_SECONDS, value)
+        await redis_client.setex(job_key, ttl, value)
     except Exception as e:
         logger.warning(f"Redis write failed for {job_key}: {e}")
 
@@ -233,7 +235,7 @@ async def run_scraper_loop():
                     continue
 
                 job_dict = job.model_dump(mode="json")
-                await mark_as_seen(job_key, job_dict)
+                await mark_as_seen(job_key, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
                 new_finds += 1
 
                 await manager.broadcast({
