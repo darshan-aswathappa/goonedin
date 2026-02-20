@@ -395,6 +395,23 @@ async def update_target_keywords(request: ConfigUpdateRequest):
     return {"message": "Updated", "target_keywords": request.values, "count": len(request.values)}
 
 
+@app.get("/config/target-locations")
+async def get_target_locations_endpoint():
+    """Get target locations from Redis."""
+    from app.core.redis_config import get_target_locations
+    locations = await get_target_locations(redis_client)
+    return {"target_locations": locations, "count": len(locations)}
+
+
+@app.put("/config/target-locations")
+async def update_target_locations(request: ConfigUpdateRequest):
+    """Update target locations in Redis."""
+    success = await set_config_list(redis_client, "target_locations", request.values)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+    return {"message": "Updated", "target_locations": request.values, "count": len(request.values)}
+
+
 @app.get("/config/blocked-companies")
 async def get_blocked_companies_endpoint():
     """Get blocked companies from Redis."""

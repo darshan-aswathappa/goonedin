@@ -23,6 +23,7 @@ import {
   Calculator,
   MapPin,
   Terminal,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -77,6 +78,16 @@ export function JobsDashboard() {
                   <RefreshCw className="h-4 w-4" />
                 )}
               </Button>
+              <Link href="/settings">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </Link>
               <Link href="/logs">
                 <Button
                   variant="ghost"
