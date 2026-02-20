@@ -504,3 +504,39 @@ async def block_company_and_remove_jobs(request: BlockCompanyRequest):
     except Exception as e:
         logger.error(f"Error blocking company: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class DismissJobRequest(BaseModel):
+    source: str
+    external_id: str
+
+
+@app.post("/jobs/dismiss")
+async def dismiss_job(request: DismissJobRequest):
+    """Dismiss a single job (remove from Redis without blocking the company)."""
+    try:
+        job_key = f"seen_job:{request.source}:{request.external_id}"
+        deleted = await redis_client.delete(job_key)
+        
+        if deleted:
+            logger.info(f"Dismissed job: {job_key}")
+            
+            await manager.broadcast({
+                "type": "JOB_DISMISSED",
+                "data": {
+                    "external_id": request.external_id,
+                }
+            })
+            
+            return {
+                "success": True,
+                "message": "Job dismissed",
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Job not found",
+            }
+    except Exception as e:
+        logger.error(f"Error dismissing job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

@@ -21,13 +21,20 @@ interface CompanyBlockedMessage {
   };
 }
 
-type WebSocketMessage = NewJobMessage | CompanyBlockedMessage;
+interface JobDismissedMessage {
+  type: "JOB_DISMISSED";
+  data: {
+    external_id: string;
+  };
+}
+
+type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { addJob, removeJobsByCompany, setConnectionStatus } = useJobsStore();
+  const { addJob, removeJob, removeJobsByCompany, setConnectionStatus } = useJobsStore();
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -62,6 +69,8 @@ export function useWebSocket() {
           toast.success(`Blocked: ${message.data.company}`, {
             description: `Removed ${count} job${count !== 1 ? "s" : ""} from all lists`,
           });
+        } else if (message.type === "JOB_DISMISSED" && message.data) {
+          removeJob(message.data.external_id);
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -83,7 +92,7 @@ export function useWebSocket() {
       console.error("WebSocket error:", error);
       ws.close();
     };
-  }, [addJob, removeJobsByCompany, setConnectionStatus]);
+  }, [addJob, removeJob, removeJobsByCompany, setConnectionStatus]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

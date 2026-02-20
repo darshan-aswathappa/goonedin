@@ -19,6 +19,7 @@ import {
   Briefcase,
   ExternalLink,
   ThumbsDown,
+  X,
   Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -50,6 +51,8 @@ function getSourceColor(source: string) {
 
 export function JobCard({ job }: JobCardProps) {
   const [isBlocking, setIsBlocking] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
+  const removeJob = useJobsStore((state) => state.removeJob);
   const removeJobsByCompany = useJobsStore((state) => state.removeJobsByCompany);
 
   const postedAt = job.posted_at
@@ -82,28 +85,77 @@ export function JobCard({ job }: JobCardProps) {
     }
   };
 
+  const handleDismissJob = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isDismissing) return;
+    
+    setIsDismissing(true);
+    try {
+      const response = await fetch(`${API_URL}/jobs/dismiss`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: job.source,
+          external_id: job.external_id,
+        }),
+      });
+      
+      if (response.ok) {
+        removeJob(job.external_id);
+      }
+    } catch (error) {
+      console.error("Failed to dismiss job:", error);
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
   return (
     <Card className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5">
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={handleBlockCompany}
-              disabled={isBlocking}
-              className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-all duration-200 opacity-0 group-hover:opacity-100"
-            >
-              {isBlocking ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ThumbsDown className="h-4 w-4" />
-              )}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="left">
-            <p>Block this company and remove from list</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleDismissJob}
+                disabled={isDismissing}
+                className="p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-orange-400 hover:border-orange-400/50 hover:bg-orange-500/10 transition-all duration-200"
+              >
+                {isDismissing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Dismiss this job only</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleBlockCompany}
+                disabled={isBlocking}
+                className="p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-all duration-200"
+              >
+                {isBlocking ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ThumbsDown className="h-4 w-4" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Block company and remove all jobs</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0 pr-8">
