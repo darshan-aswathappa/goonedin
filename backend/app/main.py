@@ -25,11 +25,19 @@ from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.scraper_statestreet import fetch_statestreet_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.notification import send_telegram_alert
-from app.api.websocket import manager
+from app.api.websocket import manager, log_manager
+from app.services.log_handler import BroadcastLogHandler
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
+
+# Add broadcast handler to stream logs to frontend
+broadcast_handler = BroadcastLogHandler(log_manager.broadcast)
+broadcast_handler.setLevel(logging.INFO)
+logging.getLogger("VelocityMain").addHandler(broadcast_handler)
+logging.getLogger("VelocityScraper").addHandler(broadcast_handler)
+logging.getLogger("VelocityWebSocket").addHandler(broadcast_handler)
 
 settings = get_settings()
 
