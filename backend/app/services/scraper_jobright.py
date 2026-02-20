@@ -4,6 +4,7 @@ import httpx
 import logging
 from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
+from app.core.redis_config import get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 from app.services.jobright_auth import get_cookie_header, invalidate_cookies
 
@@ -69,7 +70,7 @@ def parse_jobright_date(date_str: str) -> datetime | None:
     return None
 
 
-async def fetch_jobright_jobs(keywords: str = None, location: str = None) -> dict:
+async def fetch_jobright_jobs(redis_client, keywords: str = None, location: str = None) -> dict:
     """
     Fetches jobs from Jobright.ai API using authenticated cookies.
     Returns dict with keys: jobs, retries, failed.
@@ -142,6 +143,10 @@ async def fetch_jobright_jobs(keywords: str = None, location: str = None) -> dic
             MIN_DISPLAY_SCORE = 85.0
             skipped_low_score = 0
 
+            # Get config from Redis
+            title_filter_keywords = await get_title_filter_keywords(redis_client)
+            blocked_companies = await get_blocked_companies(redis_client)
+
             for item in job_list:
                 try:
                     display_score = item.get("displayScore", 0)
@@ -156,13 +161,13 @@ async def fetch_jobright_jobs(keywords: str = None, location: str = None) -> dic
                     if not title:
                         continue
 
-                    if any(kw in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                    if any(kw in title.lower() for kw in title_filter_keywords):
                         logger.debug(f"Skipping job with filtered title: {title}")
                         continue
 
                     company_name = company.get("companyName") or "Unknown"
 
-                    if any(blocked.lower() in company_name.lower() for blocked in settings.BLOCKED_COMPANIES):
+                    if any(blocked.lower() in company_name.lower() for blocked in blocked_companies):
                         logger.debug(f"Skipping job from blocked company: {company_name}")
                         continue
 

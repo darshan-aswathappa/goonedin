@@ -4,6 +4,7 @@ import httpx
 import logging
 from bs4 import BeautifulSoup
 from app.core.config import get_settings
+from app.core.redis_config import get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -37,7 +38,7 @@ HEADERS = {
 }
 
 
-async def fetch_mathworks_jobs() -> dict:
+async def fetch_mathworks_jobs(redis_client) -> dict:
     """
     Fetches jobs from MathWorks career page using BeautifulSoup.
     Returns dict with keys: jobs, retries, failed, recent_jobs.
@@ -48,6 +49,10 @@ async def fetch_mathworks_jobs() -> dict:
     retries_used = 0
     parsed_jobs = []
     recent_jobs = []
+
+    # Get config from Redis
+    title_filter_keywords = await get_title_filter_keywords(redis_client)
+    blocked_companies = await get_blocked_companies(redis_client)
 
     proxy = settings.PROXY_URL if settings.PROXY_URL else None
     if proxy:
@@ -88,7 +93,7 @@ async def fetch_mathworks_jobs() -> dict:
                     if not title or len(title) < 3:
                         continue
 
-                    if any(kw.lower() in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                    if any(kw.lower() in title.lower() for kw in title_filter_keywords):
                         logger.debug(f"Skipping job with filtered title: {title}")
                         continue
 
@@ -110,7 +115,7 @@ async def fetch_mathworks_jobs() -> dict:
 
                     if any(
                         blocked.lower() in "mathworks".lower()
-                        for blocked in settings.BLOCKED_COMPANIES
+                        for blocked in blocked_companies
                     ):
                         logger.debug("Skipping job from blocked company: MathWorks")
                         continue

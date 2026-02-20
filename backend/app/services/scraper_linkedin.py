@@ -6,6 +6,7 @@ import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
+from app.core.redis_config import get_target_keywords, get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -64,14 +65,15 @@ def parse_posted_at(time_tag) -> datetime | None:
     return None
 
 
-async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> dict:
+async def fetch_linkedin_jobs(redis_client, keywords: str = None, location: str = None) -> dict:
     """
     Hits the public LinkedIn guest API and parses the HTML response
     into a list of JobCreate objects with real posted_at timestamps.
     Uses filters: sortBy=DD (date), f_TPR=r300 (last 5 min), f_JT=F (full-time), f_E=2,3 (entry/associate).
     Returns dict with keys: jobs, retries, failed.
     """
-    search_term = keywords or (settings.TARGET_KEYWORDS[0] if settings.TARGET_KEYWORDS else "Software Engineer")
+    target_keywords = await get_target_keywords(redis_client)
+    search_term = keywords or (target_keywords[0] if target_keywords else "Software Engineer")
     search_location = location or "United States"
     encoded_keywords = urllib.parse.quote(search_term)
     encoded_location = urllib.parse.quote_plus(search_location)
@@ -120,6 +122,10 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> dic
             job_cards = soup.find_all("li")
             parsed_jobs = []
 
+            # Get config from Redis
+            title_filter_keywords = await get_title_filter_keywords(redis_client)
+            blocked_companies = await get_blocked_companies(redis_client)
+
             for card in job_cards:
                 try:
                     title_tag = card.find("h3", class_="base-search-card__title")
@@ -127,7 +133,7 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> dic
                     if not title:
                         continue  # skip empty/malformed cards
 
-                    if any(kw in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                    if any(kw in title.lower() for kw in title_filter_keywords):
                         logger.debug(f"Skipping job with filtered title: {title}")
                         continue
 
@@ -135,7 +141,7 @@ async def fetch_linkedin_jobs(keywords: str = None, location: str = None) -> dic
                     company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
 
                     # Skip jobs from blocked companies
-                    if any(blocked.lower() in company.lower() for blocked in settings.BLOCKED_COMPANIES):
+                    if any(blocked.lower() in company.lower() for blocked in blocked_companies):
                         logger.info(f"Skipping job from blocked company: {company}")
                         continue
 

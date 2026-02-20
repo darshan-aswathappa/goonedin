@@ -1,13 +1,22 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
 import redis.asyncio as aioredis
 from datetime import datetime, timezone, timedelta
+from pydantic import BaseModel
 
 # Import our components
 from app.core.config import get_settings
+from app.core.redis_config import (
+    seed_config_if_missing,
+    get_target_keywords,
+    get_blocked_companies,
+    get_title_filter_keywords,
+    get_all_config,
+    set_config_list,
+)
 from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_jobright import fetch_jobright_jobs
@@ -41,6 +50,7 @@ async def lifespan(app: FastAPI):
     try:
         await redis_client.ping()
         logger.info("Redis connection established.")
+        await seed_config_if_missing(redis_client)
     except Exception as e:
         logger.error(f"Redis connection failed: {e}. Deduplication will not persist across restarts.")
     asyncio.create_task(run_scraper_loop())
@@ -78,10 +88,11 @@ def is_recent(posted_at: datetime | None) -> bool:
     return (now - posted_at) <= timedelta(minutes=JOB_RECENCY_MINUTES)
 
 
-def matches_target_keywords(job) -> bool:
+async def matches_target_keywords(job) -> bool:
     """Returns True if the job title contains at least one of our target keywords."""
     title_lower = job.title.lower()
-    return any(kw.lower() in title_lower for kw in settings.TARGET_KEYWORDS)
+    target_keywords = await get_target_keywords(redis_client)
+    return any(kw.lower() in title_lower for kw in target_keywords)
 
 
 async def is_already_seen(job_key: str) -> bool:
@@ -124,17 +135,20 @@ async def run_scraper_loop():
         try:
             all_jobs = []
 
+            # Get current config from Redis
+            target_keywords = await get_target_keywords(redis_client)
+
             # Scrape LinkedIn (per keyword) + Jobright recommend + Jobright mini-sites + Fidelity + State Street
             results = await asyncio.gather(
                 *[
-                    fetch_linkedin_jobs(keywords=kw, location="United States")
-                    for kw in settings.TARGET_KEYWORDS
+                    fetch_linkedin_jobs(redis_client, keywords=kw, location="United States")
+                    for kw in target_keywords
                 ],
-                fetch_jobright_jobs(),  # Jobright recommend API doesn't need keywords
-                fetch_jobright_minisites_jobs(),  # Public API for newgrad SWE jobs
-                fetch_fidelity_jobs(),  # Fidelity Investments career page
-                fetch_statestreet_jobs(),  # State Street career page
-                fetch_mathworks_jobs(),  # MathWorks career page (Playwright)
+                fetch_jobright_jobs(redis_client),  # Jobright recommend API doesn't need keywords
+                fetch_jobright_minisites_jobs(redis_client),  # Public API for newgrad SWE jobs
+                fetch_fidelity_jobs(redis_client),  # Fidelity Investments career page
+                fetch_statestreet_jobs(redis_client),  # State Street career page
+                fetch_mathworks_jobs(redis_client),  # MathWorks career page (Playwright)
             )
 
             total_calls = len(results)
@@ -183,7 +197,7 @@ async def run_scraper_loop():
                         continue
 
                     # 2. Title must contain a target keyword
-                    if not matches_target_keywords(job):
+                    if not await matches_target_keywords(job):
                         continue
 
                 job_key = f"seen_job:{job.source}:{job.external_id}"
@@ -345,3 +359,61 @@ async def get_jobs():
     # Sort by posted_at (most recent first), handling None values
     jobs.sort(key=lambda x: x.get("posted_at") or "", reverse=True)
     return {"jobs": jobs, "count": len(jobs)}
+
+
+class ConfigUpdateRequest(BaseModel):
+    values: list[str]
+
+
+@app.get("/config")
+async def get_config():
+    """Get all config values from Redis."""
+    return await get_all_config(redis_client)
+
+
+@app.get("/config/target-keywords")
+async def get_target_keywords_endpoint():
+    """Get target keywords from Redis."""
+    keywords = await get_target_keywords(redis_client)
+    return {"target_keywords": keywords, "count": len(keywords)}
+
+
+@app.put("/config/target-keywords")
+async def update_target_keywords(request: ConfigUpdateRequest):
+    """Update target keywords in Redis."""
+    success = await set_config_list(redis_client, "target_keywords", request.values)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+    return {"message": "Updated", "target_keywords": request.values, "count": len(request.values)}
+
+
+@app.get("/config/blocked-companies")
+async def get_blocked_companies_endpoint():
+    """Get blocked companies from Redis."""
+    companies = await get_blocked_companies(redis_client)
+    return {"blocked_companies": companies, "count": len(companies)}
+
+
+@app.put("/config/blocked-companies")
+async def update_blocked_companies(request: ConfigUpdateRequest):
+    """Update blocked companies in Redis."""
+    success = await set_config_list(redis_client, "blocked_companies", request.values)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+    return {"message": "Updated", "blocked_companies": request.values, "count": len(request.values)}
+
+
+@app.get("/config/title-filter-keywords")
+async def get_title_filter_keywords_endpoint():
+    """Get title filter keywords from Redis."""
+    keywords = await get_title_filter_keywords(redis_client)
+    return {"title_filter_keywords": keywords, "count": len(keywords)}
+
+
+@app.put("/config/title-filter-keywords")
+async def update_title_filter_keywords(request: ConfigUpdateRequest):
+    """Update title filter keywords in Redis."""
+    success = await set_config_list(redis_client, "title_filter_keywords", request.values)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+    return {"message": "Updated", "title_filter_keywords": request.values, "count": len(request.values)}

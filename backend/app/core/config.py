@@ -8,13 +8,6 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 
-    # --- TARGETS ---
-    # The keywords we are hunting for. Comma separated.
-    TARGET_KEYWORDS: list[str]
-    TARGET_LOCATIONS: list[str]
-    BLOCKED_COMPANIES: list[str] = []
-    TITLE_FILTER_KEYWORDS: list[str] = []
-
     # --- PROXY & NETWORK ---
     # This is critical for the "hacky" speed. We need rotating IPs.
     # Format: http://user:pass@host:port

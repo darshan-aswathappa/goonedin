@@ -4,6 +4,7 @@ import httpx
 import logging
 from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
+from app.core.redis_config import get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -89,7 +90,7 @@ def is_posted_within_minutes(posted_at: datetime | None, minutes: int = 5) -> bo
     return (now - posted_at) <= timedelta(minutes=minutes)
 
 
-async def fetch_jobright_minisites_jobs() -> dict:
+async def fetch_jobright_minisites_jobs(redis_client) -> dict:
     """
     Fetches jobs from Jobright.ai Mini-Sites API (public, no auth required).
     Returns new grad SWE jobs with H1B sponsorship.
@@ -153,6 +154,10 @@ async def fetch_jobright_minisites_jobs() -> dict:
             parsed_jobs = []
             recent_jobs = []
 
+            # Get config from Redis
+            title_filter_keywords = await get_title_filter_keywords(redis_client)
+            blocked_companies = await get_blocked_companies(redis_client)
+
             for item in job_list:
                 try:
                     job = item.get("jobResult", {})
@@ -162,13 +167,13 @@ async def fetch_jobright_minisites_jobs() -> dict:
                     if not title:
                         continue
 
-                    if any(kw in title.lower() for kw in settings.TITLE_FILTER_KEYWORDS):
+                    if any(kw in title.lower() for kw in title_filter_keywords):
                         logger.debug(f"Skipping job with filtered title: {title}")
                         continue
 
                     company_name = company.get("companyName") or "Unknown"
 
-                    if any(blocked.lower() in company_name.lower() for blocked in settings.BLOCKED_COMPANIES):
+                    if any(blocked.lower() in company_name.lower() for blocked in blocked_companies):
                         logger.debug(f"Skipping job from blocked company: {company_name}")
                         continue
 
