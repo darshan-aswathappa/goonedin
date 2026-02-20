@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 interface LogEntry {
   timestamp: string;
@@ -129,9 +131,18 @@ export default function LogsPage() {
     <div className="min-h-screen bg-[#0d1117] p-6 font-mono">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-white text-lg font-semibold tracking-wide">
-            SYSTEM LOGS
-          </h1>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-400" />
+            </Link>
+            <h1 className="text-white text-lg font-semibold tracking-wide">
+              SYSTEM LOGS
+            </h1>
+          </div>
           <div className="flex items-center gap-2">
             <span
               className={`w-2 h-2 rounded-full ${
