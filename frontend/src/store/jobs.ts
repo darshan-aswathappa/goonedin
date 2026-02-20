@@ -39,8 +39,7 @@ const matchesLocationFilter = (job: Job): boolean => {
 interface JobsState {
   jobs: Job[];
   linkedinJobs: Job[];
-  jobrightJobs: Job[];
-  jobrightMinisitesJobs: Job[];
+  allJobrightJobs: Job[];
   fidelityJobs: Job[];
   statestreetJobs: Job[];
   mathworksJobs: Job[];
@@ -57,8 +56,7 @@ interface JobsState {
 export const useJobsStore = create<JobsState>((set) => ({
   jobs: [],
   linkedinJobs: [],
-  jobrightJobs: [],
-  jobrightMinisitesJobs: [],
+  allJobrightJobs: [],
   fidelityJobs: [],
   statestreetJobs: [],
   mathworksJobs: [],
@@ -72,18 +70,16 @@ export const useJobsStore = create<JobsState>((set) => ({
       if (exists) return state;
 
       const newJobs = [job, ...state.jobs];
+      const isJobright = job.source === "Jobright" || job.source === "JobrightMiniSites";
       
       return {
         jobs: newJobs,
         linkedinJobs: job.source === "LinkedIn" 
           ? [job, ...state.linkedinJobs] 
           : state.linkedinJobs,
-        jobrightJobs: job.source === "Jobright" 
-          ? [job, ...state.jobrightJobs] 
-          : state.jobrightJobs,
-        jobrightMinisitesJobs: job.source === "JobrightMiniSites" 
-          ? [job, ...state.jobrightMinisitesJobs] 
-          : state.jobrightMinisitesJobs,
+        allJobrightJobs: isJobright
+          ? [job, ...state.allJobrightJobs] 
+          : state.allJobrightJobs,
         fidelityJobs: job.source === "Fidelity"
           ? [job, ...state.fidelityJobs]
           : state.fidelityJobs,
@@ -103,8 +99,7 @@ export const useJobsStore = create<JobsState>((set) => ({
     set(() => ({
       jobs,
       linkedinJobs: jobs.filter((j) => j.source === "LinkedIn"),
-      jobrightJobs: jobs.filter((j) => j.source === "Jobright"),
-      jobrightMinisitesJobs: jobs.filter((j) => j.source === "JobrightMiniSites"),
+      allJobrightJobs: jobs.filter((j) => j.source === "Jobright" || j.source === "JobrightMiniSites"),
       fidelityJobs: jobs.filter((j) => j.source === "Fidelity"),
       statestreetJobs: jobs.filter((j) => j.source === "StateStreet"),
       mathworksJobs: jobs.filter((j) => j.source === "MathWorks"),
@@ -119,8 +114,7 @@ export const useJobsStore = create<JobsState>((set) => ({
     set({
       jobs: [],
       linkedinJobs: [],
-      jobrightJobs: [],
-      jobrightMinisitesJobs: [],
+      allJobrightJobs: [],
       fidelityJobs: [],
       statestreetJobs: [],
       mathworksJobs: [],
