@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 interface JobCardProps {
   job: Job;
 }
@@ -62,7 +64,7 @@ export function JobCard({ job }: JobCardProps) {
     
     setIsBlocking(true);
     try {
-      const response = await fetch("http://localhost:8000/jobs/block", {
+      const response = await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
