@@ -507,36 +507,28 @@ async def block_company_and_remove_jobs(request: BlockCompanyRequest):
 
 
 class DismissJobRequest(BaseModel):
-    source: str
     external_id: str
 
 
 @app.post("/jobs/dismiss")
 async def dismiss_job(request: DismissJobRequest):
-    """Dismiss a single job (remove from Redis without blocking the company)."""
+    """Dismiss a single job (remove from UI only, keep in Redis for dedup)."""
     try:
-        job_key = f"seen_job:{request.source}:{request.external_id}"
-        deleted = await redis_client.delete(job_key)
+        # Don't delete from Redis - keep it for deduplication
+        # Job will naturally expire based on its TTL
+        logger.info(f"Dismissed job from UI: {request.external_id}")
         
-        if deleted:
-            logger.info(f"Dismissed job: {job_key}")
-            
-            await manager.broadcast({
-                "type": "JOB_DISMISSED",
-                "data": {
-                    "external_id": request.external_id,
-                }
-            })
-            
-            return {
-                "success": True,
-                "message": "Job dismissed",
+        await manager.broadcast({
+            "type": "JOB_DISMISSED",
+            "data": {
+                "external_id": request.external_id,
             }
-        else:
-            return {
-                "success": False,
-                "message": "Job not found",
-            }
+        })
+        
+        return {
+            "success": True,
+            "message": "Job dismissed from UI",
+        }
     except Exception as e:
         logger.error(f"Error dismissing job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
