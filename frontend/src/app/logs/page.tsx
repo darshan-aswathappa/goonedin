@@ -30,28 +30,8 @@ export default function LogsPage() {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  const fetchHistoricalLogs = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_URL}/logs`);
-      if (response.ok) {
-        const data = await response.json();
-        if (mountedRef.current && data.logs) {
-          setLogs(data.logs);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch historical logs:", error);
-    } finally {
-      if (mountedRef.current) {
-        setLoading(false);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    mountedRef.current = true;
-
-    fetchHistoricalLogs();
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
@@ -92,6 +72,31 @@ export default function LogsPage() {
     ws.onerror = () => {
       ws.close();
     };
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    const init = async () => {
+      try {
+        const response = await fetch(`${API_URL}/logs`);
+        if (response.ok) {
+          const data = await response.json();
+          if (mountedRef.current && data.logs) {
+            setLogs(data.logs);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch historical logs:", error);
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+          connectWebSocket();
+        }
+      }
+    };
+
+    init();
 
     return () => {
       mountedRef.current = false;
@@ -104,7 +109,7 @@ export default function LogsPage() {
         wsRef.current = null;
       }
     };
-  }, [fetchHistoricalLogs]);
+  }, [connectWebSocket]);
 
   useEffect(() => {
     if (scrollRef.current) {

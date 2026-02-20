@@ -32,12 +32,11 @@ from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
 
-# Add broadcast handler to stream logs to frontend
+# Add broadcast handler to stream logs to frontend (exclude WebSocket logs)
 broadcast_handler = BroadcastLogHandler(log_manager.broadcast)
 broadcast_handler.setLevel(logging.INFO)
 logging.getLogger("VelocityMain").addHandler(broadcast_handler)
 logging.getLogger("VelocityScraper").addHandler(broadcast_handler)
-logging.getLogger("VelocityWebSocket").addHandler(broadcast_handler)
 
 settings = get_settings()
 
