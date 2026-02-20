@@ -9,10 +9,9 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # --- PROXY & NETWORK ---
-    # This is critical for the "hacky" speed. We need rotating IPs.
     # Format: http://user:pass@host:port
-    PROXY_URL: str = os.getenv("PROXY_URL", "") 
-    
+    PROXY_URL: str = os.getenv("PROXY_URL", "")
+
     # --- NOTIFICATIONS ---
     TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -20,10 +19,9 @@ class Settings(BaseSettings):
     # --- DATABASE (Optional for now, but good for logging seen jobs) ---
     REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-    # --- JOBRIGHT.AI CREDENTIALS ---
+    # --- JOBRIGHT.AI CREDENTIALS (for future use) ---
     JOBRIGHT_EMAIL: str = os.getenv("JOBRIGHT_EMAIL", "")
     JOBRIGHT_PASSWORD: str = os.getenv("JOBRIGHT_PASSWORD", "")
-    JOBRIGHT_COOKIES: str = os.getenv("JOBRIGHT_COOKIES", "")  # Deprecated - kept for backward compat
 
     class Config:
         case_sensitive = True

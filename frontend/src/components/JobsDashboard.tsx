@@ -33,7 +33,7 @@ export function JobsDashboard() {
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
-  const allJobrightJobs = useJobsStore((state) => state.allJobrightJobs);
+  const jobrightMinisitesJobs = useJobsStore((state) => state.jobrightMinisitesJobs);
   const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
   const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
@@ -153,12 +153,12 @@ export function JobsDashboard() {
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
             >
               <Briefcase className="h-4 w-4" />
-              <span className="hidden sm:inline">Jobright</span>
+              <span className="hidden sm:inline">Jobright Mini</span>
               <Badge
                 variant="secondary"
                 className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
               >
-                {allJobrightJobs.length}
+                {jobrightMinisitesJobs.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger
@@ -227,8 +227,8 @@ export function JobsDashboard() {
 
           <TabsContent value="jobright" className="mt-0">
             <JobList
-              jobs={allJobrightJobs}
-              emptyMessage="No Jobright jobs yet. Recommendations and Mini Sites postings will appear here."
+              jobs={jobrightMinisitesJobs}
+              emptyMessage="No Jobright Mini jobs yet. Newgrad SDE positions will appear here."
             />
           </TabsContent>
 

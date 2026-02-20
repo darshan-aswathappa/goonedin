@@ -19,7 +19,6 @@ from app.core.redis_config import (
 )
 from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
-from app.services.scraper_jobright import fetch_jobright_jobs
 from app.services.scraper_jobright_minisites import fetch_jobright_minisites_jobs
 from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.scraper_statestreet import fetch_statestreet_jobs
@@ -151,13 +150,12 @@ async def run_scraper_loop():
             # Get current config from Redis
             target_keywords = await get_target_keywords(redis_client)
 
-            # Scrape LinkedIn (per keyword) + Jobright recommend + Jobright mini-sites + Fidelity + State Street
+            # Scrape LinkedIn (per keyword) + Jobright mini-sites + Fidelity + State Street
             results = await asyncio.gather(
                 *[
                     fetch_linkedin_jobs(redis_client, keywords=kw, location="United States")
                     for kw in target_keywords
                 ],
-                fetch_jobright_jobs(redis_client),  # Jobright recommend API doesn't need keywords
                 fetch_jobright_minisites_jobs(redis_client),  # Public API for newgrad SWE jobs
                 fetch_fidelity_jobs(redis_client),  # Fidelity Investments career page
                 fetch_statestreet_jobs(redis_client),  # State Street career page
@@ -201,17 +199,15 @@ async def run_scraper_loop():
 
             new_finds = 0
 
-            # Process regular jobs (LinkedIn, Jobright recommend)
+            # Process regular jobs (LinkedIn)
             for job in all_jobs:
-                # Jobright jobs are pre-filtered by score (>= 92), skip time/keyword filters
-                if job.source != "Jobright":
-                    # 1. Must have been posted within the last 10 minutes
-                    if not is_recent(job.posted_at):
-                        continue
+                # 1. Must have been posted within the last 10 minutes
+                if not is_recent(job.posted_at):
+                    continue
 
-                    # 2. Title must contain a target keyword
-                    if not await matches_target_keywords(job):
-                        continue
+                # 2. Title must contain a target keyword
+                if not await matches_target_keywords(job):
+                    continue
 
                 job_key = f"seen_job:{job.source}:{job.external_id}"
 

@@ -34,8 +34,6 @@ function getSourceColor(source: string) {
   switch (source) {
     case "LinkedIn":
       return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    case "Jobright":
-      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
     case "JobrightMiniSites":
       return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
     case "Fidelity":
