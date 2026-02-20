@@ -19,7 +19,6 @@ from app.core.redis_config import (
 )
 from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
-from app.services.scraper_jobright_minisites import fetch_jobright_minisites_jobs
 from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.scraper_statestreet import fetch_statestreet_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
@@ -150,13 +149,12 @@ async def run_scraper_loop():
             # Get current config from Redis
             target_keywords = await get_target_keywords(redis_client)
 
-            # Scrape LinkedIn (per keyword) + Jobright mini-sites + Fidelity + State Street
+            # Scrape LinkedIn (per keyword) + Fidelity + State Street + MathWorks
             results = await asyncio.gather(
                 *[
                     fetch_linkedin_jobs(redis_client, keywords=kw, location="United States")
                     for kw in target_keywords
                 ],
-                fetch_jobright_minisites_jobs(redis_client),  # Public API for newgrad SWE jobs
                 fetch_fidelity_jobs(redis_client),  # Fidelity Investments career page
                 fetch_statestreet_jobs(redis_client),  # State Street career page
                 fetch_mathworks_jobs(redis_client),  # MathWorks career page (Playwright)
@@ -170,17 +168,14 @@ async def run_scraper_loop():
             success_rate = (passed / total_calls * 100) if total_calls else 0
 
             # Collect jobs from all sources
-            minisites_recent_jobs = []
             fidelity_jobs = []
             statestreet_jobs = []
             mathworks_jobs = []
             for r in results:
-                # For mini-sites, Fidelity, State Street, and MathWorks, only use recent_jobs
+                # For Fidelity, State Street, and MathWorks, only use recent_jobs
                 if "recent_jobs" in r and r["recent_jobs"]:
                     first_job = r["recent_jobs"][0] if r["recent_jobs"] else None
-                    if first_job and first_job.source == "JobrightMiniSites":
-                        minisites_recent_jobs.extend(r["recent_jobs"])
-                    elif first_job and first_job.source == "Fidelity":
+                    if first_job and first_job.source == "Fidelity":
                         fidelity_jobs.extend(r["recent_jobs"])
                     elif first_job and first_job.source == "StateStreet":
                         statestreet_jobs.extend(r["recent_jobs"])
@@ -229,26 +224,6 @@ async def run_scraper_loop():
                 await send_telegram_alert(job)
 
                 logger.info(f"New Target Acquired: {job.title} @ {job.company} ({job.location})")
-
-            # Process mini-sites jobs (only recent ones, posted < 5 min)
-            for job in minisites_recent_jobs:
-                job_key = f"seen_job:{job.source}:{job.external_id}"
-
-                if await is_already_seen(job_key):
-                    continue
-
-                job_dict = job.model_dump(mode="json")
-                await mark_as_seen(job_key, job_dict)
-                new_finds += 1
-
-                await manager.broadcast({
-                    "type": "NEW_JOB",
-                    "data": job_dict
-                })
-
-                await send_telegram_alert(job)
-
-                logger.info(f"New Target (MiniSites): {job.title} @ {job.company} ({job.location})")
 
             # Process Fidelity jobs (posted today)
             for job in fidelity_jobs:

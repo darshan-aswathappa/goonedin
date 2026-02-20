@@ -33,7 +33,6 @@ export function JobsDashboard() {
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
-  const jobrightMinisitesJobs = useJobsStore((state) => state.jobrightMinisitesJobs);
   const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
   const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
@@ -106,7 +105,7 @@ export function JobsDashboard() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-7 bg-muted/50 p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-6 bg-muted/50 p-1">
             <TabsTrigger
               value="all"
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -146,19 +145,6 @@ export function JobsDashboard() {
                 className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
               >
                 {linkedinJobs.length}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger
-              value="jobright"
-              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-            >
-              <Briefcase className="h-4 w-4" />
-              <span className="hidden sm:inline">Jobright Mini</span>
-              <Badge
-                variant="secondary"
-                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-              >
-                {jobrightMinisitesJobs.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger
@@ -222,13 +208,6 @@ export function JobsDashboard() {
             <JobList
               jobs={linkedinJobs}
               emptyMessage="No LinkedIn jobs yet. They'll appear here when found."
-            />
-          </TabsContent>
-
-          <TabsContent value="jobright" className="mt-0">
-            <JobList
-              jobs={jobrightMinisitesJobs}
-              emptyMessage="No Jobright Mini jobs yet. Newgrad SDE positions will appear here."
             />
           </TabsContent>
 

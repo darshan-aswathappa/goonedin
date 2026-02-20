@@ -20,16 +20,8 @@ async def send_telegram_alert(job: JobCreate):
         f"<b>Role:</b> {job.title}",
         f"<b>Company:</b> {job.company}",
         f"<b>Location:</b> {job.location}",
+        f"<b>Source:</b> {job.source}",
     ]
-    
-    # Show salary and work_model only for JobrightMiniSites
-    if job.source == "JobrightMiniSites":
-        if job.salary:
-            lines.append(f"<b>Salary:</b> {job.salary}")
-        if job.work_model:
-            lines.append(f"<b>Work Model:</b> {job.work_model}")
-    
-    lines.append(f"<b>Source:</b> {job.source}")
     lines.append("")
     lines.append(f"🔗 <a href='{job.url}'><b>APPLY NOW</b></a>")
     

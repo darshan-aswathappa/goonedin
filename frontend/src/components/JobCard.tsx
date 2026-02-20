@@ -15,8 +15,6 @@ import {
   Building2,
   MapPin,
   Clock,
-  DollarSign,
-  Briefcase,
   ExternalLink,
   ThumbsDown,
   X,
@@ -34,8 +32,6 @@ function getSourceColor(source: string) {
   switch (source) {
     case "LinkedIn":
       return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-    case "JobrightMiniSites":
-      return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
     case "Fidelity":
       return "bg-green-500/20 text-green-400 border-green-500/30";
     case "StateStreet":
@@ -166,9 +162,7 @@ export function JobCard({ job }: JobCardProps) {
           variant="outline"
           className={`mt-2 w-fit ${getSourceColor(job.source)}`}
         >
-          {job.source === "JobrightMiniSites"
-            ? "Jobright Mini"
-            : job.source === "StateStreet"
+          {job.source === "StateStreet"
             ? "State Street"
             : job.source === "MathWorks"
             ? "MathWorks"
@@ -194,20 +188,6 @@ export function JobCard({ job }: JobCardProps) {
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="h-4 w-4 shrink-0 text-primary/70" />
               <span>{postedAt}</span>
-            </div>
-          )}
-
-          {job.salary && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <DollarSign className="h-4 w-4 shrink-0 text-emerald-500/70" />
-              <span className="text-emerald-400">{job.salary}</span>
-            </div>
-          )}
-
-          {job.work_model && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Briefcase className="h-4 w-4 shrink-0 text-primary/70" />
-              <span>{job.work_model}</span>
             </div>
           )}
         </div>

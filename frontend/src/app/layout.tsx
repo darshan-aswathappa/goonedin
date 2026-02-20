@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Job Tracker | Real-time Job Notifications",
-  description: "Track job postings from LinkedIn, Jobright Mini Sites, and more in real-time",
+  description: "Track job postings from LinkedIn, Fidelity, State Street, MathWorks and more in real-time",
 };
 
 export default function RootLayout({

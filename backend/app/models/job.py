@@ -12,11 +12,6 @@ class JobBase(BaseModel):
     url: HttpUrl = Field(..., description="Direct link to apply")
     source: str = Field(..., description="Where we found it (LinkedIn, Glassdoor)")
     posted_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    
-    # Optional fields (used by JobrightMiniSites)
-    salary: Optional[str] = Field(default=None, description="Salary range if available")
-    work_model: Optional[str] = Field(default=None, description="Remote, Hybrid, On-site")
-    
     # We want to track if we've already alerted you about this one
     is_new: bool = True
 
