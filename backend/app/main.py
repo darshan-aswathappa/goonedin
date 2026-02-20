@@ -223,6 +223,10 @@ async def run_scraper_loop():
                 # Fire Telegram alert
                 await send_telegram_alert(job)
 
+                # Mark notified in Redis
+                job_dict["is_notified"] = True
+                await mark_as_seen(job_key, job_dict)
+
                 logger.info(f"New Target Acquired: {job.title} @ {job.company} ({job.location})")
 
             # Process Fidelity jobs (posted today)
@@ -242,6 +246,10 @@ async def run_scraper_loop():
                 })
 
                 await send_telegram_alert(job)
+
+                # Mark notified in Redis
+                job_dict["is_notified"] = True
+                await mark_as_seen(job_key, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
 
                 logger.info(f"New Target (Fidelity): {job.title} @ {job.company} ({job.location})")
 
@@ -263,6 +271,10 @@ async def run_scraper_loop():
 
                 await send_telegram_alert(job)
 
+                # Mark notified in Redis
+                job_dict["is_notified"] = True
+                await mark_as_seen(job_key, job_dict)
+
                 logger.info(f"New Target (StateStreet): {job.title} @ {job.company} ({job.location})")
 
             # Process MathWorks jobs (no posted date, infinite TTL to avoid re-alerting)
@@ -282,6 +294,10 @@ async def run_scraper_loop():
                 })
 
                 await send_telegram_alert(job)
+
+                # Mark notified in Redis
+                job_dict["is_notified"] = True
+                await mark_as_seen_permanent(job_key, job_dict)
 
                 logger.info(f"New Target (MathWorks): {job.title} @ {job.company} ({job.location})")
 

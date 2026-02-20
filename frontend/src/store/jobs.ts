@@ -13,6 +13,7 @@ export interface Job {
   salary?: string;
   work_model?: string;
   is_new: boolean;
+  is_notified?: boolean;
   created_at?: string;
   ttl?: number;
 }
