@@ -28,7 +28,6 @@ export function useWebSocket() {
 
     ws.onopen = () => {
       setConnectionStatus("connected");
-      toast.success("Connected to job feed");
 
       pingIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
