@@ -449,3 +449,45 @@ async def get_logs(limit: int = 500):
     """Fetch historical system logs from Redis (last 6 hours)."""
     logs = await get_historical_logs(redis_client, limit=limit)
     return {"logs": logs, "count": len(logs)}
+
+
+class BlockCompanyRequest(BaseModel):
+    company: str
+    source: str
+    external_id: str
+
+
+@app.post("/jobs/block")
+async def block_company_and_remove_job(request: BlockCompanyRequest):
+    """Block a company and remove the job from Redis."""
+    try:
+        # 1. Add company to blocked companies list
+        blocked_companies = await get_blocked_companies(redis_client)
+        if request.company not in blocked_companies:
+            blocked_companies.append(request.company)
+            await set_config_list(redis_client, "blocked_companies", blocked_companies)
+            logger.info(f"Added '{request.company}' to blocked companies")
+
+        # 2. Delete the job from Redis
+        job_key = f"seen_job:{request.source}:{request.external_id}"
+        deleted = await redis_client.delete(job_key)
+        if deleted:
+            logger.info(f"Deleted job key: {job_key}")
+
+        # 3. Broadcast the removal to all connected clients
+        await manager.broadcast({
+            "type": "JOB_REMOVED",
+            "data": {
+                "external_id": request.external_id,
+                "company": request.company,
+            }
+        })
+
+        return {
+            "success": True,
+            "message": f"Blocked '{request.company}' and removed job",
+            "blocked_companies_count": len(blocked_companies),
+        }
+    except Exception as e:
+        logger.error(f"Error blocking company: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

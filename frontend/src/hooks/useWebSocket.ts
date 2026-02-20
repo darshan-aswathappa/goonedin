@@ -8,16 +8,26 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
 const RECONNECT_INTERVAL = 3000;
 const PING_INTERVAL = 30000;
 
-interface WebSocketMessage {
+interface NewJobMessage {
   type: "NEW_JOB";
   data: Job;
 }
+
+interface JobRemovedMessage {
+  type: "JOB_REMOVED";
+  data: {
+    external_id: string;
+    company: string;
+  };
+}
+
+type WebSocketMessage = NewJobMessage | JobRemovedMessage;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { addJob, setConnectionStatus } = useJobsStore();
+  const { addJob, removeJob, setConnectionStatus } = useJobsStore();
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -46,6 +56,11 @@ export function useWebSocket() {
           toast.info(`New ${message.data.source} job: ${message.data.title}`, {
             description: message.data.company,
           });
+        } else if (message.type === "JOB_REMOVED" && message.data) {
+          removeJob(message.data.external_id);
+          toast.success(`Blocked company: ${message.data.company}`, {
+            description: "Job removed from all lists",
+          });
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -67,7 +82,7 @@ export function useWebSocket() {
       console.error("WebSocket error:", error);
       ws.close();
     };
-  }, [addJob, setConnectionStatus]);
+  }, [addJob, removeJob, setConnectionStatus]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

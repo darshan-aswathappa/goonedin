@@ -1,9 +1,16 @@
 "use client";
 
-import { Job } from "@/store/jobs";
+import { useState } from "react";
+import { Job, useJobsStore } from "@/store/jobs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Building2,
   MapPin,
@@ -11,7 +18,8 @@ import {
   DollarSign,
   Briefcase,
   ExternalLink,
-  Sparkles,
+  ThumbsDown,
+  Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -39,15 +47,66 @@ function getSourceColor(source: string) {
 }
 
 export function JobCard({ job }: JobCardProps) {
+  const [isBlocking, setIsBlocking] = useState(false);
+  const removeJob = useJobsStore((state) => state.removeJob);
+
   const postedAt = job.posted_at
     ? formatDistanceToNow(new Date(job.posted_at), { addSuffix: true })
     : null;
 
+  const handleBlockCompany = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isBlocking) return;
+    
+    setIsBlocking(true);
+    try {
+      const response = await fetch("http://localhost:8000/jobs/block", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company: job.company,
+          source: job.source,
+          external_id: job.external_id,
+        }),
+      });
+      
+      if (response.ok) {
+        removeJob(job.external_id);
+      }
+    } catch (error) {
+      console.error("Failed to block company:", error);
+    } finally {
+      setIsBlocking(false);
+    }
+  };
+
   return (
     <Card className="group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleBlockCompany}
+              disabled={isBlocking}
+              className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-all duration-200 opacity-0 group-hover:opacity-100"
+            >
+              {isBlocking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ThumbsDown className="h-4 w-4" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Block this company and remove from list</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-8">
             <CardTitle className="line-clamp-2 text-lg font-semibold leading-tight group-hover:text-primary transition-colors">
               {job.title}
             </CardTitle>
