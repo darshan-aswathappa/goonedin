@@ -23,7 +23,6 @@ class Settings(BaseSettings):
     # --- JOBRIGHT.AI CREDENTIALS ---
     JOBRIGHT_EMAIL: str = os.getenv("JOBRIGHT_EMAIL", "")
     JOBRIGHT_PASSWORD: str = os.getenv("JOBRIGHT_PASSWORD", "")
-    JOBRIGHT_COOKIES: str = os.getenv("JOBRIGHT_COOKIES", "")
 
     class Config:
         case_sensitive = True
