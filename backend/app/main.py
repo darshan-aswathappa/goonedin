@@ -26,7 +26,7 @@ from app.services.scraper_statestreet import fetch_statestreet_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.notification import send_telegram_alert
 from app.api.websocket import manager, log_manager
-from app.services.log_handler import BroadcastLogHandler
+from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
     try:
         await redis_client.ping()
         logger.info("Redis connection established.")
+        broadcast_handler.set_redis_client(redis_client)
         await seed_config_if_missing(redis_client)
     except Exception as e:
         logger.error(f"Redis connection failed: {e}. Deduplication will not persist across restarts.")
@@ -425,3 +426,10 @@ async def update_title_filter_keywords(request: ConfigUpdateRequest):
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     return {"message": "Updated", "title_filter_keywords": request.values, "count": len(request.values)}
+
+
+@app.get("/logs")
+async def get_logs(limit: int = 500):
+    """Fetch historical system logs from Redis (last 6 hours)."""
+    logs = await get_historical_logs(redis_client, limit=limit)
+    return {"logs": logs, "count": len(logs)}

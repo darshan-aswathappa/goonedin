@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -15,74 +15,96 @@ const WS_URL =
   process.env.NEXT_PUBLIC_WS_URL?.replace("/ws/jobs", "/ws/logs") ||
   "ws://localhost:8000/ws/logs";
 
-const RECONNECT_INTERVAL = 3000;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 const PING_INTERVAL = 30000;
-const MAX_LOGS = 500;
+const MAX_LOGS = 1000;
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
+
+  const fetchHistoricalLogs = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/logs`);
+      if (response.ok) {
+        const data = await response.json();
+        if (mountedRef.current && data.logs) {
+          setLogs(data.logs);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch historical logs:", error);
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    const connect = () => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    mountedRef.current = true;
 
-      const ws = new WebSocket(WS_URL);
-      wsRef.current = ws;
+    fetchHistoricalLogs();
 
-      ws.onopen = () => {
+    const ws = new WebSocket(WS_URL);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      if (mountedRef.current) {
         setConnected(true);
-        pingIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send("ping");
-          }
-        }, PING_INTERVAL);
-      };
-
-      ws.onmessage = (event) => {
-        if (event.data === "pong") return;
-
-        try {
-          const message = JSON.parse(event.data);
-          if (message.type === "LOG" && message.data) {
-            setLogs((prev) => [...prev.slice(-MAX_LOGS + 1), message.data]);
-          }
-        } catch (e) {
-          console.error("Failed to parse log message:", e);
+      }
+      pingIntervalRef.current = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send("ping");
         }
-      };
-
-      ws.onclose = () => {
-        setConnected(false);
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-        }
-        reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_INTERVAL);
-      };
-
-      ws.onerror = () => {
-        ws.close();
-      };
+      }, PING_INTERVAL);
     };
 
-    connect();
+    ws.onmessage = (event) => {
+      if (event.data === "pong") return;
 
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "LOG" && message.data && mountedRef.current) {
+          setLogs((prev) => [...prev.slice(-MAX_LOGS + 1), message.data]);
+        }
+      } catch (e) {
+        console.error("Failed to parse log message:", e);
+      }
+    };
+
+    ws.onclose = () => {
+      if (mountedRef.current) {
+        setConnected(false);
       }
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }
+    };
+
+    ws.onerror = () => {
+      ws.close();
+    };
+
+    return () => {
+      mountedRef.current = false;
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
-  }, []);
+  }, [fetchHistoricalLogs]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -159,8 +181,10 @@ export default function LogsPage() {
           ref={scrollRef}
           className="bg-[#161b22] rounded-lg border border-gray-800 p-4 h-[calc(100vh-120px)] overflow-y-auto"
         >
-          {logs.length === 0 ? (
-            <p className="text-gray-500">Waiting for logs...</p>
+          {loading ? (
+            <p className="text-gray-500">Loading logs...</p>
+          ) : logs.length === 0 ? (
+            <p className="text-gray-500">No logs yet. Waiting for activity...</p>
           ) : (
             logs.map((log, idx) => (
               <div key={idx} className="flex gap-2 py-0.5 text-sm">
