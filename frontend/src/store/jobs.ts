@@ -48,6 +48,7 @@ interface JobsState {
   isLoading: boolean;
   addJob: (job: Job) => void;
   removeJob: (externalId: string) => void;
+  removeJobsByCompany: (company: string) => void;
   setJobs: (jobs: Job[]) => void;
   setConnectionStatus: (status: "connecting" | "connected" | "disconnected") => void;
   setLoading: (loading: boolean) => void;
@@ -105,6 +106,17 @@ export const useJobsStore = create<JobsState>((set) => ({
       statestreetJobs: state.statestreetJobs.filter((j) => j.external_id !== externalId),
       mathworksJobs: state.mathworksJobs.filter((j) => j.external_id !== externalId),
       locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
+    })),
+
+  removeJobsByCompany: (company) =>
+    set((state) => ({
+      jobs: state.jobs.filter((j) => j.company !== company),
+      linkedinJobs: state.linkedinJobs.filter((j) => j.company !== company),
+      allJobrightJobs: state.allJobrightJobs.filter((j) => j.company !== company),
+      fidelityJobs: state.fidelityJobs.filter((j) => j.company !== company),
+      statestreetJobs: state.statestreetJobs.filter((j) => j.company !== company),
+      mathworksJobs: state.mathworksJobs.filter((j) => j.company !== company),
+      locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.company !== company),
     })),
 
   setJobs: (jobs) =>

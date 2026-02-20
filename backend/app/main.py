@@ -453,13 +453,12 @@ async def get_logs(limit: int = 500):
 
 class BlockCompanyRequest(BaseModel):
     company: str
-    source: str
-    external_id: str
 
 
 @app.post("/jobs/block")
-async def block_company_and_remove_job(request: BlockCompanyRequest):
-    """Block a company and remove the job from Redis."""
+async def block_company_and_remove_jobs(request: BlockCompanyRequest):
+    """Block a company and remove ALL jobs from that company in Redis."""
+    import json
     try:
         # 1. Add company to blocked companies list
         blocked_companies = await get_blocked_companies(redis_client)
@@ -468,25 +467,39 @@ async def block_company_and_remove_job(request: BlockCompanyRequest):
             await set_config_list(redis_client, "blocked_companies", blocked_companies)
             logger.info(f"Added '{request.company}' to blocked companies")
 
-        # 2. Delete the job from Redis
-        job_key = f"seen_job:{request.source}:{request.external_id}"
-        deleted = await redis_client.delete(job_key)
-        if deleted:
-            logger.info(f"Deleted job key: {job_key}")
+        # 2. Find and delete ALL jobs from this company in Redis
+        deleted_job_ids = []
+        cursor = 0
+        while True:
+            cursor, keys = await redis_client.scan(cursor, match="seen_job:*", count=100)
+            for key in keys:
+                try:
+                    value = await redis_client.get(key)
+                    if value and value != "1":
+                        job_data = json.loads(value)
+                        if job_data.get("company") == request.company:
+                            await redis_client.delete(key)
+                            deleted_job_ids.append(job_data.get("external_id"))
+                            logger.info(f"Deleted job key: {key}")
+                except (json.JSONDecodeError, Exception):
+                    continue
+            if cursor == 0:
+                break
 
         # 3. Broadcast the removal to all connected clients
         await manager.broadcast({
-            "type": "JOB_REMOVED",
+            "type": "COMPANY_BLOCKED",
             "data": {
-                "external_id": request.external_id,
                 "company": request.company,
+                "deleted_job_ids": deleted_job_ids,
             }
         })
 
         return {
             "success": True,
-            "message": f"Blocked '{request.company}' and removed job",
+            "message": f"Blocked '{request.company}' and removed {len(deleted_job_ids)} job(s)",
             "blocked_companies_count": len(blocked_companies),
+            "deleted_jobs_count": len(deleted_job_ids),
         }
     except Exception as e:
         logger.error(f"Error blocking company: {e}")

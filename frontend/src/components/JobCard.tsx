@@ -50,7 +50,7 @@ function getSourceColor(source: string) {
 
 export function JobCard({ job }: JobCardProps) {
   const [isBlocking, setIsBlocking] = useState(false);
-  const removeJob = useJobsStore((state) => state.removeJob);
+  const removeJobsByCompany = useJobsStore((state) => state.removeJobsByCompany);
 
   const postedAt = job.posted_at
     ? formatDistanceToNow(new Date(job.posted_at), { addSuffix: true })
@@ -69,13 +69,11 @@ export function JobCard({ job }: JobCardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company: job.company,
-          source: job.source,
-          external_id: job.external_id,
         }),
       });
       
       if (response.ok) {
-        removeJob(job.external_id);
+        removeJobsByCompany(job.company);
       }
     } catch (error) {
       console.error("Failed to block company:", error);

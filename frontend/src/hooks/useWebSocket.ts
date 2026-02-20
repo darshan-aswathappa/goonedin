@@ -13,21 +13,21 @@ interface NewJobMessage {
   data: Job;
 }
 
-interface JobRemovedMessage {
-  type: "JOB_REMOVED";
+interface CompanyBlockedMessage {
+  type: "COMPANY_BLOCKED";
   data: {
-    external_id: string;
     company: string;
+    deleted_job_ids: string[];
   };
 }
 
-type WebSocketMessage = NewJobMessage | JobRemovedMessage;
+type WebSocketMessage = NewJobMessage | CompanyBlockedMessage;
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { addJob, removeJob, setConnectionStatus } = useJobsStore();
+  const { addJob, removeJobsByCompany, setConnectionStatus } = useJobsStore();
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -56,10 +56,11 @@ export function useWebSocket() {
           toast.info(`New ${message.data.source} job: ${message.data.title}`, {
             description: message.data.company,
           });
-        } else if (message.type === "JOB_REMOVED" && message.data) {
-          removeJob(message.data.external_id);
-          toast.success(`Blocked company: ${message.data.company}`, {
-            description: "Job removed from all lists",
+        } else if (message.type === "COMPANY_BLOCKED" && message.data) {
+          removeJobsByCompany(message.data.company);
+          const count = message.data.deleted_job_ids.length;
+          toast.success(`Blocked: ${message.data.company}`, {
+            description: `Removed ${count} job${count !== 1 ? "s" : ""} from all lists`,
           });
         }
       } catch (error) {
@@ -82,7 +83,7 @@ export function useWebSocket() {
       console.error("WebSocket error:", error);
       ws.close();
     };
-  }, [addJob, removeJob, setConnectionStatus]);
+  }, [addJob, removeJobsByCompany, setConnectionStatus]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
