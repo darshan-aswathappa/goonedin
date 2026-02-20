@@ -139,7 +139,7 @@ async def fetch_jobright_jobs(keywords: str = None, location: str = None) -> dic
 
             parsed_jobs = []
 
-            MIN_DISPLAY_SCORE = 90.0
+            MIN_DISPLAY_SCORE = 85.0
             skipped_low_score = 0
 
             for item in job_list:

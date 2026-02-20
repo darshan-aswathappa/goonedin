@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { LOCATION_FILTER } from "@/config/filters";
 import {
   Briefcase,
   Linkedin,
@@ -20,6 +21,7 @@ import {
   Building,
   Building2,
   Calculator,
+  MapPin,
 } from "lucide-react";
 
 export function JobsDashboard() {
@@ -35,6 +37,7 @@ export function JobsDashboard() {
   const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
   const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
+  const locationFilteredJobs = useJobsStore((state) => state.locationFilteredJobs);
   const isLoading = useJobsStore((state) => state.isLoading);
 
   return (
@@ -83,7 +86,7 @@ export function JobsDashboard() {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="mb-6 grid w-full grid-cols-7 bg-muted/50 p-1">
+          <TabsList className="mb-6 grid w-full grid-cols-8 bg-muted/50 p-1">
             <TabsTrigger
               value="all"
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -97,6 +100,21 @@ export function JobsDashboard() {
                 {jobs.length}
               </Badge>
             </TabsTrigger>
+            {LOCATION_FILTER.enabled && (
+              <TabsTrigger
+                value="location"
+                className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <MapPin className="h-4 w-4" />
+                <span className="hidden sm:inline">{LOCATION_FILTER.displayName}</span>
+                <Badge
+                  variant="secondary"
+                  className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+                >
+                  {locationFilteredJobs.length}
+                </Badge>
+              </TabsTrigger>
+            )}
             <TabsTrigger
               value="linkedin"
               className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
@@ -183,6 +201,15 @@ export function JobsDashboard() {
               emptyMessage="No jobs yet. Waiting for opportunities..."
             />
           </TabsContent>
+
+          {LOCATION_FILTER.enabled && (
+            <TabsContent value="location" className="mt-0">
+              <JobList
+                jobs={locationFilteredJobs}
+                emptyMessage={`No jobs in ${LOCATION_FILTER.location} yet. They'll appear here when found.`}
+              />
+            </TabsContent>
+          )}
 
           <TabsContent value="linkedin" className="mt-0">
             <JobList

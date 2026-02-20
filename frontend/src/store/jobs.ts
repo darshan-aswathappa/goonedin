@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { LOCATION_FILTER } from "@/config/filters";
 
 export interface Job {
   id?: number;
@@ -16,6 +17,25 @@ export interface Job {
   ttl?: number;
 }
 
+const matchesLocationFilter = (job: Job): boolean => {
+  if (!LOCATION_FILTER.enabled) return false;
+  const location = job.location;
+  const locationLower = location.toLowerCase();
+  
+  const hasStateMatch = LOCATION_FILTER.exactStatePatterns.some(pattern => 
+    location.includes(pattern) || locationLower.includes(pattern.toLowerCase())
+  );
+  if (hasStateMatch) return true;
+  
+  const hasCityMatch = LOCATION_FILTER.cityPatterns.some(city => {
+    const cityLower = city.toLowerCase();
+    const regex = new RegExp(`\\b${cityLower}\\b`, 'i');
+    return regex.test(location);
+  });
+  
+  return hasCityMatch;
+};
+
 interface JobsState {
   jobs: Job[];
   linkedinJobs: Job[];
@@ -24,6 +44,7 @@ interface JobsState {
   fidelityJobs: Job[];
   statestreetJobs: Job[];
   mathworksJobs: Job[];
+  locationFilteredJobs: Job[];
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
   addJob: (job: Job) => void;
@@ -41,6 +62,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   fidelityJobs: [],
   statestreetJobs: [],
   mathworksJobs: [],
+  locationFilteredJobs: [],
   connectionStatus: "disconnected",
   isLoading: true,
 
@@ -71,6 +93,9 @@ export const useJobsStore = create<JobsState>((set) => ({
         mathworksJobs: job.source === "MathWorks"
           ? [job, ...state.mathworksJobs]
           : state.mathworksJobs,
+        locationFilteredJobs: matchesLocationFilter(job)
+          ? [job, ...state.locationFilteredJobs]
+          : state.locationFilteredJobs,
       };
     }),
 
@@ -83,6 +108,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       fidelityJobs: jobs.filter((j) => j.source === "Fidelity"),
       statestreetJobs: jobs.filter((j) => j.source === "StateStreet"),
       mathworksJobs: jobs.filter((j) => j.source === "MathWorks"),
+      locationFilteredJobs: jobs.filter(matchesLocationFilter),
     })),
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
@@ -98,5 +124,6 @@ export const useJobsStore = create<JobsState>((set) => ({
       fidelityJobs: [],
       statestreetJobs: [],
       mathworksJobs: [],
+      locationFilteredJobs: [],
     }),
 }));
