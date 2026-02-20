@@ -47,13 +47,24 @@ async def fetch_jobright_api_via_playwright(url: str, count: int = 50) -> dict:
 
                 await page.wait_for_load_state("networkidle")
 
+                # Wait explicitly for the email input to be visible before interacting
                 email_input = page.locator('input[type="email"], input[name="email"], input[placeholder*="email" i]').first
+                try:
+                    await email_input.wait_for(state="visible", timeout=15000)
+                except Exception:
+                    # If standard selectors fail, try alternative selectors for dynamic forms
+                    logger.warning("Standard email selector not found, trying alternatives...")
+                    email_input = page.locator('input[autocomplete="email"], input[autocomplete="username"]').first
+                    await email_input.wait_for(state="visible", timeout=10000)
+                
                 await email_input.fill(settings.JOBRIGHT_EMAIL)
 
                 password_input = page.locator('input[type="password"], input[name="password"]').first
+                await password_input.wait_for(state="visible", timeout=10000)
                 await password_input.fill(settings.JOBRIGHT_PASSWORD)
 
                 submit_button = page.locator('button[type="submit"], button:has-text("Sign in"), button:has-text("Log in"), button:has-text("SIGN IN")').first
+                await submit_button.wait_for(state="visible", timeout=10000)
                 await submit_button.click()
 
                 try:

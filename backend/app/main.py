@@ -53,7 +53,12 @@ redis_client: aioredis.Redis = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global redis_client
-    redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    # Configure connection pool with higher limits for concurrent scraper operations
+    redis_client = aioredis.from_url(
+        settings.REDIS_URL,
+        decode_responses=True,
+        max_connections=50,  # Increased from default ~10 to handle concurrent scrapers
+    )
     try:
         await redis_client.ping()
         logger.info("Redis connection established.")
