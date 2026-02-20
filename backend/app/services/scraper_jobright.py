@@ -10,7 +10,8 @@ settings = get_settings()
 logger = logging.getLogger("JobrightScraper")
 
 JOBRIGHT_API_URL = "https://jobright.ai/swan/recommend/list/jobs"
-JOBRIGHT_JOB_COUNT = 50  # Fetch more jobs to avoid missing any in high-volume periods
+JOBRIGHT_JOB_COUNT = 20  # Fetch 20 jobs sorted by newest
+JOBRIGHT_RECENCY_MINUTES = 10  # Only notify for jobs posted < 10 min ago
 
 
 def parse_jobright_date(date_str: str) -> datetime | None:
@@ -54,6 +55,16 @@ def parse_jobright_date(date_str: str) -> datetime | None:
     return None
 
 
+def is_posted_within_minutes(posted_at: datetime | None, minutes: int) -> bool:
+    """Check if a job was posted within the specified number of minutes."""
+    if not posted_at:
+        return False
+    now = datetime.now(timezone.utc)
+    if posted_at.tzinfo is None:
+        posted_at = posted_at.replace(tzinfo=timezone.utc)
+    return (now - posted_at) <= timedelta(minutes=minutes)
+
+
 async def fetch_jobright_jobs(redis_client, keywords: str = None, location: str = None) -> dict:
     """
     Fetches jobs from Jobright.ai API using Playwright (fresh login each time).
@@ -80,6 +91,7 @@ async def fetch_jobright_jobs(redis_client, keywords: str = None, location: str 
 
         MIN_DISPLAY_SCORE = 85.0
         skipped_low_score = 0
+        skipped_not_recent = 0
 
         # Get config from Redis
         title_filter_keywords = await get_title_filter_keywords(redis_client)
@@ -94,6 +106,14 @@ async def fetch_jobright_jobs(redis_client, keywords: str = None, location: str 
 
                 job = item.get("jobResult", {})
                 company = item.get("companyResult", {})
+
+                # Parse posted time first to filter by recency
+                posted_str = job.get("publishTime") or job.get("publishTimeDesc")
+                posted_at = parse_jobright_date(str(posted_str)) if posted_str else None
+
+                if not is_posted_within_minutes(posted_at, JOBRIGHT_RECENCY_MINUTES):
+                    skipped_not_recent += 1
+                    continue
 
                 title = job.get("jobTitle") or job.get("jobNlpTitle")
                 if not title:
@@ -126,9 +146,6 @@ async def fetch_jobright_jobs(redis_client, keywords: str = None, location: str 
                 if not external_id:
                     continue
 
-                posted_str = job.get("publishTime") or job.get("publishTimeDesc")
-                posted_at = parse_jobright_date(str(posted_str)) if posted_str else None
-
                 parsed_jobs.append(JobCreate(
                     title=title,
                     company=company_name,
@@ -139,11 +156,13 @@ async def fetch_jobright_jobs(redis_client, keywords: str = None, location: str 
                     posted_at=posted_at,
                 ))
 
+                logger.info(f"Jobright recent job: {title} @ {company_name} (score: {display_score}, posted: {posted_str})")
+
             except Exception as parse_err:
                 logger.warning(f"Failed to parse job: {parse_err}")
                 continue
 
-        logger.info(f"Jobright: {len(parsed_jobs)} jobs parsed (skipped {skipped_low_score} with score < {MIN_DISPLAY_SCORE})")
+        logger.info(f"Jobright: {len(parsed_jobs)} recent jobs (< {JOBRIGHT_RECENCY_MINUTES} min) | skipped {skipped_low_score} low score | skipped {skipped_not_recent} not recent")
         return {"jobs": parsed_jobs, "retries": 0, "failed": False}
 
     except Exception as e:

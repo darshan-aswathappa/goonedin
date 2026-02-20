@@ -67,7 +67,7 @@ async def fetch_jobright_api_via_playwright(url: str, count: int = 50) -> dict:
                         await asyncio.sleep(3)
                         logger.info("Login completed - proceeding with API call")
 
-                api_url = f"{url}?refresh=true&sortCondition=1&position=0&count={count}"
+                api_url = f"{url}?refresh=true&sortCondition=2&position=0&count={count}"
                 
                 api_response = await context.request.get(
                     api_url,
