@@ -97,6 +97,7 @@ export function JobCard({ job }: JobCardProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          source: job.source,
           external_id: job.external_id,
         }),
       });

@@ -342,7 +342,7 @@ def get_server_time():
 
 @app.get("/jobs")
 async def get_jobs():
-    """Fetch all jobs currently stored in Redis."""
+    """Fetch all visible jobs currently stored in Redis."""
     import json
     jobs = []
     try:
@@ -354,6 +354,9 @@ async def get_jobs():
                     value = await redis_client.get(key)
                     if value and value != "1":
                         job_data = json.loads(value)
+                        # Skip jobs that have been dismissed (visible=false)
+                        if job_data.get("visible") is False:
+                            continue
                         ttl = await redis_client.ttl(key)
                         job_data["ttl"] = ttl
                         jobs.append(job_data)
@@ -507,16 +510,31 @@ async def block_company_and_remove_jobs(request: BlockCompanyRequest):
 
 
 class DismissJobRequest(BaseModel):
+    source: str
     external_id: str
 
 
 @app.post("/jobs/dismiss")
 async def dismiss_job(request: DismissJobRequest):
-    """Dismiss a single job (remove from UI only, keep in Redis for dedup)."""
+    """Dismiss a single job (set visible=false, keep in Redis for dedup)."""
+    import json
     try:
-        # Don't delete from Redis - keep it for deduplication
-        # Job will naturally expire based on its TTL
-        logger.info(f"Dismissed job from UI: {request.external_id}")
+        job_key = f"seen_job:{request.source}:{request.external_id}"
+        value = await redis_client.get(job_key)
+        
+        if value and value != "1":
+            job_data = json.loads(value)
+            job_data["visible"] = False
+            
+            # Get remaining TTL to preserve it
+            ttl = await redis_client.ttl(job_key)
+            if ttl > 0:
+                await redis_client.setex(job_key, ttl, json.dumps(job_data))
+            else:
+                # No TTL (permanent key like MathWorks jobs)
+                await redis_client.set(job_key, json.dumps(job_data))
+            
+            logger.info(f"Dismissed job (set visible=false): {job_key}")
         
         await manager.broadcast({
             "type": "JOB_DISMISSED",
@@ -527,7 +545,7 @@ async def dismiss_job(request: DismissJobRequest):
         
         return {
             "success": True,
-            "message": "Job dismissed from UI",
+            "message": "Job dismissed",
         }
     except Exception as e:
         logger.error(f"Error dismissing job: {e}")
