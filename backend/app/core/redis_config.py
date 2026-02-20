@@ -1,7 +1,12 @@
 import json
 import logging
+import time
 
 logger = logging.getLogger("RedisConfig")
+
+# In-memory cache for config values with TTL to reduce Redis load during concurrent scraper operations
+_cache: dict = {}
+CACHE_TTL_SECONDS = 60  # Config values cached for 60 seconds
 
 CONFIG_KEYS = {
     "target_keywords": "config:target_keywords",
@@ -85,27 +90,36 @@ DEFAULT_TITLE_FILTER_KEYWORDS = [
 
 
 async def get_config_list(redis_client, key: str, default: list) -> list:
-    """Get a list config from Redis, returning default if not found."""
+    """Get a list config from Redis, returning default if not found. Uses in-memory cache to reduce Redis load."""
+    # Check if we have a cached value that's still fresh
+    now = time.monotonic()
+    cached = _cache.get(key)
+    if cached and (now - cached["ts"]) < CACHE_TTL_SECONDS:
+        return cached["value"]
+
     try:
         redis_key = CONFIG_KEYS.get(key)
         if not redis_key:
             return default
         value = await redis_client.get(redis_key)
-        if value:
-            return json.loads(value)
-        return default
+        result = json.loads(value) if value else default
+        # Cache the result
+        _cache[key] = {"value": result, "ts": now}
+        return result
     except Exception as e:
         logger.warning(f"Failed to get config '{key}' from Redis: {e}")
         return default
 
 
 async def set_config_list(redis_client, key: str, value: list) -> bool:
-    """Set a list config in Redis."""
+    """Set a list config in Redis and invalidate the cache."""
     try:
         redis_key = CONFIG_KEYS.get(key)
         if not redis_key:
             return False
         await redis_client.set(redis_key, json.dumps(value))
+        # Invalidate cache so next read gets fresh value
+        _cache.pop(key, None)
         logger.info(f"Updated config '{key}' with {len(value)} items")
         return True
     except Exception as e:
