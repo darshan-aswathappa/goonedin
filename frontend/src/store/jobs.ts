@@ -8,7 +8,7 @@ export interface Job {
   company: string;
   location: string;
   url: string;
-  source: "LinkedIn" | "Fidelity" | "StateStreet" | "MathWorks";
+  source: "LinkedIn" | "Fidelity" | "StateStreet" | "MathWorks" | "GitHub";
   posted_at?: string;
   salary?: string;
   work_model?: string;
@@ -43,6 +43,7 @@ interface JobsState {
   fidelityJobs: Job[];
   statestreetJobs: Job[];
   mathworksJobs: Job[];
+  githubJobs: Job[];
   locationFilteredJobs: Job[];
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
@@ -61,6 +62,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   fidelityJobs: [],
   statestreetJobs: [],
   mathworksJobs: [],
+  githubJobs: [],
   locationFilteredJobs: [],
   connectionStatus: "disconnected",
   isLoading: true,
@@ -86,6 +88,9 @@ export const useJobsStore = create<JobsState>((set) => ({
         mathworksJobs: job.source === "MathWorks"
           ? [job, ...state.mathworksJobs]
           : state.mathworksJobs,
+        githubJobs: job.source === "GitHub"
+          ? [job, ...state.githubJobs]
+          : state.githubJobs,
         locationFilteredJobs: matchesLocationFilter(job)
           ? [job, ...state.locationFilteredJobs]
           : state.locationFilteredJobs,
@@ -99,6 +104,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       fidelityJobs: state.fidelityJobs.filter((j) => j.external_id !== externalId),
       statestreetJobs: state.statestreetJobs.filter((j) => j.external_id !== externalId),
       mathworksJobs: state.mathworksJobs.filter((j) => j.external_id !== externalId),
+      githubJobs: state.githubJobs.filter((j) => j.external_id !== externalId),
       locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
     })),
 
@@ -109,6 +115,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       fidelityJobs: state.fidelityJobs.filter((j) => j.company !== company),
       statestreetJobs: state.statestreetJobs.filter((j) => j.company !== company),
       mathworksJobs: state.mathworksJobs.filter((j) => j.company !== company),
+      githubJobs: state.githubJobs.filter((j) => j.company !== company),
       locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.company !== company),
     })),
 
@@ -119,6 +126,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       fidelityJobs: jobs.filter((j) => j.source === "Fidelity"),
       statestreetJobs: jobs.filter((j) => j.source === "StateStreet"),
       mathworksJobs: jobs.filter((j) => j.source === "MathWorks"),
+      githubJobs: jobs.filter((j) => j.source === "GitHub"),
       locationFilteredJobs: jobs.filter(matchesLocationFilter),
     })),
 
@@ -133,6 +141,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       fidelityJobs: [],
       statestreetJobs: [],
       mathworksJobs: [],
+      githubJobs: [],
       locationFilteredJobs: [],
     }),
 }));

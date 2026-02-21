@@ -22,6 +22,7 @@ from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.scraper_statestreet import fetch_statestreet_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
+from app.services.scraper_github import fetch_github_jobs
 from app.services.notification import send_telegram_alert
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
@@ -44,6 +45,7 @@ JOB_RECENCY_MINUTES = 600
 # How long to remember a seen job (prevents re-alerting across restarts)
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 2  # 1 hour 30 minutes
 FIDELITY_TTL_SECONDS = 24 * 60 * 60  # 24 hours for Fidelity jobs
+GITHUB_TTL_SECONDS = 2 * 60 * 60  # 2 hours for GitHub listings
 
 redis_client: aioredis.Redis = None
 
@@ -158,6 +160,7 @@ async def run_scraper_loop():
                 fetch_fidelity_jobs(redis_client),  # Fidelity Investments career page
                 fetch_statestreet_jobs(redis_client),  # State Street career page
                 fetch_mathworks_jobs(redis_client),  # MathWorks career page (Playwright)
+                fetch_github_jobs(redis_client),  # SimplifyJobs GitHub new grad listings
             )
 
             total_calls = len(results)
@@ -171,8 +174,9 @@ async def run_scraper_loop():
             fidelity_jobs = []
             statestreet_jobs = []
             mathworks_jobs = []
+            github_jobs = []
             for r in results:
-                # For Fidelity, State Street, and MathWorks, only use recent_jobs
+                # For Fidelity, State Street, MathWorks, and GitHub, only use recent_jobs
                 if "recent_jobs" in r and r["recent_jobs"]:
                     first_job = r["recent_jobs"][0] if r["recent_jobs"] else None
                     if first_job and first_job.source == "Fidelity":
@@ -181,6 +185,8 @@ async def run_scraper_loop():
                         statestreet_jobs.extend(r["recent_jobs"])
                     elif first_job and first_job.source == "MathWorks":
                         mathworks_jobs.extend(r["recent_jobs"])
+                    elif first_job and first_job.source == "GitHub":
+                        github_jobs.extend(r["recent_jobs"])
                     else:
                         all_jobs.extend(r["jobs"])
                 else:
@@ -301,13 +307,40 @@ async def run_scraper_loop():
 
                 logger.info(f"New Target (MathWorks): {job.title} @ {job.company} ({job.location})")
 
+            # Process GitHub jobs (active, posted < 30 min, keyword matching required)
+            for job in github_jobs:
+                if not await matches_target_keywords(job):
+                    continue
+
+                job_key = f"seen_job:{job.source}:{job.external_id}"
+
+                if await is_already_seen(job_key):
+                    continue
+
+                job_dict = job.model_dump(mode="json")
+                await mark_as_seen(job_key, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
+                new_finds += 1
+
+                await manager.broadcast({
+                    "type": "NEW_JOB",
+                    "data": job_dict
+                })
+
+                await send_telegram_alert(job)
+
+                # Mark notified in Redis
+                job_dict["is_notified"] = True
+                await mark_as_seen(job_key, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
+
+                logger.info(f"New Target (GitHub): {job.title} @ {job.company} ({job.location})")
+
             if new_finds == 0:
                 logger.debug("No new targets found this cycle.")
 
         except Exception as e:
             logger.error(f"Main loop error: {e}")
 
-        await asyncio.sleep(240)  # 4 min — overlaps the 5-min API window by 1 min
+        await asyncio.sleep(300)  # 5 min — matches GitHub scraper polling interval
 
 
 @app.get("/")

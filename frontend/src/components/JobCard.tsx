@@ -38,6 +38,8 @@ function getSourceColor(source: string) {
       return "bg-orange-500/20 text-orange-400 border-orange-500/30";
     case "MathWorks":
       return "bg-red-500/20 text-red-400 border-red-500/30";
+    case "GitHub":
+      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
     default:
       return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
   }
