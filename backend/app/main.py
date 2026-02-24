@@ -45,7 +45,7 @@ JOB_RECENCY_MINUTES = 600
 # How long to remember a seen job (prevents re-alerting across restarts)
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 2  # 1 hour 30 minutes
 FIDELITY_TTL_SECONDS = 24 * 60 * 60  # 24 hours for Fidelity jobs
-GITHUB_TTL_SECONDS = 2 * 60 * 60  # 2 hours for GitHub listings
+GITHUB_TTL_SECONDS = 24 * 60 * 60  # 24 hours for GitHub listings
 
 redis_client: aioredis.Redis = None
 

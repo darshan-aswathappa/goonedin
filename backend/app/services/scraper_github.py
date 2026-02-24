@@ -6,13 +6,13 @@ from app.core.redis_config import get_blocked_companies, get_title_filter_keywor
 from app.models.job import JobCreate
 
 GITHUB_LISTINGS_URL = "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/refs/heads/dev/.github/scripts/listings.json"
-RECENT_MINUTES = 30
+RECENT_MINUTES = 1440  # 24 hours
 
 logger = logging.getLogger("GitHubScraper")
 
 
-def is_posted_within_30_min(date_posted: int | None) -> bool:
-    """Check if the job was posted within the last 30 minutes (Unix timestamp)."""
+def is_posted_within_24h(date_posted: int | None) -> bool:
+    """Check if the job was posted within the last 24 hours (Unix timestamp)."""
     if not date_posted:
         return False
     try:
@@ -100,7 +100,7 @@ async def fetch_github_jobs(redis_client) -> dict:
                         continue
 
                     date_posted = listing.get("date_posted")
-                    if not is_posted_within_30_min(date_posted):
+                    if not is_posted_within_24h(date_posted):
                         continue
 
                     external_id = listing.get("id", "")
@@ -146,7 +146,7 @@ async def fetch_github_jobs(redis_client) -> dict:
                     continue
 
             logger.info(
-                f"GitHub: {len(parsed_jobs)} jobs parsed (active, posted < 30 min)"
+                f"GitHub: {len(parsed_jobs)} jobs parsed (active, posted < 24h)"
             )
             return {
                 "jobs": parsed_jobs,
