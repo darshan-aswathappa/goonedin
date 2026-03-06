@@ -11,7 +11,6 @@ from typing import Optional
 from app.core.config import get_settings
 from app.core.auth import get_current_user
 from app.core.redis_config import (
-    seed_config_if_missing,
     get_target_keywords,
     get_blocked_companies,
     get_title_filter_keywords,
@@ -51,7 +50,6 @@ SEEN_JOB_TTL_SECONDS = 60 * 60 * 2
 FIDELITY_TTL_SECONDS = 24 * 60 * 60
 GITHUB_TTL_SECONDS = 24 * 60 * 60
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from supabase import create_client
@@ -90,11 +88,6 @@ app.add_middleware(
 )
 
 app.include_router(websocket.router)
-
-
-# ---------------------------------------------------------------------------
-# Scraper helpers
-# ---------------------------------------------------------------------------
 
 def is_recent(posted_at: datetime | None) -> bool:
     if not posted_at:
