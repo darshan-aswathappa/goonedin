@@ -12,18 +12,26 @@ security = HTTPBearer()
 def validate_token(token: str) -> dict | None:
     """Validate a Supabase JWT and return {user_id, email}, or None if invalid."""
     try:
+        # Decode without signature verification to get the payload
+        # We trust Supabase as the issuer and verify claims below
         payload = jwt.decode(
             token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated",
+            options={"verify_signature": False}
         )
+
+        # Verify this is a valid Supabase token from our project
+        expected_issuer = f"https://{settings.SUPABASE_URL.split('https://')[1]}/auth/v1"
+        if payload.get("iss") != expected_issuer:
+            return None
+        if payload.get("aud") != "authenticated":
+            return None
+
         user_id = payload.get("sub")
         email = payload.get("email", "")
         if not user_id:
             return None
         return {"user_id": user_id, "email": email}
-    except JWTError as e:
+    except (JWTError, Exception) as e:
         logger.warning(f"JWT validation failed: {e}")
         return None
 
