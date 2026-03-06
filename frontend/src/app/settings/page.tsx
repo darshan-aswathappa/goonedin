@@ -13,6 +13,7 @@ import {
   Ban,
   Filter,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast, Toaster } from "sonner";
+import { getAuthHeaders } from "@/hooks/useAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -216,13 +218,28 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState<string | null>(null);
 
+  const [telegramBotToken, setTelegramBotToken] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [savingTelegram, setSavingTelegram] = useState(false);
+
   const fetchConfig = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/config`);
-      if (response.ok) {
-        const data = await response.json();
+      const headers = await getAuthHeaders();
+      const [configRes, meRes] = await Promise.all([
+        fetch(`${API_URL}/config`, { headers }),
+        fetch(`${API_URL}/me`, { headers }),
+      ]);
+
+      if (configRes.ok) {
+        const data = await configRes.json();
         setConfig(data);
         setOriginalConfig(data);
+      }
+
+      if (meRes.ok) {
+        const me = await meRes.json();
+        setTelegramBotToken(me.telegram_bot_token || "");
+        setTelegramChatId(me.telegram_chat_id || "");
       }
     } catch (error) {
       console.error("Failed to fetch config:", error);
@@ -243,9 +260,10 @@ export default function SettingsPage() {
   const handleSave = async (section: ConfigSection) => {
     setSavingSection(section.key);
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}${section.endpoint}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ values: config[section.key] || [] }),
       });
 
@@ -263,6 +281,32 @@ export default function SettingsPage() {
       toast.error(`Failed to update ${section.title}`);
     } finally {
       setSavingSection(null);
+    }
+  };
+
+  const handleSaveTelegram = async () => {
+    setSavingTelegram(true);
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${API_URL}/me/notifications`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          telegram_bot_token: telegramBotToken || null,
+          telegram_chat_id: telegramChatId || null,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success("Telegram notifications updated");
+      } else {
+        throw new Error("Failed to save");
+      }
+    } catch (error) {
+      console.error("Failed to save Telegram config:", error);
+      toast.error("Failed to update Telegram notifications");
+    } finally {
+      setSavingTelegram(false);
     }
   };
 
@@ -311,6 +355,67 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Telegram Notifications */}
+            <Card className="border-gray-800 bg-[#161b22]">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800/50 text-cyan-400">
+                    <Bell className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg text-white">Telegram Notifications</CardTitle>
+                    <CardDescription className="text-gray-500">
+                      Receive job alerts via Telegram. Leave blank to disable.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="mb-1.5 block text-sm text-gray-400">Bot Token</label>
+                    <input
+                      type="password"
+                      value={telegramBotToken}
+                      onChange={(e) => setTelegramBotToken(e.target.value)}
+                      placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
+                      className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm text-gray-400">Chat ID</label>
+                    <input
+                      type="text"
+                      value={telegramChatId}
+                      onChange={(e) => setTelegramChatId(e.target.value)}
+                      placeholder="-1001234567890"
+                      className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleSaveTelegram}
+                    disabled={savingTelegram}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    {savingTelegram ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Telegram
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Job Search Filters */}
             {CONFIG_SECTIONS.map((section) => (
               <div key={section.key} className="relative">
                 {hasUnsavedChanges(section.key) && (

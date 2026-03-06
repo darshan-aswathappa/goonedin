@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface LogEntry {
   timestamp: string;
@@ -11,7 +12,7 @@ interface LogEntry {
   logger: string;
 }
 
-const WS_URL =
+const WS_BASE_URL =
   process.env.NEXT_PUBLIC_WS_URL?.replace("/ws/jobs", "/ws/logs") ||
   "ws://localhost:8000/ws/logs";
 
@@ -30,10 +31,14 @@ export default function LogsPage() {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const mountedRef = useRef(true);
 
-  const connectWebSocket = useCallback(() => {
+  const connectWebSocket = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const ws = new WebSocket(WS_URL);
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    const wsUrl = token ? `${WS_BASE_URL}?token=${token}` : WS_BASE_URL;
+
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -79,7 +84,13 @@ export default function LogsPage() {
 
     const init = async () => {
       try {
-        const response = await fetch(`${API_URL}/logs`);
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        const headers: Record<string, string> = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
+
+        const response = await fetch(`${API_URL}/logs`, { headers });
         if (response.ok) {
           const data = await response.json();
           if (mountedRef.current && data.logs) {

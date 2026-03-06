@@ -3,8 +3,9 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useJobsStore, Job } from "@/store/jobs";
 import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
 const RECONNECT_INTERVAL = 3000;
 const PING_INTERVAL = 30000;
 
@@ -12,20 +13,13 @@ interface NewJobMessage {
   type: "NEW_JOB";
   data: Job;
 }
-
 interface CompanyBlockedMessage {
   type: "COMPANY_BLOCKED";
-  data: {
-    company: string;
-    deleted_job_ids: string[];
-  };
+  data: { company: string; deleted_job_ids: string[] };
 }
-
 interface JobDismissedMessage {
   type: "JOB_DISMISSED";
-  data: {
-    external_id: string;
-  };
+  data: { external_id: string };
 }
 
 type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage;
@@ -36,26 +30,28 @@ export function useWebSocket() {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { addJob, removeJob, removeJobsByCompany, setConnectionStatus } = useJobsStore();
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     setConnectionStatus("connecting");
-    const ws = new WebSocket(WS_URL);
+
+    // Get a fresh token on every (re)connect so we never use an expired one
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    const wsUrl = token ? `${WS_BASE_URL}?token=${token}` : WS_BASE_URL;
+
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
       setConnectionStatus("connected");
-
       pingIntervalRef.current = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send("ping");
-        }
+        if (ws.readyState === WebSocket.OPEN) ws.send("ping");
       }, PING_INTERVAL);
     };
 
     ws.onmessage = (event) => {
       if (event.data === "pong") return;
-
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
         if (message.type === "NEW_JOB" && message.data) {
@@ -79,28 +75,16 @@ export function useWebSocket() {
 
     ws.onclose = () => {
       setConnectionStatus("disconnected");
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-      }
-
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
-      }, RECONNECT_INTERVAL);
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      reconnectTimeoutRef.current = setTimeout(() => connect(), RECONNECT_INTERVAL);
     };
 
-    ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      ws.close();
-    };
+    ws.onerror = () => ws.close();
   }, [addJob, removeJob, removeJobsByCompany, setConnectionStatus]);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current);
-    }
+    if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+    if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;

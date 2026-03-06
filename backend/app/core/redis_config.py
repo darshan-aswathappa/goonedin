@@ -91,9 +91,10 @@ DEFAULT_TITLE_FILTER_KEYWORDS = [
 
 async def get_config_list(redis_client, key: str, default: list) -> list:
     """Get a list config from Redis, returning default if not found. Uses in-memory cache to reduce Redis load."""
-    # Check if we have a cached value that's still fresh
+    # Prefix cache key with the redis client identity to prevent cross-user cache hits
+    cache_key = f"{id(redis_client)}:{key}"
     now = time.monotonic()
-    cached = _cache.get(key)
+    cached = _cache.get(cache_key)
     if cached and (now - cached["ts"]) < CACHE_TTL_SECONDS:
         return cached["value"]
 
@@ -103,8 +104,7 @@ async def get_config_list(redis_client, key: str, default: list) -> list:
             return default
         value = await redis_client.get(redis_key)
         result = json.loads(value) if value else default
-        # Cache the result
-        _cache[key] = {"value": result, "ts": now}
+        _cache[cache_key] = {"value": result, "ts": now}
         return result
     except Exception as e:
         logger.warning(f"Failed to get config '{key}' from Redis: {e}")
@@ -118,8 +118,9 @@ async def set_config_list(redis_client, key: str, value: list) -> bool:
         if not redis_key:
             return False
         await redis_client.set(redis_key, json.dumps(value))
-        # Invalidate cache so next read gets fresh value
-        _cache.pop(key, None)
+        # Invalidate this user's cache entry
+        cache_key = f"{id(redis_client)}:{key}"
+        _cache.pop(cache_key, None)
         logger.info(f"Updated config '{key}' with {len(value)} items")
         return True
     except Exception as e:

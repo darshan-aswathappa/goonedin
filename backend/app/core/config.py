@@ -9,23 +9,24 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     # --- PROXY & NETWORK ---
-    # Format: http://user:pass@host:port
     PROXY_URL: str = os.getenv("PROXY_URL", "")
 
-    # --- NOTIFICATIONS ---
-    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    TELEGRAM_CHAT_ID: str = os.getenv("TELEGRAM_CHAT_ID", "")
+    # --- DATABASE (REDIS) ---
+    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
 
-    # --- DATABASE (Optional for now, but good for logging seen jobs) ---
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    # --- SUPABASE ---
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
+    SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
 
-    # --- JOBRIGHT.AI CREDENTIALS (for future use) ---
+    # --- JOBRIGHT.AI CREDENTIALS ---
     JOBRIGHT_EMAIL: str = os.getenv("JOBRIGHT_EMAIL", "")
     JOBRIGHT_PASSWORD: str = os.getenv("JOBRIGHT_PASSWORD", "")
 
     class Config:
         case_sensitive = True
         env_file = ".env"
+        extra = "ignore"
 
 @lru_cache()
 def get_settings():

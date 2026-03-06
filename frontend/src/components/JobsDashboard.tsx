@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCATION_FILTER } from "@/config/filters";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Briefcase,
   Linkedin,
@@ -25,12 +26,14 @@ import {
   Terminal,
   Settings,
   Github,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
 
 export function JobsDashboard() {
   useWebSocket();
   const { refetch } = useJobsApi();
+  const { user, signOut } = useAuth();
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
@@ -100,6 +103,20 @@ export function JobsDashboard() {
                 </Button>
               </Link>
               <ConnectionStatus />
+              {user?.email && (
+                <span className="hidden text-xs text-muted-foreground sm:inline">
+                  {user.email}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={signOut}
+                className="h-8 w-8"
+                title="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </div>

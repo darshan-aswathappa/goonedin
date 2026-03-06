@@ -1,39 +1,33 @@
 import httpx
 import logging
-from app.core.config import get_settings
 from app.models.job import JobCreate
 
-settings = get_settings()
 logger = logging.getLogger("VelocityNotification")
 
-async def send_telegram_alert(job: JobCreate):
-    """
-    Fires a message to your Telegram immediately.
-    No delay. Millisecond latency.
-    """
-    if not settings.TELEGRAM_BOT_TOKEN or not settings.TELEGRAM_CHAT_ID:
-        logger.warning("Telegram credentials not set. Skipping alert.")
+
+async def send_telegram_alert(
+    job: JobCreate, bot_token: str | None, chat_id: str | None
+) -> None:
+    """Send a Telegram alert for a job. Silently skips if credentials are not configured."""
+    if not bot_token or not chat_id:
         return
 
-    # Formatting the message to be sexy and readable
     lines = [
         f"<b>Role:</b> {job.title}",
         f"<b>Company:</b> {job.company}",
         f"<b>Location:</b> {job.location}",
         f"<b>Source:</b> {job.source}",
+        "",
+        f"🔗 <a href='{job.url}'><b>APPLY NOW</b></a>",
     ]
-    lines.append("")
-    lines.append(f"🔗 <a href='{job.url}'><b>APPLY NOW</b></a>")
-    
     message = "\n".join(lines)
 
-    url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-    
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {
-        "chat_id": settings.TELEGRAM_CHAT_ID,
+        "chat_id": chat_id,
         "text": message,
         "parse_mode": "HTML",
-        "disable_web_page_preview": True
+        "disable_web_page_preview": True,
     }
 
     async with httpx.AsyncClient() as client:
