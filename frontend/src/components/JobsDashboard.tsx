@@ -41,7 +41,9 @@ export function JobsDashboard() {
   const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
   const githubJobs = useJobsStore((state) => state.githubJobs);
-  const locationFilteredJobs = useJobsStore((state) => state.locationFilteredJobs);
+  const locationFilteredJobs = useJobsStore(
+    (state) => state.locationFilteredJobs,
+  );
   const isLoading = useJobsStore((state) => state.isLoading);
 
   return (
@@ -50,7 +52,7 @@ export function JobsDashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
                 <Briefcase className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -103,11 +105,6 @@ export function JobsDashboard() {
                 </Button>
               </Link>
               <ConnectionStatus />
-              {user?.email && (
-                <span className="hidden text-xs text-muted-foreground sm:inline">
-                  {user.email}
-                </span>
-              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -144,7 +141,9 @@ export function JobsDashboard() {
                 className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
                 <MapPin className="h-4 w-4" />
-                <span className="hidden sm:inline">{LOCATION_FILTER.displayName}</span>
+                <span className="hidden sm:inline">
+                  {LOCATION_FILTER.displayName}
+                </span>
                 <Badge
                   variant="secondary"
                   className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
