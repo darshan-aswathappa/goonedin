@@ -36,6 +36,7 @@ from app.services.notification import send_telegram_alert
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 from app.services.resume_analyzer import run_resume_analysis
+from app.services.job_analyzer import run_job_analysis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
@@ -177,6 +178,17 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         job_dict["is_notified"] = True
         await mark_as_seen(rc, job_key, job_dict)
         logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
+
+        # Fire background job description analysis for LinkedIn jobs
+        if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
+            asyncio.create_task(
+                run_job_analysis(
+                    external_id=job.external_id,
+                    job_url=str(job.url),
+                    redis_client=rc,
+                    api_key=settings.DEEPSEEK_API_KEY,
+                )
+            )
 
     for job in fidelity_jobs:
         job_key = f"seen_job:{job.source}:{job.external_id}"
@@ -612,6 +624,56 @@ async def unsave_job(external_id: str, user: dict = Depends(get_current_user)):
     except Exception as e:
         logger.error(f"Error unsaving job: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/jobs/{external_id}/analysis")
+async def get_job_analysis(external_id: str, ctx: UserContext = Depends(_get_ctx)):
+    """Fetch AI analysis for a job posting. Returns cached result or runs on-demand."""
+    import json as _json
+    rc = ctx.redis_client
+    analysis_key = f"job_analysis:{external_id}"
+
+    try:
+        # Check Redis cache first
+        cached = await rc.get(analysis_key)
+        if cached and cached != "1":
+            try:
+                return {"status": "completed", "analysis": _json.loads(cached)}
+            except _json.JSONDecodeError:
+                pass
+
+        # Not cached — try to find the job URL in Redis and run analysis
+        job_key = f"seen_job:LinkedIn:{external_id}"
+        job_raw = await rc.get(job_key)
+        if not job_raw or job_raw == "1":
+            raise HTTPException(status_code=404, detail="Job not found in cache")
+
+        job_data = _json.loads(job_raw)
+        job_url = job_data.get("url", "")
+        if not job_url:
+            raise HTTPException(status_code=400, detail="No URL for job")
+
+        if not settings.DEEPSEEK_API_KEY:
+            raise HTTPException(status_code=503, detail="DEEPSEEK_API_KEY not configured")
+
+        # Run analysis on-demand (takes ~15-30s)
+        analysis = await run_job_analysis(
+            external_id=external_id,
+            job_url=job_url,
+            redis_client=rc,
+            api_key=settings.DEEPSEEK_API_KEY,
+        )
+
+        if analysis:
+            return {"status": "completed", "analysis": analysis}
+        else:
+            return {"status": "failed", "analysis": None}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching job analysis: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch analysis")
 
 
 @app.get("/resumes")

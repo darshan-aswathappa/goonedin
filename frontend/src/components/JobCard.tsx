@@ -20,9 +20,11 @@ import {
   X,
   Loader2,
   Bookmark,
+  Sparkles,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getAuthHeaders } from "@/hooks/useAuth";
+import { JobAnalysisModal } from "./JobAnalysisModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -52,6 +54,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const [isBlocking, setIsBlocking] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const removeJob = useJobsStore((state) => state.removeJob);
   const removeJobsByCompany = useJobsStore((state) => state.removeJobsByCompany);
   
@@ -167,6 +170,23 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     <Card className={`group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 ${isLocked ? "pointer-events-none" : ""}`}>
       {!isLocked && (
         <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {job.source === "LinkedIn" && (
+          <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAnalysisOpen(true); }}
+                className="p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-amber-400 hover:border-amber-400/50 hover:bg-amber-500/10 transition-all duration-200"
+              >
+                <Sparkles className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Analyze job requirements</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+          )}
           <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -288,6 +308,15 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           </Button>
         )}
       </CardContent>
+
+      {/* Job Analysis Modal — LinkedIn only */}
+      {job.source === "LinkedIn" && (
+        <JobAnalysisModal
+          job={job}
+          open={analysisOpen}
+          onOpenChange={setAnalysisOpen}
+        />
+      )}
     </Card>
   );
 }
