@@ -70,6 +70,7 @@ interface JobsState {
   setSavedJobIds: (ids: string[]) => void;
   addSavedJobId: (id: string) => void;
   removeSavedJobId: (id: string) => void;
+  dismissedJobIds: Set<string>;
 }
 
 export const useJobsStore = create<JobsState>((set) => ({
@@ -83,6 +84,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   connectionStatus: "disconnected",
   isLoading: true,
   savedJobIds: new Set<string>(),
+  dismissedJobIds: new Set<string>(),
 
   addJob: (job) =>
     set((state) => {
@@ -115,15 +117,20 @@ export const useJobsStore = create<JobsState>((set) => ({
     }),
 
   removeJob: (externalId) =>
-    set((state) => ({
-      jobs: state.jobs.filter((j) => j.external_id !== externalId),
-      linkedinJobs: state.linkedinJobs.filter((j) => j.external_id !== externalId),
-      fidelityJobs: state.fidelityJobs.filter((j) => j.external_id !== externalId),
-      statestreetJobs: state.statestreetJobs.filter((j) => j.external_id !== externalId),
-      mathworksJobs: state.mathworksJobs.filter((j) => j.external_id !== externalId),
-      githubJobs: state.githubJobs.filter((j) => j.external_id !== externalId),
-      locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
-    })),
+    set((state) => {
+      const newDismissed = new Set(state.dismissedJobIds);
+      newDismissed.add(externalId);
+      return {
+        jobs: state.jobs.filter((j) => j.external_id !== externalId),
+        linkedinJobs: state.linkedinJobs.filter((j) => j.external_id !== externalId),
+        fidelityJobs: state.fidelityJobs.filter((j) => j.external_id !== externalId),
+        statestreetJobs: state.statestreetJobs.filter((j) => j.external_id !== externalId),
+        mathworksJobs: state.mathworksJobs.filter((j) => j.external_id !== externalId),
+        githubJobs: state.githubJobs.filter((j) => j.external_id !== externalId),
+        locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
+        dismissedJobIds: newDismissed,
+      };
+    }),
 
   removeJobsByCompany: (company) =>
     set((state) => ({
@@ -153,15 +160,19 @@ export const useJobsStore = create<JobsState>((set) => ({
     }),
 
   setJobs: (jobs) =>
-    set(() => ({
-      jobs,
-      linkedinJobs: jobs.filter((j) => j.source === "LinkedIn"),
-      fidelityJobs: jobs.filter((j) => j.source === "Fidelity"),
-      statestreetJobs: jobs.filter((j) => j.source === "StateStreet"),
-      mathworksJobs: jobs.filter((j) => j.source === "MathWorks"),
-      githubJobs: jobs.filter((j) => j.source === "GitHub"),
-      locationFilteredJobs: jobs.filter(matchesLocationFilter),
-    })),
+    set((state) => {
+      // Filter out any jobs that were dismissed during this session
+      const filtered = jobs.filter((j) => !state.dismissedJobIds.has(j.external_id));
+      return {
+        jobs: filtered,
+        linkedinJobs: filtered.filter((j) => j.source === "LinkedIn"),
+        fidelityJobs: filtered.filter((j) => j.source === "Fidelity"),
+        statestreetJobs: filtered.filter((j) => j.source === "StateStreet"),
+        mathworksJobs: filtered.filter((j) => j.source === "MathWorks"),
+        githubJobs: filtered.filter((j) => j.source === "GitHub"),
+        locationFilteredJobs: filtered.filter(matchesLocationFilter),
+      };
+    }),
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
   
@@ -176,6 +187,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       mathworksJobs: [],
       githubJobs: [],
       locationFilteredJobs: [],
+      dismissedJobIds: new Set<string>(),
     }),
 
   setSavedJobIds: (ids) => set({ savedJobIds: new Set(ids) }),
