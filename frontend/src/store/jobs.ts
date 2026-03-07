@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import { LOCATION_FILTER } from "@/config/filters";
 
+export interface JobAnalysis {
+  must_have_keywords: string[];
+  good_to_have_keywords: string[];
+  minimum_qualifications: string[];
+  summary: string;
+  compensation?: string | null;
+  visa_status?: string | null;
+}
+
 export interface Job {
   id?: number;
   external_id: string;
@@ -17,6 +26,7 @@ export interface Job {
   is_notified?: boolean;
   created_at?: string;
   ttl?: number;
+  analysis?: JobAnalysis;
 }
 
 const matchesLocationFilter = (job: Job): boolean => {

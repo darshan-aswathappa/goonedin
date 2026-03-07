@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Job } from "@/store/jobs";
+import { Job, JobAnalysis } from "@/store/jobs";
 import {
   Dialog,
   DialogContent,
@@ -22,13 +22,6 @@ import { getAuthHeaders } from "@/hooks/useAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface JobAnalysis {
-  must_have_keywords: string[];
-  good_to_have_keywords: string[];
-  minimum_qualifications: string[];
-  summary: string;
-}
-
 interface JobAnalysisModalProps {
   job: Job;
   open: boolean;
@@ -36,61 +29,55 @@ interface JobAnalysisModalProps {
 }
 
 export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalProps) {
-  const [analysis, setAnalysis] = useState<JobAnalysis | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "completed" | "failed">("idle");
+  // Use embedded analysis if available, otherwise fetch from API
+  const [fetchedAnalysis, setFetchedAnalysis] = useState<JobAnalysis | null>(null);
+  const [fetchStatus, setFetchStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
 
-  const fetchAnalysis = async () => {
-    if (status === "loading") return;
+  const analysis: JobAnalysis | null = job.analysis || fetchedAnalysis;
 
-    setStatus("loading");
-    setAnalysis(null);
-
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(
-        `${API_URL}/jobs/${job.external_id}/analysis`,
-        { headers }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.status === "completed" && data.analysis) {
-          setAnalysis({
-            must_have_keywords: data.analysis.must_have_keywords || [],
-            good_to_have_keywords: data.analysis.good_to_have_keywords || [],
-            minimum_qualifications: data.analysis.minimum_qualifications || [],
-            summary: data.analysis.summary || "",
-          });
-          setStatus("completed");
-        } else {
-          setStatus("failed");
-        }
-      } else {
-        setStatus("failed");
-      }
-    } catch (error) {
-      console.error("Failed to fetch job analysis:", error);
-      setStatus("failed");
-    }
-  };
-
+  // Only fetch from API if job doesn't have embedded analysis
   useEffect(() => {
-    if (open && status === "idle") {
-      fetchAnalysis();
-    }
-  }, [open, status]);
+    if (!open) return;
+    if (job.analysis) return; // Already embedded, no need to fetch
+    if (fetchStatus !== "idle") return;
+
+    const doFetch = async () => {
+      setFetchStatus("loading");
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(
+          `${API_URL}/jobs/${job.external_id}/analysis`,
+          { headers }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === "completed" && data.analysis) {
+            setFetchedAnalysis({
+              must_have_keywords: data.analysis.must_have_keywords || [],
+              good_to_have_keywords: data.analysis.good_to_have_keywords || [],
+              minimum_qualifications: data.analysis.minimum_qualifications || [],
+              summary: data.analysis.summary || "",
+            });
+            setFetchStatus("done");
+          } else {
+            setFetchStatus("failed");
+          }
+        } else {
+          setFetchStatus("failed");
+        }
+      } catch {
+        setFetchStatus("failed");
+      }
+    };
+    doFetch();
+  }, [open, job.analysis, job.external_id, fetchStatus]);
 
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
-    if (isOpen && status === "idle") {
-      fetchAnalysis();
-    }
-    if (!isOpen) {
-      // Reset on close if it was a failure so user can retry
-      if (status === "failed") {
-        setStatus("idle");
-        setAnalysis(null);
-      }
+    if (!isOpen && fetchStatus === "failed") {
+      // Reset so user can retry next time
+      setFetchStatus("idle");
+      setFetchedAnalysis(null);
     }
   };
 
@@ -107,7 +94,8 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
           </DialogDescription>
         </DialogHeader>
 
-        {status === "loading" ? (
+        {/* Loading state — only when fetching from API (no embedded analysis) */}
+        {!analysis && fetchStatus === "loading" ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="relative mb-4">
               <div className="absolute inset-0 rounded-full bg-amber-500/20 animate-ping" />
@@ -117,24 +105,8 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
             </div>
             <h3 className="mb-1 font-medium text-white">Loading Insights</h3>
             <p className="text-center text-sm text-gray-400 max-w-xs">
-              Retrieving pre-computed job analysis from the server...
+              Retrieving job analysis from the server...
             </p>
-          </div>
-        ) : status === "failed" ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="mb-4 rounded-full bg-red-500/10 p-4">
-              <AlertCircle className="h-8 w-8 text-red-400" />
-            </div>
-            <h3 className="mb-1 font-medium text-white">Analysis Failed</h3>
-            <p className="text-center text-sm text-gray-400 mb-4">
-              Could not analyze this job description. The job posting might not be available.
-            </p>
-            <button
-              onClick={fetchAnalysis}
-              className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 hover:text-white"
-            >
-              Try Again
-            </button>
           </div>
         ) : analysis ? (
           <div className="space-y-6 py-2">
@@ -225,7 +197,17 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
               </div>
             )}
           </div>
-        ) : null}
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="mb-4 rounded-full bg-gray-500/10 p-4">
+              <AlertCircle className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="mb-1 font-medium text-white">No Analysis Available</h3>
+            <p className="text-center text-sm text-gray-400 max-w-xs">
+              Analysis data is not available for this job posting.
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

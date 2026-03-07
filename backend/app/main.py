@@ -193,6 +193,8 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                             j_dict["salary"] = analysis_data["compensation"]
                         if analysis_data.get("visa_status"):
                             j_dict["visa"] = analysis_data["visa_status"]
+                        # Embed analysis directly into job dict so frontend has instant access
+                        j_dict["analysis"] = analysis_data
                     
                     # Make it visible
                     j_dict["visible"] = True
@@ -338,10 +340,16 @@ async def run_low_frequency_loop(ctx: UserContext):
 
 def start_user_scrapers(ctx: UserContext) -> None:
     """Start HF and LF scraper tasks for a user if they aren't already running."""
+    # Ensure we don't start them multiple times due to race conditions
+    if getattr(ctx, "_scrapers_started", False):
+        return
+
     if ctx.hf_task is None or ctx.hf_task.done():
         ctx.hf_task = asyncio.create_task(run_high_frequency_loop(ctx))
     if ctx.lf_task is None or ctx.lf_task.done():
         ctx.lf_task = asyncio.create_task(run_low_frequency_loop(ctx))
+    
+    ctx._scrapers_started = True
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +358,7 @@ def start_user_scrapers(ctx: UserContext) -> None:
 
 async def _get_ctx(user: dict = Depends(get_current_user)) -> UserContext:
     ctx = await get_or_create_user_context(user["user_id"], user["email"])
+    # Initialization happens here if not already done by lifespan
     start_user_scrapers(ctx)
     return ctx
 
@@ -403,7 +412,6 @@ async def update_notifications(
     await update_user_telegram(user["user_id"], bot_token, chat_id)
     return {"message": "Updated", "telegram_configured": bool(bot_token and chat_id)}
 
-
 @app.get("/jobs")
 async def get_jobs(ctx: UserContext = Depends(_get_ctx)):
     import json
@@ -421,6 +429,17 @@ async def get_jobs(ctx: UserContext = Depends(_get_ctx)):
                             continue
                         ttl = await ctx.redis_client.ttl(key)
                         job_data["ttl"] = ttl
+                        
+                        # Enrich LinkedIn jobs with analysis if not already embedded
+                        if job_data.get("source") == "LinkedIn" and not job_data.get("analysis"):
+                            analysis_key = f"job_analysis:{job_data.get('external_id', '')}"
+                            try:
+                                cached_analysis = await ctx.redis_client.get(analysis_key)
+                                if cached_analysis and cached_analysis != "1":
+                                    job_data["analysis"] = json.loads(cached_analysis)
+                            except Exception:
+                                pass
+                        
                         jobs.append(job_data)
                 except (json.JSONDecodeError, Exception):
                     continue
@@ -668,13 +687,13 @@ async def unsave_job(external_id: str, user: dict = Depends(get_current_user)):
 
 @app.get("/jobs/{external_id}/analysis")
 async def get_job_analysis(external_id: str, ctx: UserContext = Depends(_get_ctx)):
-    """Fetch AI analysis for a job posting. Returns cached result or runs on-demand."""
+    """Fetch pre-computed AI analysis for a job posting. Returns cached result only."""
     import json as _json
     rc = ctx.redis_client
     analysis_key = f"job_analysis:{external_id}"
 
     try:
-        # Check Redis cache first
+        # Check dedicated analysis cache first
         cached = await rc.get(analysis_key)
         if cached and cached != "1":
             try:
@@ -682,35 +701,20 @@ async def get_job_analysis(external_id: str, ctx: UserContext = Depends(_get_ctx
             except _json.JSONDecodeError:
                 pass
 
-        # Not cached — try to find the job URL in Redis and run analysis
+        # Fallback: check if analysis is embedded in the job data itself
         job_key = f"seen_job:LinkedIn:{external_id}"
         job_raw = await rc.get(job_key)
-        if not job_raw or job_raw == "1":
-            raise HTTPException(status_code=404, detail="Job not found in cache")
+        if job_raw and job_raw != "1":
+            try:
+                job_data = _json.loads(job_raw)
+                if job_data.get("analysis"):
+                    return {"status": "completed", "analysis": job_data["analysis"]}
+            except _json.JSONDecodeError:
+                pass
 
-        job_data = _json.loads(job_raw)
-        job_url = job_data.get("url", "")
-        if not job_url:
-            raise HTTPException(status_code=400, detail="No URL for job")
+        # Not cached yet — analysis may still be in progress or failed
+        return {"status": "pending", "analysis": None}
 
-        if not settings.DEEPSEEK_API_KEY:
-            raise HTTPException(status_code=503, detail="DEEPSEEK_API_KEY not configured")
-
-        # Run analysis on-demand (takes ~15-30s)
-        analysis = await run_job_analysis(
-            external_id=external_id,
-            job_url=job_url,
-            redis_client=rc,
-            api_key=settings.DEEPSEEK_API_KEY,
-        )
-
-        if analysis:
-            return {"status": "completed", "analysis": analysis}
-        else:
-            return {"status": "failed", "analysis": None}
-
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error fetching job analysis: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch analysis")
