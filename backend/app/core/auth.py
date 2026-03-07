@@ -18,7 +18,7 @@ def validate_token(token: str) -> dict | None:
             token,
             key="",
             algorithms=["ES256"],
-            options={"verify_signature": False}
+            options={"verify_signature": False, "verify_aud": False}
         )
 
         # Verify this is a valid Supabase token from our project
