@@ -27,6 +27,7 @@ interface Resume {
 
 export function ResumeManager() {
   const [resumes, setResumes] = useState<Resume[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<{ id: string; file: File; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -51,7 +52,7 @@ export function ResumeManager() {
     fetchResumes();
   }, [fetchResumes]);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+  const onDrop = useCallback((acceptedFiles: File[]) => {
     const pdfFiles = acceptedFiles.filter(file => file.type === "application/pdf");
     
     if (pdfFiles.length === 0) {
@@ -59,27 +60,36 @@ export function ResumeManager() {
       return;
     }
 
+    const newStaged = pdfFiles.map(file => ({
+      id: Math.random().toString(36).substring(7),
+      file,
+      name: file.name.replace(/\.[^/.]+$/, "") // strip extension for easy editing
+    }));
+
+    setStagedFiles(prev => [...prev, ...newStaged]);
+  }, []);
+
+  const handleUpload = async () => {
+    if (stagedFiles.length === 0) return;
+
     setIsUploading(true);
     setUploadProgress(0);
 
     const headers = await getAuthHeaders();
     let successCount = 0;
     
-    for (let i = 0; i < pdfFiles.length; i++) {
-      const file = pdfFiles[i];
+    for (let i = 0; i < stagedFiles.length; i++) {
+      const { file, name } = stagedFiles[i];
       const formData = new FormData();
       formData.append("file", file);
-      // Optional: Ask user for name, but we'll default to original filename for now
-      formData.append("filename", file.name);
+      
+      const finalName = name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`;
+      formData.append("filename", finalName);
 
       try {
         const response = await fetch(`${API_URL}/resumes`, {
           method: "POST",
-          headers: {
-            ...headers,
-            // DO NOT set Content-Type to multipart/form-data here, 
-            // the browser sets it automatically with the correct boundary!
-          },
+          headers: { ...headers },
           body: formData,
         });
 
@@ -93,20 +103,20 @@ export function ResumeManager() {
         toast.error(`Error uploading ${file.name}`);
       }
       
-      setUploadProgress(((i + 1) / pdfFiles.length) * 100);
+      setUploadProgress(((i + 1) / stagedFiles.length) * 100);
     }
 
     if (successCount > 0) {
       toast.success(`Successfully uploaded ${successCount} resume(s)`);
+      setStagedFiles([]);
       fetchResumes();
     }
 
-    // Artificial delay to show 100% progress before hiding
     setTimeout(() => {
       setIsUploading(false);
       setUploadProgress(0);
     }, 500);
-  }, [fetchResumes]);
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -180,6 +190,58 @@ export function ResumeManager() {
             </div>
           )}
         </div>
+
+        {/* Staged Resumes */}
+        {stagedFiles.length > 0 && (
+          <div className="rounded-xl border border-gray-800 bg-gray-900/30 p-5">
+            <h4 className="mb-4 text-sm font-medium text-cyan-400">Ready to Upload</h4>
+            <div className="space-y-3">
+              {stagedFiles.map((staged, index) => (
+                <div key={staged.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex flex-1 items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/50 p-2">
+                    <FileText className="h-5 w-5 shrink-0 text-gray-500" />
+                    <input 
+                      type="text" 
+                      value={staged.name}
+                      onChange={(e) => {
+                        const newStaged = [...stagedFiles];
+                        newStaged[index].name = e.target.value;
+                        setStagedFiles(newStaged);
+                      }}
+                      className="w-full bg-transparent text-sm text-gray-200 focus:outline-none"
+                      disabled={isUploading}
+                    />
+                    <span className="text-sm text-gray-500 pr-2">.pdf</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setStagedFiles(prev => prev.filter(s => s.id !== staged.id))}
+                    className="text-gray-500 hover:text-red-400 sm:shrink-0"
+                    disabled={isUploading}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            
+            <div className="mt-5 flex justify-end">
+              <Button 
+                onClick={handleUpload} 
+                disabled={isUploading} 
+                className="w-full bg-cyan-600 text-white hover:bg-cyan-700 sm:w-auto"
+              >
+                {isUploading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <UploadCloud className="mr-2 h-4 w-4" />
+                )}
+                Upload {stagedFiles.length} Resume{stagedFiles.length !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Resumes List */}
         <div>
