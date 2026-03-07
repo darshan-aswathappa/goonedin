@@ -341,6 +341,16 @@ async def run_analysis_worker(ctx: UserContext):
                     )
                     job_dict["analysis_status"] = "unavailable"
 
+            # Check blocked companies before making visible
+            blocked_companies = await get_blocked_companies(rc)
+            job_company = (job_dict.get("company") or "").lower()
+            if any(b.lower() in job_company for b in blocked_companies):
+                logger.info(
+                    f"[AnalysisWorker] Skipping {external_id} — company "
+                    f"'{job_dict.get('company')}' is blocked."
+                )
+                continue
+
             # Make visible and persist
             job_dict["visible"] = True
             await mark_as_seen(rc, job_key, job_dict)
@@ -548,6 +558,8 @@ async def update_notifications(
 async def get_jobs(ctx: UserContext = Depends(_get_ctx)):
     import json
     jobs = []
+    blocked_companies = await get_blocked_companies(ctx.redis_client)
+    blocked_lower = [b.lower() for b in blocked_companies]
     try:
         cursor = 0
         while True:
@@ -559,6 +571,12 @@ async def get_jobs(ctx: UserContext = Depends(_get_ctx)):
                         job_data = json.loads(value)
                         if job_data.get("visible") is False:
                             continue
+
+                        # Filter out jobs from blocked companies
+                        company = (job_data.get("company") or "").lower()
+                        if any(b in company for b in blocked_lower):
+                            continue
+
                         ttl = await ctx.redis_client.ttl(key)
                         job_data["ttl"] = ttl
                         
@@ -689,7 +707,8 @@ async def block_company_and_remove_jobs(
                     value = await ctx.redis_client.get(key)
                     if value and value != "1":
                         job_data = json.loads(value)
-                        if job_data.get("company") == request.company:
+                        job_company = (job_data.get("company") or "").lower()
+                        if request.company.lower() in job_company or job_company == request.company.lower():
                             await ctx.redis_client.delete(key)
                             deleted_job_ids.append(job_data.get("external_id"))
                 except (json.JSONDecodeError, Exception):
