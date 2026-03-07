@@ -46,16 +46,16 @@ Rules:
 - "good_to_have_keywords" should include skills and technologies that are PREFERRED, DESIRED, or listed as a plus. Look for phrases like "preferred", "nice to have", "bonus", "ideally", "plus", "familiarity with".
 - "minimum_qualifications" should include degree requirements, years of experience, certifications, clearances, or any hard prerequisites.
 - "summary" should be a concise description of the role in 1-2 sentences.
-- "compensation" should contain the Salary/Compensation details (exact numbers or ranges). If absent, set to null.
-- "visa_status" should contain Visa status/Sponsorship rules (e.g. "Does not sponsor H1B", "No OPT/CPT", "Open to Visa sponsorship"). If absent, set to null.
+- "compensation" should contain ONLY the Salary/Compensation range (e.g., "$92,000 - $147,000 USD"). Do NOT include location or extra text. If absent, set to null.
+- "visa_status" should be summarized. If the company does not provide sponsorship or requires existing eligibility, set to exactly "Not eligible for sponsorship". If they DO sponsor, keep it brief (e.g., "Sponsorship Available"). If absent, set to null.
 - If a section has no data, return an empty list [] or null as appropriate.
 - Return ONLY the JSON object, nothing else."""
 
 
 FAST_ANALYSIS_PROMPT = """
 You are a fast, precise AI job description parser. Your ONLY job is to extract two pieces of information:
-1. Salary/Compensation details (exact numbers or ranges).
-2. Visa status/Sponsorship rules (e.g. "Does not sponsor H1B", "No OPT/CPT", "Open to Visa sponsorship").
+1. Salary/Compensation range ONLY (e.g., "$90,000 - $120,000 USD"). Do NOT include location or extra text.
+2. Visa status/Sponsorship simplified. If the company does NOT sponsor or requires existing work eligibility, return exactly "Not eligible for sponsorship". 
 
 If either is absent in the text, return null for that field. Do NOT guess or infer. Only extract IF explicitly mentioned.
 

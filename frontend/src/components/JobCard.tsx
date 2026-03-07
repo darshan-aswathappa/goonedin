@@ -61,6 +61,30 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const removeSavedJobId = useJobsStore((state) => state.removeSavedJobId);
   
   const isSaved = savedJobIds.has(job.external_id);
+  
+  const formatSalary = (salary: string) => {
+    if (!salary) return salary;
+    // Extract part after colon if it exists: "Location: $range" -> "$range"
+    const parts = salary.split(":");
+    const range = parts.length > 1 ? parts[1].trim() : parts[0].trim();
+    return range;
+  };
+
+  const formatVisa = (visa: string) => {
+    if (!visa) return visa;
+    const vLower = visa.toLowerCase();
+    // If it mentions "without visa sponsorship" or "no sponsorship"
+    if (
+      (vLower.includes("without") && vLower.includes("sponsorship")) ||
+      vLower.includes("not eligible") ||
+      vLower.includes("does not sponsor") ||
+      vLower.includes("no sponsorship") ||
+      (vLower.includes("eligible") && vLower.includes("without"))
+    ) {
+      return "Not eligible for sponsorship";
+    }
+    return visa;
+  };
 
   const postedAt = job.posted_at
     ? formatDistanceToNow(new Date(job.posted_at), { addSuffix: true })
@@ -191,14 +215,14 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             {job.source === "LinkedIn" && job.salary && (
               <div className="flex items-center gap-2 text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-2 py-1 brutal-border w-fit shadow-[1px_1px_0px_0px_var(--border)]">
                 <CurrencyDollar weight="bold" className="h-4 w-4" />
-                <span>{job.salary}</span>
+                <span>{formatSalary(job.salary)}</span>
               </div>
             )}
 
             {job.source === "LinkedIn" && job.visa && (
               <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit shadow-[1px_1px_0px_0px_var(--border)]">
                 <Globe weight="bold" className="h-4 w-4" />
-                <span>{job.visa}</span>
+                <span>{formatVisa(job.visa)}</span>
               </div>
             )}
           </div>
