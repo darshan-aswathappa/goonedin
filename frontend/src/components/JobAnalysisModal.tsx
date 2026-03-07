@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Job } from "@/store/jobs";
 import {
   Dialog,
@@ -73,6 +73,12 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
       setStatus("failed");
     }
   };
+
+  useEffect(() => {
+    if (open && status === "idle") {
+      fetchAnalysis();
+    }
+  }, [open, status]);
 
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
