@@ -57,10 +57,13 @@ async def lifespan(app: FastAPI):
     set_supabase_client(supabase)
     logger.info("Supabase client initialized.")
 
-    contexts = await load_all_users()
-    for ctx in contexts:
-        start_user_scrapers(ctx)
-        logger.info(f"Started scrapers for existing user (db={ctx.redis_db_index})")
+    try:
+        contexts = await load_all_users()
+        for ctx in contexts:
+            start_user_scrapers(ctx)
+            logger.info(f"Started scrapers for existing user (db={ctx.redis_db_index})")
+    except Exception as e:
+        logger.warning(f"Failed to load existing users at startup: {e}. Server will continue.")
 
     yield
 
