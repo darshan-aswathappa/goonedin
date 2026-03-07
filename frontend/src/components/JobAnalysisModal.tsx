@@ -115,11 +115,9 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                 <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
               </div>
             </div>
-            <h3 className="mb-1 font-medium text-white">Analyzing Job Description</h3>
+            <h3 className="mb-1 font-medium text-white">Loading Insights</h3>
             <p className="text-center text-sm text-gray-400 max-w-xs">
-              DeepSeek AI is extracting keywords and qualifications.
-              <br />
-              This may take 15–30 seconds on first analysis.
+              Retrieving pre-computed job analysis from the server...
             </p>
           </div>
         ) : status === "failed" ? (

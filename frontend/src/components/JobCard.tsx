@@ -169,26 +169,14 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   };
 
   return (
-    <Card className={`group relative overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 ${isLocked ? "pointer-events-none" : ""}`}>
+    <>
+    <Card 
+      onClick={!isLocked && job.source === "LinkedIn" ? () => setAnalysisOpen(true) : undefined}
+      className={`group relative overflow-hidden flex flex-col h-full border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 ${isLocked ? "pointer-events-none" : ""} ${!isLocked && job.source === "LinkedIn" ? "cursor-pointer" : ""}`}
+    >
       {!isLocked && (
         <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          {job.source === "LinkedIn" && (
-          <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAnalysisOpen(true); }}
-                className="p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-amber-400 hover:border-amber-400/50 hover:bg-amber-500/10 transition-all duration-200"
-              >
-                <Sparkles className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>Analyze job requirements</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-          )}
+
           <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -275,8 +263,8 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         </Badge>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="grid gap-2 text-sm">
+      <CardContent className="space-y-4 flex flex-col flex-1">
+        <div className="grid gap-2 text-sm flex-1">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Building2 className="h-4 w-4 shrink-0 text-primary/70" />
             <span className="truncate font-medium text-foreground/90">
@@ -317,13 +305,14 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             variant="outline"
             className="w-full gap-2 border-border/50 hover:border-primary/50 hover:bg-primary/10 pointer-events-auto"
           >
-            <a href={job.url} target="_blank" rel="noopener noreferrer">
+            <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
               View Job
               <ExternalLink className="h-4 w-4" />
             </a>
           </Button>
         )}
       </CardContent>
+    </Card>
 
       {/* Job Analysis Modal — LinkedIn only */}
       {job.source === "LinkedIn" && (
@@ -333,6 +322,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           onOpenChange={setAnalysisOpen}
         />
       )}
-    </Card>
+    </>
   );
 }

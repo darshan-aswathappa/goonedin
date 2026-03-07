@@ -33,7 +33,7 @@ import {
 import Link from "next/link";
 
 export function JobsDashboard() {
-  const { user, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   
   // Only connect/fetch if user is authenticated
   useWebSocket({ enabled: !!user });
@@ -49,6 +49,35 @@ export function JobsDashboard() {
     (state) => state.locationFilteredJobs,
   );
   const isLoading = useJobsStore((state) => state.isLoading);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b border-border/40 bg-background/80 backdrop-blur-xl">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
+                  <Briefcase className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-tight">
+                    Job Tracker
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    Real-time job notifications
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="container mx-auto px-4 py-6 flex items-center justify-center min-h-[50vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

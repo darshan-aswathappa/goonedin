@@ -30,13 +30,15 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.5",
 }
 
-JOB_ANALYSIS_PROMPT = """You are an expert job posting analyzer. Given a job description, extract and classify the relevant keywords and qualifications. Return valid JSON only (no markdown, no explanation):
+JOB_ANALYSIS_PROMPT = """You are an expert job posting analyzer. Given a job description, extract and classify the relevant keywords, qualifications, salary, and visa sponsorship details. Return valid JSON only (no markdown, no explanation):
 
 {
   "must_have_keywords": ["keyword1", "keyword2", ...],
   "good_to_have_keywords": ["keyword1", "keyword2", ...],
   "minimum_qualifications": ["qualification1", "qualification2", ...],
-  "summary": "A 1-2 sentence summary of what the role is about."
+  "summary": "A 1-2 sentence summary of what the role is about.",
+  "compensation": "string | null",
+  "visa_status": "string | null"
 }
 
 Rules:
@@ -44,9 +46,25 @@ Rules:
 - "good_to_have_keywords" should include skills and technologies that are PREFERRED, DESIRED, or listed as a plus. Look for phrases like "preferred", "nice to have", "bonus", "ideally", "plus", "familiarity with".
 - "minimum_qualifications" should include degree requirements, years of experience, certifications, clearances, or any hard prerequisites.
 - "summary" should be a concise description of the role in 1-2 sentences.
-- If a section has no data, return an empty list [].
+- "compensation" should contain the Salary/Compensation details (exact numbers or ranges). If absent, set to null.
+- "visa_status" should contain Visa status/Sponsorship rules (e.g. "Does not sponsor H1B", "No OPT/CPT", "Open to Visa sponsorship"). If absent, set to null.
+- If a section has no data, return an empty list [] or null as appropriate.
 - Return ONLY the JSON object, nothing else."""
 
+
+FAST_ANALYSIS_PROMPT = """
+You are a fast, precise AI job description parser. Your ONLY job is to extract two pieces of information:
+1. Salary/Compensation details (exact numbers or ranges).
+2. Visa status/Sponsorship rules (e.g. "Does not sponsor H1B", "No OPT/CPT", "Open to Visa sponsorship").
+
+If either is absent in the text, return null for that field. Do NOT guess or infer. Only extract IF explicitly mentioned.
+
+Return ONLY a valid JSON object matching this schema exactly (no markdown formatting, no code blocks):
+{
+  "compensation": string | null,
+  "visa_status": string | null
+}
+"""
 
 def extract_job_id_from_url(url: str) -> Optional[str]:
     """
@@ -158,6 +176,8 @@ def analyze_job_with_deepseek(description: str, api_key: str) -> dict[str, Any]:
             "good_to_have_keywords": [],
             "minimum_qualifications": [],
             "summary": "Analysis could not be parsed.",
+            "compensation": None,
+            "visa_status": None,
             "_raw": content,
         }
 
@@ -222,3 +242,73 @@ async def run_job_analysis(
     except Exception as e:
         logger.error(f"[JobAnalyzer] Analysis failed for job {external_id}: {e}")
         return None
+
+async def run_fast_salary_visa_analysis(
+    external_id: str,
+    job_url: str,
+    api_key: str,
+) -> dict | None:
+    """
+    Fast extraction pipeline that only grabs compensation & visa info.
+    We don't cache this separately because it gets merged directly into the `Job` object in Redis.
+    """
+    logger.info(f"[JobAnalyzer] Starting fast salary/visa analysis for job {external_id}")
+
+    job_id = extract_job_id_from_url(job_url)
+    if not job_id:
+        logger.warning(f"[JobAnalyzer] Could not extract job ID from URL for fast analysis: {job_url}")
+        return None
+
+    description = await fetch_job_description(job_id)
+    if not description:
+        logger.warning(f"[JobAnalyzer] No description found for fast analysis of {external_id}")
+        return None
+
+    # Retry loop for deepseek extraction
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            import asyncio
+            result_str = await asyncio.to_thread(
+                _call_deepseek_fast,
+                description,
+                api_key
+            )
+            
+            cleaned_str = result_str.strip()
+            if cleaned_str.startswith("```json"):
+                cleaned_str = cleaned_str[7:]
+            if cleaned_str.startswith("```"):
+                cleaned_str = cleaned_str[3:]
+            if cleaned_str.endswith("```"):
+                cleaned_str = cleaned_str[:-3]
+            
+            fast_data = json.loads(cleaned_str.strip())
+            return fast_data
+            
+        except json.JSONDecodeError as e:
+            logger.warning(f"[JobAnalyzer] Fast JSON decode error on attempt {attempt + 1}: {e}. Output was: {result_str}")
+        except Exception as e:
+            logger.error(f"[JobAnalyzer] Error during fast DeepSeek API call on attempt {attempt + 1}: {e}")
+            
+    logger.error(f"[JobAnalyzer] Failed to get fast analysis for {external_id} despite retries.")
+    return None
+
+def _call_deepseek_fast(description: str, api_key: str) -> str:
+    """Synchronous function to make the DeepSeek API call for fast analysis."""
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com"
+    )
+
+    response = client.chat.completions.create(
+        model="deepseek-chat", # use normal chat here for speed
+        messages=[
+            {"role": "system", "content": FAST_ANALYSIS_PROMPT},
+            {"role": "user", "content": f"Here is the job description:\n\n{description}"}
+        ],
+        stream=False,
+        temperature=0.0
+    )
+    
+    return response.choices[0].message.content or "{}"

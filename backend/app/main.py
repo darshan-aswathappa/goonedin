@@ -36,7 +36,7 @@ from app.services.notification import send_telegram_alert
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 from app.services.resume_analyzer import run_resume_analysis
-from app.services.job_analyzer import run_job_analysis, run_fast_salary_visa_analysis, run_fast_salary_visa_analysis
+from app.services.job_analyzer import run_job_analysis, run_fast_salary_visa_analysis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
@@ -170,45 +170,65 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         job_key = f"seen_job:{job.source}:{job.external_id}"
         if await is_already_seen(rc, job_key):
             continue
+            
         job_dict = job.model_dump(mode="json")
+        job_dict["visible"] = False
         await mark_as_seen(rc, job_key, job_dict)
         total_finds = total_finds + 1  # type: ignore
-        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
-        job_dict["is_notified"] = True
-        await mark_as_seen(rc, job_key, job_dict)
-        logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
 
-        # Fire FAST background analysis for LinkedIn jobs (salary/visa)
         if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
-            async def background_fast_analysis(j_dict, j_key):
+            # Fire full background analysis for LinkedIn jobs before broadcasting
+            async def background_full_analysis(j_dict, j_key, j_obj):
                 try:
-                    fast_data = await run_fast_salary_visa_analysis(
+                    logger.info(f"Running full analysis for {j_dict['external_id']} before broadcasting...")
+                    analysis_data = await run_job_analysis(
                         external_id=j_dict["external_id"],
                         job_url=j_dict["url"],
+                        redis_client=rc,
                         api_key=settings.DEEPSEEK_API_KEY,
                     )
-                    if fast_data and (fast_data.get("compensation") or fast_data.get("visa_status")):
-                        # Update dictionary
-                        if fast_data.get("compensation"):
-                            j_dict["salary"] = fast_data["compensation"]
-                        if fast_data.get("visa_status"):
-                            j_dict["visa"] = fast_data["visa_status"]
-                        
-                        # Resave to Redis
-                        import json as _json
-                        await rc.set(j_key, _json.dumps(j_dict))
-                        
-                        # Broadcast update to frontend via WS
-                        await manager.broadcast(ctx.user_id, {
-                            "type": "UPDATE_JOB",
-                            "data": j_dict
-                        })
-                        logger.info(f"Updated job {j_dict['external_id']} with salary/visa.")
+                    
+                    if analysis_data:
+                        if analysis_data.get("compensation"):
+                            j_dict["salary"] = analysis_data["compensation"]
+                        if analysis_data.get("visa_status"):
+                            j_dict["visa"] = analysis_data["visa_status"]
+                    
+                    # Make it visible
+                    j_dict["visible"] = True
+                    await mark_as_seen(rc, j_key, j_dict)
+                    
+                    # Broadcast update to frontend via WS
+                    await manager.broadcast(ctx.user_id, {
+                        "type": "NEW_JOB",
+                        "data": j_dict
+                    })
+                    
+                    await send_telegram_alert(j_obj, ctx.telegram_bot_token, ctx.telegram_chat_id)
+                    j_dict["is_notified"] = True
+                    await mark_as_seen(rc, j_key, j_dict)
+                    
+                    logger.info(f"New Target (Analyzed): {j_obj.title} @ {j_obj.company} ({j_obj.location})")
                 except Exception as e:
-                    logger.error(f"Error in fast background analysis for {j_dict['external_id']}: {e}")
+                    logger.error(f"Error in full background analysis for {j_dict['external_id']}: {e}")
+                    # Fallback to broadcasting it anyway
+                    j_dict["visible"] = True
+                    await mark_as_seen(rc, j_key, j_dict)
+                    await manager.broadcast(ctx.user_id, {
+                        "type": "NEW_JOB",
+                        "data": j_dict
+                    })
+                    await send_telegram_alert(j_obj, ctx.telegram_bot_token, ctx.telegram_chat_id)
 
-            asyncio.create_task(background_fast_analysis(job_dict.copy(), job_key))
+            asyncio.create_task(background_full_analysis(job_dict.copy(), job_key, job))
+        else:
+            job_dict["visible"] = True
+            await mark_as_seen(rc, job_key, job_dict)
+            await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+            await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
+            job_dict["is_notified"] = True
+            await mark_as_seen(rc, job_key, job_dict)
+            logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
 
     for job in fidelity_jobs:
         job_key = f"seen_job:{job.source}:{job.external_id}"
