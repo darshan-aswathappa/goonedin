@@ -16,6 +16,10 @@ class JobBase(BaseModel):
     is_new: bool = True
     # Track whether a notification (Telegram + WebSocket) has been sent
     is_notified: bool = False
+    
+    # Fast extraction fields
+    salary: Optional[str] = None
+    visa: Optional[str] = None
 
 class JobCreate(JobBase):
     """

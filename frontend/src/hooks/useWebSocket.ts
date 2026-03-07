@@ -21,14 +21,18 @@ interface JobDismissedMessage {
   type: "JOB_DISMISSED";
   data: { external_id: string };
 }
+interface UpdateJobMessage {
+  type: "UPDATE_JOB";
+  data: Job;
+}
 
-type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage;
+type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage | UpdateJobMessage;
 
 export function useWebSocket({ enabled = true } = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { addJob, removeJob, removeJobsByCompany, setConnectionStatus } = useJobsStore();
+  const { addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus } = useJobsStore();
 
   const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -67,6 +71,8 @@ export function useWebSocket({ enabled = true } = {}) {
           });
         } else if (message.type === "JOB_DISMISSED" && message.data) {
           removeJob(message.data.external_id);
+        } else if (message.type === "UPDATE_JOB" && message.data) {
+          updateJob(message.data.external_id, message.data);
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -80,7 +86,7 @@ export function useWebSocket({ enabled = true } = {}) {
     };
 
     ws.onerror = () => ws.close();
-  }, [addJob, removeJob, removeJobsByCompany, setConnectionStatus]);
+  }, [addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);

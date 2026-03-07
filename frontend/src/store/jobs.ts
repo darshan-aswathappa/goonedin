@@ -11,6 +11,7 @@ export interface Job {
   source: "LinkedIn" | "Fidelity" | "StateStreet" | "MathWorks" | "GitHub";
   posted_at?: string;
   salary?: string;
+  visa?: string;
   work_model?: string;
   is_new: boolean;
   is_notified?: boolean;
@@ -50,6 +51,7 @@ interface JobsState {
   addJob: (job: Job) => void;
   removeJob: (externalId: string) => void;
   removeJobsByCompany: (company: string) => void;
+  updateJob: (externalId: string, updates: Partial<Job>) => void;
   setJobs: (jobs: Job[]) => void;
   setConnectionStatus: (status: "connecting" | "connected" | "disconnected") => void;
   setLoading: (loading: boolean) => void;
@@ -123,6 +125,22 @@ export const useJobsStore = create<JobsState>((set) => ({
       githubJobs: state.githubJobs.filter((j) => j.company !== company),
       locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.company !== company),
     })),
+
+  updateJob: (externalId, updates) =>
+    set((state) => {
+      const updateList = (list: Job[]) =>
+        list.map((j) => (j.external_id === externalId ? { ...j, ...updates } : j));
+
+      return {
+        jobs: updateList(state.jobs),
+        linkedinJobs: updateList(state.linkedinJobs),
+        fidelityJobs: updateList(state.fidelityJobs),
+        statestreetJobs: updateList(state.statestreetJobs),
+        mathworksJobs: updateList(state.mathworksJobs),
+        githubJobs: updateList(state.githubJobs),
+        locationFilteredJobs: updateList(state.locationFilteredJobs),
+      };
+    }),
 
   setJobs: (jobs) =>
     set(() => ({

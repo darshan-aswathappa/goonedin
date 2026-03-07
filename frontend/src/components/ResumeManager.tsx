@@ -140,7 +140,12 @@ export function ResumeManager() {
         if (response.ok) {
           successCount++;
         } else {
-          toast.error(`Failed to upload ${file.name}`);
+          try {
+            const errData = await response.json();
+            toast.error(errData.detail || `Failed to upload ${file.name}`);
+          } catch {
+            toast.error(`Failed to upload ${file.name}`);
+          }
         }
       } catch (error) {
         console.error(`Error uploading ${file.name}:`, error);

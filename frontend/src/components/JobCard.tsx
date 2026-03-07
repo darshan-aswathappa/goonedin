@@ -21,6 +21,8 @@ import {
   Loader2,
   Bookmark,
   Sparkles,
+  DollarSign,
+  Globe,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { getAuthHeaders } from "@/hooks/useAuth";
@@ -292,6 +294,20 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
               <Clock className="h-4 w-4 shrink-0 text-primary/70" />
               <span suppressHydrationWarning>{postedAt}</span>
             </div>
+          )}
+
+          {job.source === "LinkedIn" && job.salary && (
+             <div className="flex items-start gap-2 text-sm text-green-400 font-medium">
+               <DollarSign className="h-4 w-4 shrink-0 mt-0.5" />
+               <span className="line-clamp-2">{job.salary}</span>
+             </div>
+          )}
+
+          {job.source === "LinkedIn" && job.visa && (
+             <div className="flex items-start gap-2 text-sm text-amber-400 font-medium pt-1">
+               <Globe className="h-4 w-4 shrink-0 mt-0.5" />
+               <span className="line-clamp-2">{job.visa}</span>
+             </div>
           )}
         </div>
 

@@ -36,7 +36,7 @@ from app.services.notification import send_telegram_alert
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 from app.services.resume_analyzer import run_resume_analysis
-from app.services.job_analyzer import run_job_analysis
+from app.services.job_analyzer import run_job_analysis, run_fast_salary_visa_analysis, run_fast_salary_visa_analysis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
@@ -179,16 +179,36 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         await mark_as_seen(rc, job_key, job_dict)
         logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
 
-        # Fire background job description analysis for LinkedIn jobs
+        # Fire FAST background analysis for LinkedIn jobs (salary/visa)
         if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
-            asyncio.create_task(
-                run_job_analysis(
-                    external_id=job.external_id,
-                    job_url=str(job.url),
-                    redis_client=rc,
-                    api_key=settings.DEEPSEEK_API_KEY,
-                )
-            )
+            async def background_fast_analysis(j_dict, j_key):
+                try:
+                    fast_data = await run_fast_salary_visa_analysis(
+                        external_id=j_dict["external_id"],
+                        job_url=j_dict["url"],
+                        api_key=settings.DEEPSEEK_API_KEY,
+                    )
+                    if fast_data and (fast_data.get("compensation") or fast_data.get("visa_status")):
+                        # Update dictionary
+                        if fast_data.get("compensation"):
+                            j_dict["salary"] = fast_data["compensation"]
+                        if fast_data.get("visa_status"):
+                            j_dict["visa"] = fast_data["visa_status"]
+                        
+                        # Resave to Redis
+                        import json as _json
+                        await rc.set(j_key, _json.dumps(j_dict))
+                        
+                        # Broadcast update to frontend via WS
+                        await manager.broadcast(ctx.user_id, {
+                            "type": "UPDATE_JOB",
+                            "data": j_dict
+                        })
+                        logger.info(f"Updated job {j_dict['external_id']} with salary/visa.")
+                except Exception as e:
+                    logger.error(f"Error in fast background analysis for {j_dict['external_id']}: {e}")
+
+            asyncio.create_task(background_fast_analysis(job_dict.copy(), job_key))
 
     for job in fidelity_jobs:
         job_key = f"seen_job:{job.source}:{job.external_id}"
@@ -716,6 +736,31 @@ async def upload_resume(
 
     try:
         content = await file.read()
+        
+        # Check if it's a valid text-based PDF
+        try:
+            import PyPDF2
+            import io
+            reader = PyPDF2.PdfReader(io.BytesIO(content))
+            text_parts = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text_parts.append(page_text)
+            extracted_text = "\n".join(text_parts).strip()
+            if not extracted_text:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="Please upload a proper text-based PDF. Scanned images are not supported."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error parsing PDF: {e}")
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid PDF file. Please upload a proper PDF, not an image."
+            )
         
         # Upload to Storage
         def _upload_to_storage(*args: Any, **kwargs: Any) -> Any:
