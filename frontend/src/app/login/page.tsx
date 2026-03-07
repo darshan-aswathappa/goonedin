@@ -73,9 +73,9 @@ export default function LoginPage() {
               GoonedIn
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             <ThemeToggle />
-          </div>
+          </div> */}
         </div>
         <p className="text-xs font-black uppercase tracking-widest text-[#606060] mb-4">
           Job Extraction Engine
