@@ -115,23 +115,23 @@ function ConfigEditor({
 
   return (
     <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
-      <CardHeader className="pb-3 border-b-2 border-border">
+      <CardHeader className="pb-4 border-b-2 border-border bg-card">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
               {section.icon}
             </div>
             <div>
               <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">{section.title}</CardTitle>
-              <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1">{section.description}</CardDescription>
+              <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1.5">{section.description}</CardDescription>
             </div>
           </div>
-          <div className="brutal-border bg-muted px-2 py-1 text-[10px] font-black uppercase tracking-widest">
+          <div className="brutal-badge bg-muted">
             {values.length} items
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6 pt-6">
         <div className="flex gap-2">
           <input
             type="text"
@@ -152,33 +152,36 @@ function ConfigEditor({
         </div>
 
         {values.length > 5 && (
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search..."
-            className="w-full rounded-lg border border-gray-700 bg-gray-900/50 px-3 py-1.5 text-sm text-white placeholder:text-gray-500 focus:border-gray-600 focus:outline-none"
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Filter items..."
+              className="w-full brutal-border bg-muted pl-10 pr-3 py-2 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
+            />
+          </div>
         )}
 
-        <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-800 bg-gray-900/30 p-2">
+        <div className="max-h-64 overflow-y-auto brutal-border bg-muted/30 p-4">
           {filteredValues.length === 0 ? (
             <p className="py-4 text-center text-sm text-gray-500">
               {searchTerm ? "No matches found" : "No items yet"}
             </p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {filteredValues.map((item, index) => {
                 const originalIndex = values.indexOf(item);
                 return (
                   <div
                     key={`${item}-${index}`}
-                    className="group flex items-center gap-1.5 rounded-md bg-gray-800 px-2.5 py-1.5 text-sm text-gray-200"
+                    className="group flex items-center gap-3 brutal-border bg-card px-3 py-2 text-sm font-black uppercase tracking-tight shadow-[3px_3px_0px_0px_var(--border)] hover:bg-muted transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--border)]"
                   >
                     <span>{item}</span>
                     <button
                       onClick={() => handleRemove(originalIndex)}
-                      className="ml-1 rounded p-0.5 text-gray-500 hover:bg-gray-700 hover:text-red-400"
+                      className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-primary hover:text-white transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -189,20 +192,20 @@ function ConfigEditor({
           )}
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-4">
           <Button
             onClick={onSave}
             disabled={isSaving}
-            className="bg-green-600 hover:bg-green-700"
+            className="brutal-border bg-green-500 text-white hover:bg-green-600 shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-black uppercase tracking-widest px-6"
           >
             {isSaving ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4" />
+                <Save className="mr-2 h-4 w-4" />
                 Save Changes
               </>
             )}
@@ -347,57 +350,57 @@ export default function SettingsPage() {
         ) : (
           <div className="space-y-6">
             {/* Telegram Notifications */}
-            <Card className="border-gray-800 bg-[#161b22]">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800/50 text-cyan-400">
-                    <Bell className="h-5 w-5" />
+            <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
+              <CardHeader className="pb-4 border-b-2 border-border bg-card">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
+                    <Bell className="h-6 w-6" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg text-white">Telegram Notifications</CardTitle>
-                    <CardDescription className="text-gray-500">
+                    <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">Telegram Notifications</CardTitle>
+                    <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1.5">
                       Receive job alerts via Telegram. Leave blank to disable.
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <label className="mb-1.5 block text-sm text-gray-400">Bot Token</label>
+              <CardContent className="space-y-6 pt-6">
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Bot Token</label>
                     <input
                       type="password"
                       value={telegramBotToken}
                       onChange={(e) => setTelegramBotToken(e.target.value)}
-                      placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                      placeholder="1234567890:ABCdef...wxyz"
+                      className="w-full brutal-border bg-muted px-4 py-3 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm text-gray-400">Chat ID</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Chat ID</label>
                     <input
                       type="text"
                       value={telegramChatId}
                       onChange={(e) => setTelegramChatId(e.target.value)}
                       placeholder="-1001234567890"
-                      className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                      className="w-full brutal-border bg-muted px-4 py-3 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
                     />
                   </div>
                 </div>
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-end pt-4">
                   <Button
                     onClick={handleSaveTelegram}
                     disabled={savingTelegram}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="brutal-border bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-black uppercase tracking-widest px-6"
                   >
                     {savingTelegram ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Saving...
                       </>
                     ) : (
                       <>
-                        <Save className="h-4 w-4" />
+                        <Save className="mr-2 h-4 w-4" />
                         Save Telegram
                       </>
                     )}

@@ -134,6 +134,18 @@
   .animate-marquee {
     animation: marquee 30s linear infinite;
   }
+  .brutal-badge {
+    border: 2px solid var(--border);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 10px;
+    padding: 0.125rem 0.5rem;
+    box-shadow: 1px 1px 0px 0px var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
   .job-card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
