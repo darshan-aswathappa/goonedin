@@ -21,6 +21,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { getAuthHeaders } from "@/hooks/useAuth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -63,9 +64,10 @@ export function JobCard({ job }: JobCardProps) {
     
     setIsBlocking(true);
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({
           company: job.company,
         }),
@@ -89,9 +91,10 @@ export function JobCard({ job }: JobCardProps) {
     
     setIsDismissing(true);
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/jobs/dismiss`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({
           source: job.source,
           external_id: job.external_id,
