@@ -5,37 +5,33 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
 import { JobList } from "./JobList";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { ServerTime } from "./ServerTime";
+import { ThemeToggle } from "./ThemeToggle";
 import { CompanyTicker } from "./CompanyTicker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCATION_FILTER } from "@/config/filters";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Briefcase,
-  Linkedin,
-  Sparkles,
   Globe,
-  RefreshCw,
-  Loader2,
-  Building,
-  Building2,
-  Calculator,
+  ArrowsClockwise,
+  CircleNotch,
+  Buildings,
+  LinkedinLogo,
+  GithubLogo,
   MapPin,
-  Terminal,
-  Settings,
-  Github,
-  LogOut,
-  Bookmark,
-} from "lucide-react";
+  TerminalWindow,
+  Gear,
+  BookmarkSimple,
+  SignOut,
+  Sparkle,
+} from "@phosphor-icons/react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
   
-  // Only connect/fetch if user is authenticated
   useWebSocket({ enabled: !!user });
   const { refetch } = useJobsApi(!!user);
 
@@ -52,205 +48,167 @@ export function JobsDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border/40 bg-background/80 backdrop-blur-xl">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold tracking-tight">
-                    Job Tracker
-                  </h1>
-                  <p className="text-xs text-muted-foreground">
-                    Real-time job notifications
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
-        <main className="container mx-auto px-4 py-6 flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+      <div className="min-h-screen bg-[#FFF7F1] flex items-center justify-center">
+        <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-[#F15152]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border/40 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-background text-foreground font-medium transition-colors duration-300">
+      {/* Header / Navbar */}
+      <header className="brutal-border border-t-0 border-l-0 border-r-0 bg-card sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
-                <Briefcase className="h-5 w-5 text-primary" />
+              <div className="brutal-border bg-primary p-2 shadow-[2px_2px_0px_0px_var(--border)]">
+                <Briefcase weight="fill" className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold tracking-tight">
-                  Job Tracker
+                <h1 className="text-2xl font-black uppercase italic tracking-tighter leading-none">
+                  GoonedIn
                 </h1>
-                <p className="text-xs text-muted-foreground">
-                  Real-time job notifications
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  Job Extraction Engine
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {user && (
-                <>
-                  <ServerTime />
-                  <Badge variant="secondary" className="gap-1.5">
-                    <Sparkles className="h-3 w-3" />
-                    {jobs.length} jobs
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+
+            {user && (
+              <div className="flex items-center gap-2">
+                <div className="brutal-border bg-card px-3 py-1.5 flex items-center gap-2 shadow-[2px_2px_0px_0px_var(--border)] h-[42px]">
+                  <Sparkle weight="fill" className="h-4 w-4 text-primary" />
+                  <span className="font-black text-sm">{jobs.length}</span>
+                </div>
+
+                <div className="flex items-center gap-1 h-[42px]">
+                  <ThemeToggle />
+
+                  <button
                     onClick={refetch}
                     disabled={isLoading}
-                    className="h-8 w-8"
-                    title="Refresh jobs"
+                    className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center"
+                    title="Refresh"
                   >
                     {isLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
                     ) : (
-                      <RefreshCw className="h-4 w-4" />
+                      <ArrowsClockwise weight="bold" className="h-5 w-5" />
                     )}
-                  </Button>
+                  </button>
+
                   <Link href="/saved">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
-                      title="Saved Jobs"
-                    >
-                      <Bookmark className="h-4 w-4" />
-                    </Button>
+                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center text-[#009063]">
+                      <BookmarkSimple weight="bold" className="h-5 w-5" />
+                    </div>
                   </Link>
+
                   <Link href="/settings">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Settings">
-                      <Settings className="h-4 w-4" />
-                    </Button>
+                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
+                      <Gear weight="bold" className="h-5 w-5" />
+                    </div>
                   </Link>
+
                   <Link href="/logs">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" title="System Logs">
-                      <Terminal className="h-4 w-4" />
-                    </Button>
+                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
+                      <TerminalWindow weight="bold" className="h-5 w-5" />
+                    </div>
                   </Link>
+
                   <ConnectionStatus />
-                  <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8" title="Sign out">
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-            </div>
+
+                  <button
+                    onClick={signOut}
+                    className="brutal-border p-2 bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center"
+                    title="Sign Out"
+                  >
+                    <SignOut weight="bold" className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-8">
         {!user && <CompanyTicker />}
+        
         <Tabs defaultValue="all" className={!user ? "w-full mt-8" : "w-full"}>
           {user && (
-            <TabsList className="mb-6 grid w-full grid-cols-7 bg-muted/50 p-1">
-            <TabsTrigger
-              value="all"
-              className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-            >
-              <Globe className="h-4 w-4" />
-              <span className="hidden sm:inline">All</span>
-              <Badge
-                variant="secondary"
-                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-              >
-                {user ? jobs.length : 6}
-              </Badge>
-            </TabsTrigger>
-            {LOCATION_FILTER.enabled && (
+            <TabsList className="flex flex-wrap h-auto gap-2 bg-transparent p-0 mb-10 items-start justify-start border-none">
               <TabsTrigger
-                value="location"
-                className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                value="all"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
               >
-                <MapPin className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {LOCATION_FILTER.displayName}
-                </span>
-              <Badge
-                variant="secondary"
-                className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
+                <div className="flex items-center gap-2">
+                  <Globe weight="bold" className="h-5 w-5" />
+                  All ({jobs.length})
+                </div>
+              </TabsTrigger>
+              
+              {LOCATION_FILTER.enabled && (
+                <TabsTrigger
+                  value="location"
+                  className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin weight="bold" className="h-5 w-5" />
+                    {LOCATION_FILTER.displayName} ({locationFilteredJobs.length})
+                  </div>
+                </TabsTrigger>
+              )}
+
+              <TabsTrigger
+                value="linkedin"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
               >
-                {user ? locationFilteredJobs.length : 3}
-              </Badge>
-            </TabsTrigger>
-          )}
-          <TabsTrigger
-            value="linkedin"
-            className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
-            <Linkedin className="h-4 w-4" />
-            <span className="hidden sm:inline">LinkedIn</span>
-            <Badge
-              variant="secondary"
-              className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-            >
-              {user ? linkedinJobs.length : 1}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger
-            value="fidelity"
-            className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
-            <Building className="h-4 w-4" />
-            <span className="hidden sm:inline">Fidelity</span>
-            <Badge
-              variant="secondary"
-              className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-            >
-              {user ? fidelityJobs.length : 1}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger
-            value="statestreet"
-            className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
-            <Building2 className="h-4 w-4" />
-            <span className="hidden sm:inline">State Street</span>
-            <Badge
-              variant="secondary"
-              className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-            >
-              {user ? statestreetJobs.length : 1}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger
-            value="mathworks"
-            className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
-            <Calculator className="h-4 w-4" />
-            <span className="hidden sm:inline">MathWorks</span>
-            <Badge
-              variant="secondary"
-              className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-            >
-              {user ? mathworksJobs.length : 1}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger
-            value="github"
-            className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-          >
-            <Github className="h-4 w-4" />
-            <span className="hidden sm:inline">GitHub</span>
-            <Badge
-              variant="secondary"
-              className="ml-1 hidden h-5 px-1.5 text-xs sm:flex"
-            >
-              {user ? githubJobs.length : 2}
-            </Badge>
-            </TabsTrigger>
-          </TabsList>
+                <div className="flex items-center gap-2">
+                  <LinkedinLogo weight="bold" className="h-5 w-5" />
+                  LinkedIn ({linkedinJobs.length})
+                </div>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="fidelity"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#338800] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+              >
+                <div className="flex items-center gap-2">
+                  <Buildings weight="bold" className="h-5 w-5" />
+                  Fidelity ({fidelityJobs.length})
+                </div>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="statestreet"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#005295] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+              >
+                <div className="flex items-center gap-2">
+                  <Buildings weight="bold" className="h-5 w-5" />
+                  State Street ({statestreetJobs.length})
+                </div>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="mathworks"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+              >
+                <div className="flex items-center gap-2">
+                  <Buildings weight="bold" className="h-5 w-5" />
+                  MathWorks ({mathworksJobs.length})
+                </div>
+              </TabsTrigger>
+
+              <TabsTrigger
+                value="github"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#24292e] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+              >
+                <div className="flex items-center gap-2">
+                  <GithubLogo weight="bold" className="h-5 w-5" />
+                  GitHub ({githubJobs.length})
+                </div>
+              </TabsTrigger>
+            </TabsList>
           )}
 
           <TabsContent value="all" className="mt-0">
@@ -316,7 +274,7 @@ export function JobsDashboard() {
       <Toaster
         position="bottom-right"
         toastOptions={{
-          className: "bg-card border-border",
+          className: "brutal-border brutal-shadow rounded-none bg-card text-foreground",
         }}
       />
     </div>

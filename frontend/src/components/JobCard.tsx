@@ -2,31 +2,27 @@
 
 import { useState } from "react";
 import { Job, useJobsStore } from "@/store/jobs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import {
+  Buildings,
+  MapPin,
+  Clock,
+  ArrowSquareOut,
+  X,
+  ThumbsDown,
+  BookmarkSimple,
+  CurrencyDollar,
+  Globe,
+  CircleNotch,
+} from "@phosphor-icons/react";
+import { formatDistanceToNow } from "date-fns";
+import { getAuthHeaders } from "@/hooks/useAuth";
+import { JobAnalysisModal } from "./JobAnalysisModal";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Building2,
-  MapPin,
-  Clock,
-  ExternalLink,
-  ThumbsDown,
-  X,
-  Loader2,
-  Bookmark,
-  Sparkles,
-  DollarSign,
-  Globe,
-} from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { getAuthHeaders } from "@/hooks/useAuth";
-import { JobAnalysisModal } from "./JobAnalysisModal";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -38,17 +34,17 @@ interface JobCardProps {
 function getSourceColor(source: string) {
   switch (source) {
     case "LinkedIn":
-      return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      return "bg-[#0A66C2] text-white";
     case "Fidelity":
-      return "bg-green-500/20 text-green-400 border-green-500/30";
+      return "bg-[#338800] text-white";
     case "StateStreet":
-      return "bg-orange-500/20 text-orange-400 border-orange-500/30";
+      return "bg-[#005295] text-white";
     case "MathWorks":
-      return "bg-red-500/20 text-red-400 border-red-500/30";
+      return "bg-[#ED1C24] text-white";
     case "GitHub":
-      return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      return "bg-[#24292e] text-white";
     default:
-      return "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
+      return "bg-[#2E4057] text-white";
   }
 }
 
@@ -57,9 +53,9 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const [isDismissing, setIsDismissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  
   const removeJob = useJobsStore((state) => state.removeJob);
   const removeJobsByCompany = useJobsStore((state) => state.removeJobsByCompany);
-  
   const savedJobIds = useJobsStore((state) => state.savedJobIds);
   const addSavedJobId = useJobsStore((state) => state.addSavedJobId);
   const removeSavedJobId = useJobsStore((state) => state.removeSavedJobId);
@@ -73,23 +69,16 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const handleBlockCompany = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (isBlocking) return;
-    
     setIsBlocking(true);
     try {
       const headers = await getAuthHeaders();
       const response = await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({
-          company: job.company,
-        }),
+        body: JSON.stringify({ company: job.company }),
       });
-      
-      if (response.ok) {
-        removeJobsByCompany(job.company);
-      }
+      if (response.ok) removeJobsByCompany(job.company);
     } catch (error) {
       console.error("Failed to block company:", error);
     } finally {
@@ -100,9 +89,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const handleDismissJob = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (isDismissing) return;
-    
     setIsDismissing(true);
     try {
       const headers = await getAuthHeaders();
@@ -114,10 +101,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           external_id: job.external_id,
         }),
       });
-      
-      if (response.ok) {
-        removeJob(job.external_id);
-      }
+      if (response.ok) removeJob(job.external_id);
     } catch (error) {
       console.error("Failed to dismiss job:", error);
     } finally {
@@ -128,21 +112,16 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const handleToggleSave = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (isSaving) return;
-
     setIsSaving(true);
     try {
       const headers = await getAuthHeaders();
-      
       if (isSaved) {
         const res = await fetch(`${API_URL}/jobs/saved/${job.external_id}`, {
           method: "DELETE",
           headers: { ...headers },
         });
-        if (res.ok) {
-          removeSavedJobId(job.external_id);
-        }
+        if (res.ok) removeSavedJobId(job.external_id);
       } else {
         const res = await fetch(`${API_URL}/jobs/save`, {
           method: "POST",
@@ -157,9 +136,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             posted_at: job.posted_at || null,
           }),
         });
-        if (res.ok) {
-          addSavedJobId(job.external_id);
-        }
+        if (res.ok) addSavedJobId(job.external_id);
       }
     } catch (error) {
       console.error("Failed to toggle save job:", error);
@@ -170,151 +147,145 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
 
   return (
     <>
-    <Card 
-      onClick={!isLocked && job.source === "LinkedIn" ? () => setAnalysisOpen(true) : undefined}
-      className={`group relative overflow-hidden flex flex-col h-full border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:border-primary/30 hover:bg-card/80 hover:shadow-lg hover:shadow-primary/5 ${isLocked ? "pointer-events-none" : ""} ${!isLocked && job.source === "LinkedIn" ? "cursor-pointer" : ""}`}
-    >
-      {!isLocked && (
-        <div className="absolute top-3 right-3 z-10 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-
-          <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleToggleSave}
-                disabled={isSaving}
-                className={`p-1.5 rounded-md bg-background/80 border border-border/50 transition-all duration-200 ${
-                  isSaved 
-                    ? "text-blue-500 border-blue-500/50 bg-blue-500/10" 
-                    : "text-muted-foreground hover:text-blue-400 hover:border-blue-400/50 hover:bg-blue-500/10"
-                }`}
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Bookmark className={`h-4 w-4 ${isSaved ? "fill-current" : ""}`} />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>{isSaved ? "Unsave job" : "Save job"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleDismissJob}
-                disabled={isDismissing}
-                className="p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-orange-400 hover:border-orange-400/50 hover:bg-orange-500/10 transition-all duration-200"
-              >
-                {isDismissing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <X className="h-4 w-4" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>Dismiss this job only</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={handleBlockCompany}
-                disabled={isBlocking}
-                className="p-1.5 rounded-md bg-background/80 border border-border/50 text-muted-foreground hover:text-red-400 hover:border-red-400/50 hover:bg-red-500/10 transition-all duration-200"
-              >
-                {isBlocking ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ThumbsDown className="h-4 w-4" />
-                )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>Block company and remove all jobs</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-      )}
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0 pr-8">
-            <CardTitle className="line-clamp-2 text-lg font-semibold leading-tight group-hover:text-primary transition-colors">
-              {job.title}
-            </CardTitle>
-          </div>
-        </div>
-        <Badge
-          variant="outline"
-          className={`mt-2 w-fit ${getSourceColor(job.source)}`}
+      <div
+        onClick={!isLocked && job.source === "LinkedIn" ? () => setAnalysisOpen(true) : undefined}
+        className={`group relative brutal-border brutal-shadow bg-card p-6 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
+          isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
+        }`}
+      >
+        {/* Source Badge */}
+        <div
+          className={`absolute top-0 right-0 brutal-border border-t-0 border-r-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getSourceColor(
+            job.source
+          )}`}
         >
-          {job.source === "StateStreet"
-            ? "State Street"
-            : job.source === "MathWorks"
-            ? "MathWorks"
-            : job.source}
-        </Badge>
-      </CardHeader>
-
-      <CardContent className="space-y-4 flex flex-col flex-1">
-        <div className="grid gap-2 text-sm flex-1">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Building2 className="h-4 w-4 shrink-0 text-primary/70" />
-            <span className="truncate font-medium text-foreground/90">
-              {job.company}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0 text-primary/70" />
-            <span className="truncate">{job.location}</span>
-          </div>
-
-          {postedAt && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="h-4 w-4 shrink-0 text-primary/70" />
-              <span suppressHydrationWarning>{postedAt}</span>
-            </div>
-          )}
-
-          {job.source === "LinkedIn" && job.salary && (
-             <div className="flex items-start gap-2 text-sm text-green-400 font-medium">
-               <DollarSign className="h-4 w-4 shrink-0 mt-0.5" />
-               <span className="line-clamp-2">{job.salary}</span>
-             </div>
-          )}
-
-          {job.source === "LinkedIn" && job.visa && (
-             <div className="flex items-start gap-2 text-sm text-amber-400 font-medium pt-1">
-               <Globe className="h-4 w-4 shrink-0 mt-0.5" />
-               <span className="line-clamp-2">{job.visa}</span>
-             </div>
-          )}
+          {job.source}
         </div>
 
-        {!isLocked && (
-          <Button
-            asChild
-            variant="outline"
-            className="w-full gap-2 border-border/50 hover:border-primary/50 hover:bg-primary/10 pointer-events-auto"
-          >
-            <a href={job.url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-              View Job
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+        <div className="flex flex-col h-full space-y-4">
+          {/* Header */}
+          <div className="space-y-1 pr-12">
+            <h3 className="text-xl font-black leading-tight line-clamp-2 italic uppercase tracking-tighter">
+              {job.title}
+            </h3>
+            <div className="flex items-center gap-2 font-bold text-sm">
+              <Buildings weight="bold" className="h-4 w-4" />
+              <span>{job.company}</span>
+            </div>
+          </div>
 
-      {/* Job Analysis Modal — LinkedIn only */}
+          {/* Details Grid */}
+          <div className="grid grid-cols-1 gap-2 border-t-2 border-border pt-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <MapPin weight="bold" className="h-4 w-4" />
+              <span>{job.location}</span>
+            </div>
+
+            {postedAt && (
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Clock weight="bold" className="h-4 w-4" />
+                <span>{postedAt}</span>
+              </div>
+            )}
+
+            {job.source === "LinkedIn" && job.salary && (
+              <div className="flex items-center gap-2 text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-2 py-1 brutal-border w-fit shadow-[1px_1px_0px_0px_var(--border)]">
+                <CurrencyDollar weight="bold" className="h-4 w-4" />
+                <span>{job.salary}</span>
+              </div>
+            )}
+
+            {job.source === "LinkedIn" && job.visa && (
+              <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit shadow-[1px_1px_0px_0px_var(--border)]">
+                <Globe weight="bold" className="h-4 w-4" />
+                <span>{job.visa}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Action Footer */}
+          <div className="flex items-center justify-between pt-4 mt-auto">
+            <div className="flex gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleToggleSave}
+                      disabled={isSaving}
+                      className={`brutal-border p-2 hover:bg-muted transition-colors ${
+                        isSaved ? "bg-primary text-white" : "bg-card text-foreground"
+                      }`}
+                    >
+                      {isSaving ? (
+                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <BookmarkSimple weight={isSaved ? "fill" : "bold"} className="h-5 w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
+                    <p>{isSaved ? "Unsave" : "Save"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleDismissJob}
+                      disabled={isDismissing}
+                      className="brutal-border p-2 bg-card text-foreground hover:bg-[#FFEBEB] dark:hover:bg-[#4A1A1A] transition-colors"
+                    >
+                      {isDismissing ? (
+                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <X weight="bold" className="h-5 w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
+                    <p>Dismiss</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleBlockCompany}
+                      disabled={isBlocking}
+                      className="brutal-border p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors"
+                    >
+                      {isBlocking ? (
+                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <ThumbsDown weight="bold" className="h-5 w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
+                    <p>Block Company</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="brutal-border bg-[#F15152] text-white px-4 py-2 font-black text-sm flex items-center gap-2 brutal-btn-hover"
+            >
+              Apply
+              <ArrowSquareOut weight="bold" className="h-4 w-4" />
+            </a>
+          </div>
+        </div>
+      </div>
+
       {job.source === "LinkedIn" && (
         <JobAnalysisModal
           job={job}

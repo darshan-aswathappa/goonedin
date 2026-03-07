@@ -2,16 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Briefcase, Mail, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { 
+  Briefcase, 
+  Envelope, 
+  CircleNotch,
+  Rocket 
+} from "@phosphor-icons/react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-
-
 
   useEffect(() => {
     if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_AUTO_LOGIN === "true") {
@@ -56,52 +59,56 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 transition-colors duration-300">
+      <div className="absolute top-8 right-8">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center gap-4 mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20">
-            <Briefcase className="h-7 w-7 text-primary" />
+        <div className="flex flex-col items-center gap-4 mb-10">
+          <div className="brutal-border bg-[#F15152] p-4 shadow-[4px_4px_0px_0px_#000000]">
+            <Briefcase weight="fill" className="h-10 w-10 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight">Job Tracker</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Real-time job notifications
+            <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-1">
+              GoonedIn
+            </h1>
+            <p className="text-xs font-black uppercase tracking-widest text-[#606060]">
+              Job Extraction Engine
             </p>
           </div>
         </div>
 
-        <div className="rounded-xl border border-border/40 bg-card p-6 shadow-sm">
+        <div className="brutal-border bg-card p-8 shadow-[8px_8px_0px_0px_var(--border)]">
           {sent ? (
-            <div className="text-center space-y-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 mx-auto">
-                <Mail className="h-6 w-6 text-green-500" />
+            <div className="text-center space-y-6">
+              <div className="brutal-border bg-[#E6F4EA] p-4 shadow-[4px_4px_0px_0px_#000000] inline-block mx-auto">
+                <Envelope weight="bold" className="h-8 w-8 text-[#009063]" />
               </div>
-              <h2 className="text-lg font-semibold">Check your email</h2>
-              <p className="text-sm text-muted-foreground">
-                We sent a magic link to <strong>{email}</strong>. Click it to
-                sign in — no password needed.
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Check your email</h2>
+                <p className="font-bold text-[#606060] leading-tight">
+                  We sent a magic link to <strong>{email}</strong>.
+                </p>
+              </div>
+              <button
+                className="w-full brutal-border bg-white text-black py-3 font-black uppercase italic text-sm brutal-btn-hover"
                 onClick={() => setSent(false)}
               >
                 Use a different email
-              </Button>
+              </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <h2 className="text-lg font-semibold mb-1">Sign in</h2>
-                <p className="text-sm text-muted-foreground">
-                  Enter your email to receive a magic link.
+                <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-1">Sign In / Join</h2>
+                <p className="font-bold text-[#606060] text-sm leading-tight">
+                  Enter your email to receive a secure login link.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email address
+                <label htmlFor="email" className="text-xs font-black uppercase tracking-widest">
+                  Email Address
                 </label>
                 <input
                   id="email"
@@ -110,35 +117,38 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full brutal-border bg-card p-3 font-bold text-sm focus:outline-none focus:bg-muted transition-colors"
                 />
               </div>
 
               {error && (
-                <p className="text-sm text-destructive">{error}</p>
+                <div className="brutal-border bg-[#FFEBEB] p-2 text-xs font-bold text-[#D72638]">
+                  {error}
+                </div>
               )}
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <button
+                type="submit"
+                className="w-full brutal-border bg-[#F15152] text-white py-4 font-black uppercase italic text-lg brutal-btn-hover flex items-center justify-center gap-2"
+                disabled={loading}
+              >
                 {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
+                  <CircleNotch weight="bold" className="h-6 w-6 animate-spin" />
                 ) : (
                   <>
-                    <Mail className="h-4 w-4" />
+                    <Envelope weight="bold" className="h-6 w-6" />
                     Send Magic Link
                   </>
                 )}
-              </Button>
+              </button>
 
               {process.env.NODE_ENV === "development" && (
-                <div className="pt-4 mt-4 border-t border-border/40">
-                  <p className="text-xs text-muted-foreground text-center mb-2">Local Development Only</p>
-                  <Button
+                <div className="pt-6 mt-6 border-t-2 border-black border-dashed">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#606060] text-center mb-4">
+                    Local Development Only
+                  </p>
+                  <button
                     type="button"
-                    variant="outline"
-                    className="w-full gap-2"
                     disabled={loading}
                     onClick={async () => {
                       setLoading(true);
@@ -147,15 +157,17 @@ export default function LoginPage() {
                         password: process.env.NEXT_PUBLIC_DEV_PASSWORD || "password123",
                       });
                       if (error) {
-                        setError(`Dev Login Failed: ${error.message} (Ensure test@example.com / password123 exists in Supabase Auth!)`);
+                        setError(`Dev Login Failed: ${error.message}`);
                         setLoading(false);
                       } else {
                         window.location.href = "/";
                       }
                     }}
+                    className="w-full brutal-border bg-card text-foreground py-3 font-black uppercase italic text-sm brutal-btn-hover flex items-center justify-center gap-2"
                   >
-                    🚀 One-Click Dev Login
-                  </Button>
+                    <Rocket weight="bold" className="h-5 w-5 text-[#F15152]" />
+                    One-Click Dev Login
+                  </button>
                 </div>
               )}
             </form>

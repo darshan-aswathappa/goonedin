@@ -1,44 +1,50 @@
 "use client";
 
-import { Github, Linkedin, Building, Building2, Calculator } from "lucide-react";
+import { 
+  GithubLogo, 
+  LinkedinLogo, 
+  Buildings, 
+  Bank,
+  Calculator 
+} from "@phosphor-icons/react";
 
 const COMPANIES = [
-  { icon: Github, name: "GitHub" },
-  { icon: Linkedin, name: "LinkedIn" },
-  { icon: Building, name: "Fidelity" },
-  { icon: Building2, name: "State Street" },
+  { icon: GithubLogo, name: "GitHub" },
+  { icon: LinkedinLogo, name: "LinkedIn" },
+  { icon: Bank, name: "Fidelity" },
+  { icon: Buildings, name: "State Street" },
   { icon: Calculator, name: "MathWorks" },
 ];
 
 export function CompanyTicker() {
   return (
-    <div className="w-full flex flex-col items-center justify-center py-8 border-b border-border/40 bg-muted/20">
-      <p className="text-sm text-muted-foreground mb-6 font-medium">
+    <div className="w-full flex flex-col items-center justify-center py-12 brutal-border border-l-0 border-r-0 bg-white">
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#606060] mb-8">
         Trusted by people who work at
       </p>
-      <div className="relative flex w-full max-w-4xl overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-        <div className="flex shrink-0 animate-marquee items-center justify-around gap-12 px-6">
+      <div className="relative flex w-full max-w-5xl overflow-hidden">
+        <div className="flex shrink-0 animate-marquee items-center justify-around gap-16 px-8">
           {COMPANIES.map((company, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 text-muted-foreground/80 grayscale hover:grayscale-0 transition duration-300"
+              className="flex items-center gap-3 text-black transition-transform hover:scale-110 active:scale-95 duration-200"
             >
-              <company.icon className="h-7 w-7" />
-              <span className="font-semibold tracking-tight text-lg">{company.name}</span>
+              <company.icon weight="bold" className="h-8 w-8 text-[#F15152]" />
+              <span className="font-black italic uppercase tracking-tighter text-2xl">{company.name}</span>
             </div>
           ))}
         </div>
         <div
-          className="flex shrink-0 animate-marquee items-center justify-around gap-12 px-6"
+          className="flex shrink-0 animate-marquee items-center justify-around gap-16 px-8"
           aria-hidden="true"
         >
           {COMPANIES.map((company, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 text-muted-foreground/80 grayscale hover:grayscale-0 transition duration-300"
+              className="flex items-center gap-3 text-black transition-transform hover:scale-110 active:scale-95 duration-200"
             >
-              <company.icon className="h-7 w-7" />
-              <span className="font-semibold tracking-tight text-lg">{company.name}</span>
+              <company.icon weight="bold" className="h-8 w-8 text-[#F15152]" />
+              <span className="font-black italic uppercase tracking-tighter text-2xl">{company.name}</span>
             </div>
           ))}
         </div>

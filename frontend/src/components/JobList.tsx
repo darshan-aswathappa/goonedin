@@ -3,9 +3,12 @@
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobCard } from "./JobCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Briefcase, Loader2, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { 
+  Briefcase, 
+  Lock, 
+  CircleNotch,
+  WarningCircle 
+} from "@phosphor-icons/react";
 import Link from "next/link";
 
 interface JobListProps {
@@ -73,29 +76,14 @@ const DUMMY_JOBS: Job[] = [
 
 function JobCardSkeleton() {
   return (
-    <Card className="overflow-hidden border-border/50 bg-card/50">
-      <CardHeader className="pb-3">
-        <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="mt-2 h-5 w-20 animate-pulse rounded bg-muted" />
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-24 animate-pulse rounded bg-muted" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 animate-pulse rounded bg-muted" />
-            <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-          </div>
-        </div>
-        <div className="h-10 w-full animate-pulse rounded bg-muted" />
-      </CardContent>
-    </Card>
+    <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] space-y-4 h-full flex flex-col">
+      <div className="h-6 w-3/4 animate-pulse bg-muted brutal-border" />
+      <div className="h-4 w-1/2 animate-pulse bg-muted brutal-border opacity-50" />
+      <div className="pt-4 border-t-2 border-black dark:border-white space-y-2 mt-auto">
+        <div className="h-4 w-2/3 animate-pulse bg-muted brutal-border" />
+        <div className="h-4 w-1/3 animate-pulse bg-muted brutal-border" />
+      </div>
+    </div>
   );
 }
 
@@ -109,7 +97,7 @@ export function JobList({
 
   if (isLoading && !isLocked) {
     return (
-      <div className="grid gap-4 pb-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      <div className="job-card-grid pb-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <JobCardSkeleton key={i} />
         ))}
@@ -119,15 +107,15 @@ export function JobList({
 
   if (displayJobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="rounded-full bg-muted/50 p-4 mb-4">
-          <Briefcase className="h-8 w-8 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] mb-6">
+          <Briefcase weight="bold" className="h-12 w-12 text-muted-foreground" />
         </div>
-        <p className="text-lg font-medium text-muted-foreground">
+        <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2">
           {emptyMessage}
-        </p>
-        <p className="text-sm text-muted-foreground/70 mt-1">
-          New jobs will appear here in real-time
+        </h3>
+        <p className="font-bold text-muted-foreground">
+          New jobs will appear here in real-time.
         </p>
       </div>
     );
@@ -135,47 +123,39 @@ export function JobList({
 
   return (
     <div className="relative">
-      {isLocked ? (
-        <div className="pr-4 pb-4 overflow-hidden pt-2 pointer-events-none">
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      <div className={isLocked ? "pointer-events-none" : ""}>
+        <ScrollArea className={`${isLocked ? "h-[600px] overflow-hidden" : "h-[calc(100vh-220px)]"} pr-4 pb-8`}>
+          <div className="job-card-grid">
             {displayJobs.map((job, index) => (
               <div 
-                key={job.external_id} 
-                className={index >= 3 ? "blur-sm opacity-50 select-none transition-all duration-300" : ""}
+                key={job.external_id}
+                className={`h-full ${isLocked && index >= 3 ? "blur-[2px] opacity-40" : ""}`}
               >
                 <JobCard job={job} isLocked={isLocked} />
               </div>
             ))}
           </div>
-        </div>
-      ) : (
-        <ScrollArea className="h-[calc(100vh-220px)] pr-4">
-          <div className="grid gap-4 pb-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-            {displayJobs.map((job) => (
-              <div key={job.external_id}>
-                <JobCard job={job} />
-              </div>
-            ))}
-          </div>
         </ScrollArea>
-      )}
+      </div>
 
       {isLocked && (
-        <div className="absolute bottom-0 left-0 right-4 flex h-[350px] flex-col items-center justify-end bg-gradient-to-t from-background/95 via-background/80 to-transparent pb-10 pt-20 pointer-events-none">
-          <div className="flex flex-col items-center gap-5 rounded-2xl border border-border/40 bg-card/95 p-8 shadow-2xl backdrop-blur-xl transition-all duration-300 hover:shadow-primary/5 pointer-events-auto">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/20 shadow-inner">
-              <Lock className="h-7 w-7 text-primary" />
+        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px]">
+          <div className="brutal-border bg-card p-10 shadow-[8px_8px_0px_0px_var(--border)] flex flex-col items-center gap-6 max-w-md text-center">
+            <div className="brutal-border bg-primary p-4 shadow-[4px_4px_0px_0px_var(--border)]">
+              <Lock weight="fill" className="h-10 w-10 text-white" />
             </div>
-            <div className="text-center space-y-2">
-              <h3 className="font-bold text-xl tracking-tight">Sign in to view all jobs</h3>
-              <p className="text-sm text-muted-foreground max-w-[280px] leading-relaxed">
-                Create a free account to unlock exclusive job postings, personalized alerts, and more.
+            <div className="space-y-2">
+              <h3 className="text-3xl font-black uppercase italic tracking-tighter">
+                Access Denied
+              </h3>
+              <p className="font-bold text-muted-foreground leading-tight">
+                Create an account to unlock exclusive job postings and real-time alerts.
               </p>
             </div>
-            <Link href="/login" className="mt-4 w-full">
-              <Button className="w-full h-11 font-medium shadow-sm transition-transform hover:scale-[1.02]" size="lg">
-                See all jobs
-              </Button>
+            <Link href="/login" className="w-full">
+              <button className="w-full brutal-border bg-primary text-white py-4 font-black uppercase italic text-xl brutal-btn-hover">
+                Sign In Now
+              </button>
             </Link>
           </div>
         </div>

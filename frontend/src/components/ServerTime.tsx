@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Clock } from "lucide-react";
+import { Clock } from "@phosphor-icons/react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -30,8 +30,8 @@ export function ServerTime() {
   if (!serverTime) return null;
 
   return (
-    <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Clock className="h-3 w-3" />
+    <div className="hidden md:flex items-center gap-2 brutal-border bg-white px-3 py-1 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_#000000]">
+      <Clock weight="bold" className="h-4 w-4 text-[#F15152]" />
       <span>{serverTime}</span>
     </div>
   );
