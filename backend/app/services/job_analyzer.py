@@ -203,10 +203,9 @@ async def run_job_analysis(
     try:
         logger.info(f"[JobAnalyzer] Starting analysis for job {external_id}")
 
-        # 1. Extract job ID
-        job_id = extract_job_id_from_url(job_url)
+        job_id = external_id
         if not job_id:
-            logger.warning(f"[JobAnalyzer] Could not extract job ID from URL: {job_url}")
+            logger.warning(f"[JobAnalyzer] No job ID provided: {job_url}")
             return None
 
         # 2. Fetch job description
@@ -254,9 +253,9 @@ async def run_fast_salary_visa_analysis(
     """
     logger.info(f"[JobAnalyzer] Starting fast salary/visa analysis for job {external_id}")
 
-    job_id = extract_job_id_from_url(job_url)
+    job_id = external_id
     if not job_id:
-        logger.warning(f"[JobAnalyzer] Could not extract job ID from URL for fast analysis: {job_url}")
+        logger.warning(f"[JobAnalyzer] No job ID provided for fast analysis: {job_url}")
         return None
 
     description = await fetch_job_description(job_id)
