@@ -19,6 +19,8 @@ class UserContext:
     telegram_chat_id: Optional[str]
     hf_task: Optional[asyncio.Task] = field(default=None)
     lf_task: Optional[asyncio.Task] = field(default=None)
+    analysis_worker_task: Optional[asyncio.Task] = field(default=None)
+    pubsub_listener_task: Optional[asyncio.Task] = field(default=None)
 
 
 # Global registry: user_id -> UserContext

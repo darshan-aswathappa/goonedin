@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
 import random
+import json as json_module
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from typing import Optional, Any, Dict, List
@@ -75,6 +76,10 @@ async def lifespan(app: FastAPI):
             ctx.hf_task.cancel()
         if ctx.lf_task and not ctx.lf_task.done():
             ctx.lf_task.cancel()
+        if ctx.analysis_worker_task and not ctx.analysis_worker_task.done():
+            ctx.analysis_worker_task.cancel()
+        if ctx.pubsub_listener_task and not ctx.pubsub_listener_task.done():
+            ctx.pubsub_listener_task.cancel()
         await ctx.redis_client.aclose()
 
 
@@ -177,52 +182,17 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         total_finds = total_finds + 1  # type: ignore
 
         if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
-            # Fire full background analysis for LinkedIn jobs before broadcasting
-            async def background_full_analysis(j_dict, j_key, j_obj):
-                try:
-                    logger.info(f"Running full analysis for {j_dict['external_id']} before broadcasting...")
-                    analysis_data = await run_job_analysis(
-                        external_id=j_dict["external_id"],
-                        job_url=j_dict["url"],
-                        redis_client=rc,
-                        api_key=settings.DEEPSEEK_API_KEY,
-                    )
-                    
-                    if analysis_data:
-                        if analysis_data.get("compensation"):
-                            j_dict["salary"] = analysis_data["compensation"]
-                        if analysis_data.get("visa_status"):
-                            j_dict["visa"] = analysis_data["visa_status"]
-                        # Embed analysis directly into job dict so frontend has instant access
-                        j_dict["analysis"] = analysis_data
-                    
-                    # Make it visible
-                    j_dict["visible"] = True
-                    await mark_as_seen(rc, j_key, j_dict)
-                    
-                    # Broadcast update to frontend via WS
-                    await manager.broadcast(ctx.user_id, {
-                        "type": "NEW_JOB",
-                        "data": j_dict
-                    })
-                    
-                    await send_telegram_alert(j_obj, ctx.telegram_bot_token, ctx.telegram_chat_id)
-                    j_dict["is_notified"] = True
-                    await mark_as_seen(rc, j_key, j_dict)
-                    
-                    logger.info(f"New Target (Analyzed): {j_obj.title} @ {j_obj.company} ({j_obj.location})")
-                except Exception as e:
-                    logger.error(f"Error in full background analysis for {j_dict['external_id']}: {e}")
-                    # Fallback to broadcasting it anyway
-                    j_dict["visible"] = True
-                    await mark_as_seen(rc, j_key, j_dict)
-                    await manager.broadcast(ctx.user_id, {
-                        "type": "NEW_JOB",
-                        "data": j_dict
-                    })
-                    await send_telegram_alert(j_obj, ctx.telegram_bot_token, ctx.telegram_chat_id)
-
-            asyncio.create_task(background_full_analysis(job_dict.copy(), job_key, job))
+            # Push to analysis queue — worker will process, retry, and broadcast
+            queue_key = f"analysis_queue:{ctx.user_id}"
+            queue_item = json_module.dumps({
+                "external_id": job_dict["external_id"],
+                "job_key": job_key,
+                "job_url": job_dict["url"],
+                "source": job_dict["source"],
+                "retry_count": 0,
+            })
+            await rc.lpush(queue_key, queue_item)
+            logger.info(f"Queued job {job_dict['external_id']} for analysis")
         else:
             job_dict["visible"] = True
             await mark_as_seen(rc, job_key, job_dict)
@@ -289,6 +259,164 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     return total_finds
 
 
+# ---------------------------------------------------------------------------
+# Analysis Worker — BRPOP loop with retries
+# ---------------------------------------------------------------------------
+ANALYSIS_MAX_RETRIES = 2
+
+async def run_analysis_worker(ctx: UserContext):
+    """
+    Continuously pops jobs from the analysis queue, runs DeepSeek analysis,
+    and publishes results via Redis Pub/Sub. Retries up to ANALYSIS_MAX_RETRIES
+    times on failure before marking the job as analysis_unavailable.
+    """
+    rc = ctx.redis_client
+    queue_key = f"analysis_queue:{ctx.user_id}"
+    publish_channel = f"job_ready:{ctx.user_id}"
+    logger.info(f"[AnalysisWorker] Started for user {ctx.user_id} (db={ctx.redis_db_index})")
+
+    while True:
+        try:
+            # BRPOP blocks until an item is available (timeout=5s to allow cancellation checks)
+            result = await rc.brpop(queue_key, timeout=5)
+            if result is None:
+                continue
+
+            _, raw = result
+            task = json_module.loads(raw)
+            external_id = task["external_id"]
+            job_key = task["job_key"]
+            job_url = task["job_url"]
+            retry_count = task.get("retry_count", 0)
+
+            logger.info(
+                f"[AnalysisWorker] Processing {external_id} "
+                f"(attempt {retry_count + 1}/{ANALYSIS_MAX_RETRIES + 1})"
+            )
+
+            # Load the current job dict from Redis
+            raw_job = await rc.get(job_key)
+            if not raw_job:
+                logger.warning(f"[AnalysisWorker] Job {job_key} not found in Redis, skipping.")
+                continue
+            job_dict = json_module.loads(raw_job)
+
+            try:
+                analysis_data = await run_job_analysis(
+                    external_id=external_id,
+                    job_url=job_url,
+                    redis_client=rc,
+                    api_key=settings.DEEPSEEK_API_KEY,
+                )
+
+                if analysis_data:
+                    if analysis_data.get("compensation"):
+                        job_dict["salary"] = analysis_data["compensation"]
+                    if analysis_data.get("visa_status"):
+                        job_dict["visa"] = analysis_data["visa_status"]
+                    job_dict["analysis"] = analysis_data
+                    job_dict["analysis_status"] = "completed"
+                else:
+                    raise ValueError("run_job_analysis returned None")
+
+            except Exception as e:
+                logger.warning(
+                    f"[AnalysisWorker] Analysis failed for {external_id} "
+                    f"(attempt {retry_count + 1}): {e}"
+                )
+                if retry_count < ANALYSIS_MAX_RETRIES:
+                    # Re-queue with incremented retry count
+                    task["retry_count"] = retry_count + 1
+                    await rc.lpush(queue_key, json_module.dumps(task))
+                    logger.info(
+                        f"[AnalysisWorker] Re-queued {external_id} "
+                        f"for retry {retry_count + 2}/{ANALYSIS_MAX_RETRIES + 1}"
+                    )
+                    continue
+                else:
+                    # Hard fail — post without analysis
+                    logger.error(
+                        f"[AnalysisWorker] Hard fail for {external_id} after "
+                        f"{ANALYSIS_MAX_RETRIES + 1} attempts. Posting without analysis."
+                    )
+                    job_dict["analysis_status"] = "unavailable"
+
+            # Make visible and persist
+            job_dict["visible"] = True
+            await mark_as_seen(rc, job_key, job_dict)
+
+            # Publish to Pub/Sub for WebSocket broadcast
+            await rc.publish(publish_channel, json_module.dumps(job_dict))
+
+            # Send Telegram alert
+            try:
+                from app.models.job import JobCreate
+                job_obj = JobCreate(
+                    title=job_dict.get("title", ""),
+                    company=job_dict.get("company", ""),
+                    location=job_dict.get("location", ""),
+                    url=job_dict.get("url", ""),
+                    source=job_dict.get("source", "LinkedIn"),
+                    external_id=external_id,
+                    posted_at=None,
+                )
+                await send_telegram_alert(job_obj, ctx.telegram_bot_token, ctx.telegram_chat_id)
+                job_dict["is_notified"] = True
+                await mark_as_seen(rc, job_key, job_dict)
+            except Exception as te:
+                logger.warning(f"[AnalysisWorker] Telegram alert failed for {external_id}: {te}")
+
+            status = job_dict.get("analysis_status", "unknown")
+            logger.info(f"[AnalysisWorker] Done {external_id} — status={status}")
+
+        except asyncio.CancelledError:
+            logger.info(f"[AnalysisWorker] Cancelled for user {ctx.user_id}")
+            break
+        except Exception as e:
+            logger.error(f"[AnalysisWorker] Unexpected error: {e}")
+            await asyncio.sleep(2)
+
+
+# ---------------------------------------------------------------------------
+# Pub/Sub Listener — bridges Redis Pub/Sub → WebSocket
+# ---------------------------------------------------------------------------
+async def run_pubsub_listener(ctx: UserContext):
+    """
+    Subscribes to the job_ready:{user_id} Redis Pub/Sub channel and
+    broadcasts each message to the user's WebSocket connections.
+    """
+    rc = ctx.redis_client
+    channel = f"job_ready:{ctx.user_id}"
+    logger.info(f"[PubSubListener] Subscribed to {channel}")
+
+    pubsub = rc.pubsub()
+    await pubsub.subscribe(channel)
+
+    try:
+        while True:
+            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=5.0)
+            if message is None:
+                continue
+            if message["type"] == "message":
+                try:
+                    job_data = json_module.loads(message["data"])
+                    await manager.broadcast(ctx.user_id, {
+                        "type": "NEW_JOB",
+                        "data": job_data,
+                    })
+                    logger.info(
+                        f"[PubSubListener] Broadcast job {job_data.get('external_id', '?')} "
+                        f"to user {ctx.user_id}"
+                    )
+                except Exception as e:
+                    logger.error(f"[PubSubListener] Failed to broadcast: {e}")
+    except asyncio.CancelledError:
+        logger.info(f"[PubSubListener] Cancelled for user {ctx.user_id}")
+    finally:
+        await pubsub.unsubscribe(channel)
+        await pubsub.aclose()
+
+
 async def run_high_frequency_loop(ctx: UserContext):
     logger.info(f"[HF] Scraper started (db={ctx.redis_db_index})")
     while True:
@@ -348,6 +476,10 @@ def start_user_scrapers(ctx: UserContext) -> None:
         ctx.hf_task = asyncio.create_task(run_high_frequency_loop(ctx))
     if ctx.lf_task is None or ctx.lf_task.done():
         ctx.lf_task = asyncio.create_task(run_low_frequency_loop(ctx))
+    if ctx.analysis_worker_task is None or ctx.analysis_worker_task.done():
+        ctx.analysis_worker_task = asyncio.create_task(run_analysis_worker(ctx))
+    if ctx.pubsub_listener_task is None or ctx.pubsub_listener_task.done():
+        ctx.pubsub_listener_task = asyncio.create_task(run_pubsub_listener(ctx))
     
     ctx._scrapers_started = True
 

@@ -103,6 +103,14 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
               <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-[#F15152] mb-4" />
               <h3 className="text-xl font-black uppercase italic">Scanning...</h3>
             </div>
+          ) : job.analysis_status === "unavailable" && !analysis ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <WarningCircle weight="bold" className="h-12 w-12 text-[#F0A500] mb-4" />
+              <h3 className="text-xl font-black uppercase italic">Analysis Unavailable</h3>
+              <p className="font-bold text-muted-foreground mt-2 text-center max-w-sm">
+                The AI analysis could not be completed for this job after multiple attempts. You can still view the job posting directly.
+              </p>
+            </div>
           ) : analysis ? (
             <div className="space-y-8">
               {/* Summary */}
@@ -188,7 +196,7 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
             <div className="flex flex-col items-center justify-center py-12">
               <WarningCircle weight="bold" className="h-12 w-12 text-[#606060] mb-4" />
               <h3 className="text-xl font-black uppercase italic">No Data Found</h3>
-              <p className="font-bold text-[#606060]">Try again later.</p>
+              <p className="font-bold text-[#606060]">Analysis data is not yet available.</p>
             </div>
           )}
         </div>

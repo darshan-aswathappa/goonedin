@@ -27,6 +27,7 @@ export interface Job {
   created_at?: string;
   ttl?: number;
   analysis?: JobAnalysis;
+  analysis_status?: "completed" | "unavailable" | null;
 }
 
 const matchesLocationFilter = (job: Job): boolean => {
