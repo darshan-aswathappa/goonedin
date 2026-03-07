@@ -16,8 +16,7 @@ const WS_BASE_URL =
   process.env.NEXT_PUBLIC_WS_URL?.replace("/ws/jobs", "/ws/logs") ||
   "ws://localhost:8000/ws/logs";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const PING_INTERVAL = 30000;
 const MAX_LOGS = 1000;

@@ -16,7 +16,6 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface Resume {

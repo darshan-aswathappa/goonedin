@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Briefcase, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+
+
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_AUTO_LOGIN === "true") {
+      const autoLogin = async () => {
+        setLoading(true);
+        const { error } = await supabase.auth.signInWithPassword({
+          email: process.env.NEXT_PUBLIC_DEV_EMAIL || "test@example.com",
+          password: process.env.NEXT_PUBLIC_DEV_PASSWORD || "password123",
+        });
+        if (!error) {
+          window.location.href = "/";
+        } else {
+          setError(`Auto-login failed: ${error.message}`);
+          setLoading(false);
+        }
+      };
+      autoLogin();
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +131,33 @@ export default function LoginPage() {
                   </>
                 )}
               </Button>
+
+              {process.env.NODE_ENV === "development" && (
+                <div className="pt-4 mt-4 border-t border-border/40">
+                  <p className="text-xs text-muted-foreground text-center mb-2">Local Development Only</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    disabled={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      const { error } = await supabase.auth.signInWithPassword({
+                        email: process.env.NEXT_PUBLIC_DEV_EMAIL || "test@example.com",
+                        password: process.env.NEXT_PUBLIC_DEV_PASSWORD || "password123",
+                      });
+                      if (error) {
+                        setError(`Dev Login Failed: ${error.message} (Ensure test@example.com / password123 exists in Supabase Auth!)`);
+                        setLoading(false);
+                      } else {
+                        window.location.href = "/";
+                      }
+                    }}
+                  >
+                    🚀 One-Click Dev Login
+                  </Button>
+                </div>
+              )}
             </form>
           )}
         </div>
