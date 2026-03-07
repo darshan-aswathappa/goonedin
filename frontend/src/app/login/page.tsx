@@ -64,19 +64,22 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
       <div className="w-full max-w-md">
-        <div className="flex flex-col items-center gap-4 mb-10">
-          <div className="brutal-border bg-[#F15152] p-4 shadow-[4px_4px_0px_0px_#000000]">
-            <Briefcase weight="fill" className="h-10 w-10 text-white" />
-          </div>
-          <div className="text-center">
-            <h1 className="text-4xl font-black uppercase italic tracking-tighter leading-none mb-1">
+        <div className="flex justify-between items-center h-[42px] mb-10">
+          <div className="flex items-center gap-3">
+            <div className="brutal-border bg-primary p-2 shadow-[2px_2px_0px_0px_var(--border)]">
+              <Briefcase weight="fill" className="h-5 w-5 text-white" />
+            </div>
+            <h1 className="text-xl font-black uppercase italic tracking-tighter leading-none">
               GoonedIn
             </h1>
-            <p className="text-xs font-black uppercase tracking-widest text-[#606060]">
-              Job Extraction Engine
-            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
           </div>
         </div>
+        <p className="text-xs font-black uppercase tracking-widest text-[#606060] mb-4">
+          Job Extraction Engine
+        </p>
 
         <div className="brutal-border bg-card p-8 shadow-[8px_8px_0px_0px_var(--border)]">
           {sent ? (

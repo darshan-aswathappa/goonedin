@@ -269,15 +269,15 @@ export function ResumeManager() {
   return (
     <>
       <Card className="border-gray-800 bg-[#161b22]">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-b-2 border-border">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800/50 text-cyan-400">
-              <FileText className="h-5 w-5" />
+            <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
+              <FileText className="h-6 w-6" />
             </div>
             <div>
-              <CardTitle className="text-lg text-white">Resume Management</CardTitle>
-              <CardDescription className="text-gray-500">
-                Upload resumes (PDF). AI will automatically analyze skills, education &amp; more.
+              <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">Resume Management</CardTitle>
+              <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1">
+                Upload resumes (PDF). AI will automatically analyze skills.
               </CardDescription>
             </div>
           </div>
@@ -286,21 +286,21 @@ export function ResumeManager() {
           {/* Upload Zone */}
           <div
             {...getRootProps()}
-            className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200 ${
+            className={`relative flex flex-col items-center justify-center brutal-border border-dashed p-10 text-center transition-all duration-200 ${
               isDragActive
-                ? "border-cyan-500 bg-cyan-500/10"
-                : "border-gray-700 bg-gray-900/50 hover:border-gray-500 hover:bg-gray-800/50"
+                ? "bg-primary/10 border-primary"
+                : "bg-muted border-border hover:bg-muted/80"
             } ${isUploading ? "pointer-events-none opacity-60" : "cursor-pointer"}`}
           >
             <input {...getInputProps()} />
             
-            <div className="mb-4 rounded-full bg-gray-800 p-3 text-cyan-400">
-              <UploadCloud className="h-6 w-6" />
+            <div className="mb-4 brutal-border bg-primary p-3 shadow-[2px_2px_0px_0px_var(--border)]">
+              <UploadCloud className="h-8 w-8 text-white" />
             </div>
-            <h3 className="mb-1 text-sm font-medium text-white">
+            <h3 className="mb-1 text-sm font-black uppercase tracking-tighter leading-none">
               {isDragActive ? "Drop resumes here" : "Click or drag resumes here"}
             </h3>
-            <p className="text-xs text-gray-500">PDF files up to 10MB</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">PDF files up to 10MB</p>
 
             {isUploading && (
               <div className="absolute inset-x-8 bottom-4 flex flex-col items-center gap-2">
@@ -420,145 +420,150 @@ export function ResumeManager() {
 
       {/* Analysis Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl border-gray-800 bg-[#0d1117] text-white sm:max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <Brain className="h-5 w-5 text-cyan-400" />
+        <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] sm:max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
+          <DialogHeader className="p-6 bg-foreground text-background space-y-1 relative">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-black italic uppercase tracking-tighter text-background">
+              <Brain className="h-6 w-6 text-primary" />
               AI Resume Analysis
             </DialogTitle>
-            <DialogDescription className="text-gray-400">
+            <DialogDescription className="text-xs font-black uppercase tracking-widest text-background/80">
               {selectedResume?.filename}
             </DialogDescription>
+            <button
+              onClick={() => setDialogOpen(false)}
+              className="absolute top-6 right-6 p-2 bg-background text-foreground brutal-border shadow-[2px_2px_0px_0px_var(--border)] hover:bg-primary hover:text-white transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
 
-          {isLoadingAnalysis ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="mb-3 h-8 w-8 animate-spin text-cyan-400" />
-              <p className="text-sm text-gray-400">Loading analysis...</p>
-            </div>
-          ) : analysisStatus === "processing" ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="mb-4 rounded-full bg-amber-500/10 p-4">
-                <Loader2 className="h-8 w-8 animate-spin text-amber-400" />
+          <div className="p-8">
+            {isLoadingAnalysis ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="mb-3 h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Loading analysis...</p>
               </div>
-              <h3 className="mb-1 font-medium text-white">Analysis in Progress</h3>
-              <p className="text-center text-sm text-gray-400">
-                DeepSeek AI is analyzing your resume. This typically takes 15–30 seconds.
-                <br />
-                You can close this and check back shortly.
-              </p>
-            </div>
-          ) : analysisStatus === "failed" ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="mb-4 rounded-full bg-red-500/10 p-4">
-                <AlertCircle className="h-8 w-8 text-red-400" />
+            ) : analysisStatus === "processing" ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 brutal-border bg-muted p-4 shadow-[4px_4px_0px_0px_var(--border)]">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+                <h3 className="mb-1 text-lg font-black italic uppercase tracking-tighter">Analysis in Progress</h3>
+                <p className="text-sm font-bold text-muted-foreground leading-tight">
+                  DeepSeek AI is analyzing your resume. This typically takes 15–30 seconds.
+                  <br />
+                  You can close this and check back shortly.
+                </p>
               </div>
-              <h3 className="mb-1 font-medium text-white">Analysis Failed</h3>
-              <p className="text-center text-sm text-gray-400">
-                Something went wrong during the AI analysis. Please try re-uploading the resume.
-              </p>
-            </div>
-          ) : analysis ? (
-            <div className="space-y-6 py-2">
-              {/* Summary */}
-              {analysis.summary && (
-                <div className="rounded-lg border border-gray-800 bg-gray-900/40 p-4">
-                  <div className="mb-2 flex items-center gap-2 text-sm font-medium text-cyan-400">
-                    <Sparkles className="h-4 w-4" />
-                    Professional Summary
-                  </div>
-                  <p className="text-sm leading-relaxed text-gray-300">{analysis.summary}</p>
+            ) : analysisStatus === "failed" ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="mb-4 brutal-border bg-[#FFEBEB] p-4 shadow-[4px_4px_0px_0px_var(--border)]">
+                  <AlertCircle className="h-8 w-8 text-[#D72638]" />
                 </div>
-              )}
+                <h3 className="mb-1 text-lg font-black italic uppercase tracking-tighter">Analysis Failed</h3>
+                <p className="text-sm font-bold text-muted-foreground leading-tight">
+                  Something went wrong during the AI analysis. Please try re-uploading the resume.
+                </p>
+              </div>
+            ) : analysis ? (
+              <div className="space-y-8">
+                {/* Summary */}
+                {analysis.summary && (
+                  <div className="brutal-border bg-muted p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+                    <div className="mb-4 flex items-center gap-2 text-sm font-black italic uppercase tracking-tighter text-primary">
+                      <Sparkles className="h-5 w-5" />
+                      Professional Summary
+                    </div>
+                    <p className="text-sm font-bold leading-relaxed">{analysis.summary}</p>
+                  </div>
+                )}
 
-              {/* Education */}
-              {analysis.education.length > 0 && (
-                <div>
-                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-200">
-                    <GraduationCap className="h-4 w-4 text-blue-400" />
-                    Education
+                {/* Education */}
+                {analysis.education && analysis.education.length > 0 && (
+                  <div>
+                    <div className="mb-4 flex items-center gap-2 text-sm font-black italic uppercase tracking-tighter text-foreground">
+                      <GraduationCap className="h-5 w-5 text-primary" />
+                      Education
+                    </div>
+                    <div className="space-y-2">
+                      {analysis.education.map((item, i) => (
+                        <div
+                          key={i}
+                          className="brutal-border bg-card px-4 py-3 text-sm font-bold shadow-[2px_2px_0px_0px_var(--border)]"
+                        >
+                          {item}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {analysis.education.map((item, i) => (
-                      <div
-                        key={i}
-                        className="rounded-md border border-gray-800 bg-gray-900/30 px-3 py-2 text-sm text-gray-300"
-                      >
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Certifications */}
-              {analysis.certifications.length > 0 && (
-                <div>
-                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-200">
-                    <Award className="h-4 w-4 text-yellow-400" />
-                    Certifications
+                {/* Certifications */}
+                {analysis.certifications && analysis.certifications.length > 0 && (
+                  <div>
+                    <div className="mb-4 flex items-center gap-2 text-sm font-black italic uppercase tracking-tighter text-foreground">
+                      <Award className="h-5 w-5 text-primary" />
+                      Certifications
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.certifications.map((cert, i) => (
+                        <div
+                          key={i}
+                          className="brutal-border bg-card px-3 py-1 text-xs font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)]"
+                        >
+                          {cert}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.certifications.map((cert, i) => (
-                      <Badge
-                        key={i}
-                        variant="outline"
-                        className="border-yellow-500/30 bg-yellow-500/10 text-yellow-300"
-                      >
-                        {cert}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Skills */}
-              {analysis.skills.length > 0 && (
-                <div>
-                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-200">
-                    <Code className="h-4 w-4 text-green-400" />
-                    Skills
+                {/* Skills */}
+                {analysis.skills && analysis.skills.length > 0 && (
+                  <div>
+                    <div className="mb-4 flex items-center gap-2 text-sm font-black italic uppercase tracking-tighter text-foreground">
+                      <Code className="h-5 w-5 text-primary" />
+                      Skills
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.skills.map((skill, i) => (
+                        <div
+                          key={i}
+                          className="brutal-border bg-primary text-white px-3 py-1 text-xs font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)]"
+                        >
+                          {skill}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.skills.map((skill, i) => (
-                      <Badge
-                        key={i}
-                        variant="outline"
-                        className="border-green-500/30 bg-green-500/10 text-green-300"
-                      >
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Project Keywords */}
-              {analysis.project_keywords.length > 0 && (
-                <div>
-                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-200">
-                    <Sparkles className="h-4 w-4 text-purple-400" />
-                    Project &amp; Experience Keywords
+                {/* Project Keywords */}
+                {analysis.project_keywords && analysis.project_keywords.length > 0 && (
+                  <div>
+                    <div className="mb-4 flex items-center gap-2 text-sm font-black italic uppercase tracking-tighter text-foreground">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      Experience Keywords
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysis.project_keywords.map((kw, i) => (
+                        <div
+                          key={i}
+                          className="brutal-border bg-muted px-3 py-1 text-xs font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)]"
+                        >
+                          {kw}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {analysis.project_keywords.map((kw, i) => (
-                      <Badge
-                        key={i}
-                        variant="outline"
-                        className="border-purple-500/30 bg-purple-500/10 text-purple-300"
-                      >
-                        {kw}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-sm text-gray-400">No analysis data available.</p>
-            </div>
-          )}
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">No analysis data available.</p>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>

@@ -18,8 +18,8 @@ const COMPANIES = [
 
 export function CompanyTicker() {
   return (
-    <div className="w-full flex flex-col items-center justify-center py-12 brutal-border border-l-0 border-r-0 bg-white">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#606060] mb-8">
+    <div className="w-full flex flex-col items-center justify-center py-12 border-y-2 border-border bg-card">
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground mb-8">
         Trusted by people who work at
       </p>
       <div className="relative flex w-full max-w-5xl overflow-hidden">
@@ -27,9 +27,9 @@ export function CompanyTicker() {
           {COMPANIES.map((company, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 text-black transition-transform hover:scale-110 active:scale-95 duration-200"
+              className="flex items-center gap-3 text-foreground transition-transform hover:scale-110 active:scale-95 duration-200"
             >
-              <company.icon weight="bold" className="h-8 w-8 text-[#F15152]" />
+              <company.icon weight="bold" className="h-8 w-8 text-primary" />
               <span className="font-black italic uppercase tracking-tighter text-2xl">{company.name}</span>
             </div>
           ))}
@@ -41,9 +41,9 @@ export function CompanyTicker() {
           {COMPANIES.map((company, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 text-black transition-transform hover:scale-110 active:scale-95 duration-200"
+              className="flex items-center gap-3 text-foreground transition-transform hover:scale-110 active:scale-95 duration-200"
             >
-              <company.icon weight="bold" className="h-8 w-8 text-[#F15152]" />
+              <company.icon weight="bold" className="h-8 w-8 text-primary" />
               <span className="font-black italic uppercase tracking-tighter text-2xl">{company.name}</span>
             </div>
           ))}

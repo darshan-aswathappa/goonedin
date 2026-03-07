@@ -114,21 +114,21 @@ function ConfigEditor({
     : values;
 
   return (
-    <Card className="border-gray-800 bg-[#161b22]">
-      <CardHeader className="pb-3">
+    <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
+      <CardHeader className="pb-3 border-b-2 border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-800/50 text-cyan-400">
+            <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
               {section.icon}
             </div>
             <div>
-              <CardTitle className="text-lg text-white">{section.title}</CardTitle>
-              <CardDescription className="text-gray-500">{section.description}</CardDescription>
+              <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">{section.title}</CardTitle>
+              <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1">{section.description}</CardDescription>
             </div>
           </div>
-          <Badge variant="secondary" className="bg-gray-800 text-gray-300">
+          <div className="brutal-border bg-muted px-2 py-1 text-[10px] font-black uppercase tracking-widest">
             {values.length} items
-          </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -139,15 +139,15 @@ function ConfigEditor({
             onChange={(e) => setNewItem(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={`Add new ${section.title.toLowerCase().slice(0, -1)}...`}
-            className="flex-1 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="flex-1 brutal-border bg-muted px-3 py-2 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
           />
           <Button
             onClick={handleAdd}
             disabled={!newItem.trim()}
             size="sm"
-            className="bg-cyan-600 hover:bg-cyan-700"
+            className="brutal-border bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-10 w-10"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-5 w-5" />
           </Button>
         </div>
 
@@ -318,36 +318,26 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+              className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
               title="Back to Dashboard"
             >
-              <ArrowLeft className="h-4 w-4 text-gray-400" />
+              <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-semibold tracking-wide text-white">
+              <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">
                 Settings
               </h1>
-              <p className="text-sm text-gray-500">
-                Configure job search filters and preferences
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+                Configure job search filters and alerts
               </p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchConfig}
-            disabled={loading}
-            className="border-gray-700 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
         </div>
 
         {loading ? (

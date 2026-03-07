@@ -165,36 +165,41 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] p-6 font-mono">
+    <div className="min-h-screen bg-background p-6 font-mono text-foreground">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-gray-800 transition-colors"
+              className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
               title="Back to Dashboard"
             >
-              <ArrowLeft className="h-4 w-4 text-gray-400" />
+              <ArrowLeft className="h-5 w-5" />
             </Link>
-            <h1 className="text-white text-lg font-semibold tracking-wide">
-              SYSTEM LOGS
-            </h1>
+            <div>
+              <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">
+                System Logs
+              </h1>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+                Real-time job extraction feed
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 brutal-border bg-card px-4 py-2 shadow-[4px_4px_0px_0px_var(--border)]">
             <span
-              className={`w-2 h-2 rounded-full ${
-                connected ? "bg-green-500" : "bg-red-500"
+              className={`w-3 h-3 rounded-full ${
+                connected ? "bg-[#009063] animate-pulse" : "bg-[#D72638]"
               }`}
             />
-            <span className="text-gray-500 text-sm">
-              {connected ? "Connected" : "Disconnected"}
+            <span className="text-xs font-black uppercase tracking-widest">
+              {connected ? "Live" : "Offline"}
             </span>
           </div>
         </div>
 
         <div
           ref={scrollRef}
-          className="bg-[#161b22] rounded-lg border border-gray-800 p-4 h-[calc(100vh-120px)] overflow-y-auto"
+          className="bg-card border-2 border-border shadow-[8px_8px_0px_0px_var(--border)] p-6 h-[calc(100vh-160px)] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
         >
           {loading ? (
             <p className="text-gray-500">Loading logs...</p>
@@ -212,8 +217,9 @@ export default function LogsPage() {
               </div>
             ))
           )}
-          <div className="text-cyan-400 animate-pulse mt-1">
-            _cursor active...
+          <div className="mt-4 flex items-center gap-2 text-primary font-black animate-pulse text-xs">
+            <span className="w-2 h-2 bg-primary rounded-full" />
+            LIVE FEED ACTIVE
           </div>
         </div>
       </div>

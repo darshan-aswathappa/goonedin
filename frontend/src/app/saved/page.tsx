@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CaretLeft, BookmarkSimple, CircleNotch } from "@phosphor-icons/react";
+import { CaretLeft, BookmarkSimple, CircleNotch, ArrowLeft } from "@phosphor-icons/react";
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobList } from "@/components/JobList";
 import { getAuthHeaders } from "@/hooks/useAuth";
@@ -40,21 +40,32 @@ export default function SavedJobsPage() {
   const displayJobs = savedJobs.filter((job) => storeSavedJobIds.has(job.external_id));
 
   return (
-    <div className="min-h-screen bg-background p-6 text-foreground transition-colors duration-300">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-10">
-          <Link
-            href="/"
-            className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-            title="Back to Dashboard"
-          >
-            <CaretLeft weight="bold" className="h-6 w-6" />
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="brutal-border bg-primary p-2 shadow-[2px_2px_0px_0px_var(--border)]">
-              <BookmarkSimple weight="fill" className="h-6 w-6 text-white" />
+    <div className="min-h-screen bg-background p-6">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <h1 className="text-3xl font-black italic uppercase tracking-tighter leading-none">
+                Saved Jobs
+              </h1>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
+                Your personal career shortlist
+              </p>
             </div>
-            <h1 className="text-3xl font-black uppercase italic tracking-tighter">Saved Jobs</h1>
+          </div>
+          
+          <div className="brutal-border bg-card px-4 py-2 shadow-[4px_4px_0px_0px_var(--border)] flex items-center gap-2">
+            <BookmarkSimple weight="fill" className="h-5 w-5 text-[#009063]" />
+            <span className="font-black text-sm uppercase tracking-tighter">
+              {displayJobs.length} Saved
+            </span>
           </div>
         </div>
 
