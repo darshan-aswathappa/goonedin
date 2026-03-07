@@ -84,14 +84,14 @@ export function JobsDashboard() {
                 <div className="flex items-center gap-1 h-[42px]">
                   <ThemeToggle />
 
-                  <button 
+                  {/* <button 
                     onClick={refetch}
                     disabled={isLoading}
                     className="brutal-border h-[42px] px-4 bg-primary text-white font-black uppercase italic tracking-tighter text-xs shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all flex items-center gap-2"
                   >
                     <ArrowsClockwise weight="bold" className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                     Refresh
-                  </button>
+                  </button> */}
 
                   <Link href="/saved">
                     <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center text-[#009063]">
