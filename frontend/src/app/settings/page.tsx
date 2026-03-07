@@ -26,6 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast, Toaster } from "sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
+import { ResumeManager } from "@/components/ResumeManager";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -414,6 +415,9 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Resume Upload / Manager */}
+            <ResumeManager />
 
             {/* Job Search Filters */}
             {CONFIG_SECTIONS.map((section) => (

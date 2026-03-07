@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
@@ -533,4 +533,107 @@ async def dismiss_job(request: DismissJobRequest, ctx: UserContext = Depends(_ge
         return {"success": True, "message": "Job dismissed"}
     except Exception as e:
         logger.error(f"Error dismissing job: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/resumes")
+async def get_resumes(user: dict = Depends(get_current_user)):
+    """Fetch all uploaded resumes for the current user."""
+    from app.core.user_manager import _supabase_client
+    try:
+        response = await asyncio.to_thread(
+            lambda: _supabase_client.table("user_resumes")
+            .select("*")
+            .eq("user_id", user["user_id"])
+            .order("uploaded_at", desc=True)
+            .execute()
+        )
+        return {"resumes": response.data, "count": len(response.data)}
+    except Exception as e:
+        logger.error(f"Error fetching resumes: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch resumes")
+
+
+@app.post("/resumes")
+async def upload_resume(
+    file: UploadFile = File(...),
+    filename: Optional[str] = Form(None),
+    user: dict = Depends(get_current_user)
+):
+    """Upload a resume PDF to Supabase Storage and track it in the DB."""
+    from app.core.user_manager import _supabase_client
+    import uuid
+    import time
+
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+
+    display_name = filename or file.filename
+    # Generate unique storage path: user_id/timestamp_uuid.pdf
+    unique_id = str(uuid.uuid4())[:8]
+    storage_path = f"{user['user_id']}/{int(time.time())}_{unique_id}.pdf"
+
+    try:
+        content = await file.read()
+        
+        # Upload to Storage
+        storage_res = await asyncio.to_thread(
+            lambda: _supabase_client.storage.from_("resumes").upload(
+                path=storage_path,
+                file=content,
+                file_options={"content-type": "application/pdf"}
+            )
+        )
+        
+        # Insert metadata into db
+        db_res = await asyncio.to_thread(
+            lambda: _supabase_client.table("user_resumes").insert({
+                "user_id": user["user_id"],
+                "filename": display_name,
+                "file_path": storage_path
+            }).execute()
+        )
+        
+        return {"success": True, "resume": db_res.data[0]}
+    except Exception as e:
+        logger.error(f"Error uploading resume: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/resumes/{resume_id}")
+async def delete_resume(resume_id: str, user: dict = Depends(get_current_user)):
+    """Delete a resume from Supabase Storage and DB."""
+    from app.core.user_manager import _supabase_client
+    try:
+        # First, get the file path
+        get_res = await asyncio.to_thread(
+            lambda: _supabase_client.table("user_resumes")
+            .select("file_path")
+            .eq("id", resume_id)
+            .eq("user_id", user["user_id"])
+            .execute()
+        )
+        
+        if not get_res.data:
+            raise HTTPException(status_code=404, detail="Resume not found")
+            
+        file_path = get_res.data[0]["file_path"]
+
+        # Delete from Storage
+        await asyncio.to_thread(
+            lambda: _supabase_client.storage.from_("resumes").remove([file_path])
+        )
+
+        # Delete from DB
+        await asyncio.to_thread(
+            lambda: _supabase_client.table("user_resumes")
+            .delete()
+            .eq("id", resume_id)
+            .eq("user_id", user["user_id"])
+            .execute()
+        )
+        
+        return {"success": True, "message": "Resume deleted"}
+    except Exception as e:
+        logger.error(f"Error deleting resume: {e}")
         raise HTTPException(status_code=500, detail=str(e))
