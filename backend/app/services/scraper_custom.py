@@ -55,21 +55,13 @@ def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
         base_url="https://api.deepseek.com",
     )
 
-    dynamic_system_prompt = CUSTOM_SCRAPE_PROMPT + f"""
-CRITICAL RULE FOR URLs: You must find the exact (URL: <link>) marker next to the job title or derive the specific job URL slug. 
-If the URL you find is just a basic non-slug/jobs career page URL, or if you CANNOT confidently find a valid, unique link for a specific job, YOU MUST RETURN THE EXACT SOURCE URL PROVIDED BELOW AS A FALLBACK. 
-Do not hallucinate URLs, and do not arbitrarily strip query parameters from the fallback URL.
-
-The Source URL to use as fallback is: {source_url}
-"""
-
     prompt = f"Here is the text from the webpage ({source_url}):\n\n{text[:25000]}" # limit to 25k chars to avoid token limit
 
     try:
         response = client.chat.completions.create(
             model="deepseek-chat", # use fast model
             messages=[
-                {"role": "system", "content": dynamic_system_prompt},
+                {"role": "system", "content": CUSTOM_SCRAPE_PROMPT},
                 {"role": "user", "content": prompt},
             ],
             stream=False,
