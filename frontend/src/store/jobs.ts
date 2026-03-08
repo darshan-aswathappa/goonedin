@@ -85,6 +85,7 @@ interface JobsState {
   setCustomSources: (sources: CustomSource[]) => void;
   addCustomSource: (source: CustomSource) => void;
   removeCustomSource: (id: string) => void;
+  updateCustomSource: (id: string, updates: Partial<CustomSource>) => void;
 }
 
 export const useJobsStore = create<JobsState>((set) => ({
@@ -231,5 +232,12 @@ export const useJobsStore = create<JobsState>((set) => ({
   removeCustomSource: (id) =>
     set((state) => ({
       customSources: state.customSources.filter((s) => s.id !== id),
+    })),
+
+  updateCustomSource: (id, updates) =>
+    set((state) => ({
+      customSources: state.customSources.map((s) =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
     })),
 }));

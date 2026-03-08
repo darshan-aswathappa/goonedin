@@ -429,8 +429,6 @@ async def run_pubsub_listener(ctx: UserContext):
     finally:
         await pubsub.unsubscribe(channel)
         await pubsub.aclose()
-        await pubsub_redis.aclose()
-
 
 async def run_high_frequency_loop(ctx: UserContext):
     logger.info(f"[HF] Scraper started (db={ctx.redis_db_index})")

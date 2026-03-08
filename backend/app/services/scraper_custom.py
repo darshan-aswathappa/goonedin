@@ -42,7 +42,7 @@ The schema MUST BE EXACTLY:
   ]
 }
 
-Ensure the URL is an absolute URL using the provided context. Follow hints in the text like [URL: /job/id] to reconstruct links.
+Ensure the URL is an absolute URL if possible.
 """
 
 def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
@@ -105,15 +105,8 @@ async def fetch_custom_jobs(source: CustomJobSource, redis_client) -> dict:
                 return {"jobs": [], "retries": 0, "failed": True, "recent_jobs": [], "source_config": source}
                 
             soup = BeautifulSoup(response.text, "html.parser")
-            for elem in soup(["script", "style", "noscript", "svg", "img"]):
-                elem.extract()
-                
-            # Embed hrefs into the text itself so get_text() leaves them behind for DeepSeek to parse
-            for a in soup.find_all('a', href=True):
-                href = a['href']
-                if href and not href.startswith(('javascript:', 'mailto:')):
-                    a.string = f"{a.get_text(strip=True)} [URL: {href}]"
-
+            for script in soup(["script", "style", "noscript", "svg"]):
+                script.extract()
             text = soup.get_text(separator=" ", strip=True)
             logger.info(f"Extracted HTML text len: {len(text)}. Snippet: {text[:200]}")
             

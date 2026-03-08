@@ -62,7 +62,7 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const requestPayload = {
           source: {
-            id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7),
+            id: editingId || name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7),
             name,
             icon,
             url,
@@ -92,8 +92,11 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
       const newSource = newSourceList.find(s => s.id === requestPayload.source.id);
       
       if (newSource) {
-          if (!editingId) addCustomSource(newSource);
-          else useJobsStore.getState().setCustomSources(newSourceList);
+          if (!editingId) {
+            addCustomSource(newSource);
+          } else {
+            useJobsStore.getState().updateCustomSource(editingId, newSource);
+          }
           toast.success(`${editingId ? 'Updated' : 'Tracking jobs from'} ${newSource.name}`);
       } else {
           // Fallback if not found for some reason, just update the whole list
@@ -220,7 +223,7 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
             {editingId && (
               <Button
                 type="button"
-                onClick={resetForm}
+                onClick={() => setOpen(false)}
                 variant="outline"
                 className="brutal-border font-black italic uppercase w-full sm:w-auto shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
               >
