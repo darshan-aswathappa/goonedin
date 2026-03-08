@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useJobsStore } from "@/store/jobs";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
@@ -37,6 +38,7 @@ import { useTheme } from "next-themes";
 
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState("all");
   
   useWebSocket({ enabled: !!user });
   const { refetch } = useJobsApi(!!user);
@@ -67,6 +69,7 @@ export function JobsDashboard() {
           
           if (!res.ok) throw new Error("Failed to delete");
           removeCustomSource(id);
+          setActiveTab("all");
           toast.success(`Deleted source: ${name}`);
       } catch (err) {
           toast.error("Error deleting job source");
@@ -163,7 +166,7 @@ export function JobsDashboard() {
       <main className="container mx-auto px-4 py-8">
         {!user && <CompanyTicker />}
         
-        <Tabs defaultValue="all" className={!user ? "w-full mt-8" : "w-full"}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-8" : "w-full"}>
           {user && (
             <div className="flex items-center gap-4 w-full mb-10 overflow-hidden">
               <TabsList className="flex flex-nowrap h-auto gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-2">
