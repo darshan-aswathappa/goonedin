@@ -56,7 +56,7 @@ from app.services.scraper_github import fetch_github_jobs
 
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
-from app.services.resume_analyzer import run_resume_analysis
+from app.services.resume_analyzer import enqueue_resume_analysis, process_resume_analysis_queue
 from app.services.job_analyzer import run_job_analysis, run_fast_salary_visa_analysis
 
 logging.basicConfig(level=logging.INFO)
@@ -81,6 +81,9 @@ async def lifespan(app: FastAPI):
     set_supabase_client(supabase)
     logger.info("Supabase client initialized.")
 
+    # Resume analysis queue table will be created by Supabase migrations if needed
+    # The queue processor will handle creating entries in the table
+
     # Periodic cleanup task for expired scraped jobs
     async def _cleanup_loop():
         while True:
@@ -91,6 +94,9 @@ async def lifespan(app: FastAPI):
             await asyncio.sleep(300)  # every 5 minutes
 
     cleanup_task = asyncio.create_task(_cleanup_loop())
+
+    # Resume analysis queue processor task
+    resume_queue_task = asyncio.create_task(process_resume_analysis_queue(supabase))
 
     try:
         contexts = await load_all_users()
@@ -103,6 +109,7 @@ async def lifespan(app: FastAPI):
     yield
 
     cleanup_task.cancel()
+    resume_queue_task.cancel()
     for ctx in user_registry.values():
         if ctx.hf_task and not ctx.hf_task.done():
             ctx.hf_task.cancel()
@@ -1091,21 +1098,15 @@ async def upload_resume(
         db_res = await asyncio.to_thread(_insert_resume_db)
         resume_record = db_res.data[0]
 
-        # Fire background AI analysis (non-blocking)
-        deepseek_key = settings.DEEPSEEK_API_KEY
-        if deepseek_key:
-            asyncio.create_task(
-                run_resume_analysis(
-                    resume_id=resume_record["id"],
-                    user_id=user["user_id"],
-                    file_path=storage_path,
-                    supabase_client=_supabase_client,
-                    api_key=deepseek_key,
-                )
-            )
-            logger.info(f"Background resume analysis started for {resume_record['id']}")
-        else:
-            logger.warning("DEEPSEEK_API_KEY not set, skipping resume analysis")
+        # Enqueue AI analysis for background processing
+        # API key is retrieved from environment at processing time (never stored in database)
+        await enqueue_resume_analysis(
+            resume_id=resume_record["id"],
+            user_id=user["user_id"],
+            file_path=storage_path,
+            supabase_client=_supabase_client,
+        )
+        logger.info(f"Resume analysis queued for {resume_record['id']}")
 
         return {"success": True, "resume": resume_record}
     except Exception as e:

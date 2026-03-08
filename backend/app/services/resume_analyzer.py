@@ -3,6 +3,8 @@ Resume analysis service using DeepSeek AI (OpenAI-compatible API).
 
 Extracts education, certifications, skills, and project keywords from
 uploaded PDF resumes using the deepseek-reasoner model.
+
+Uses a Supabase table-based queue for processing resume analysis tasks.
 """
 
 import json
@@ -16,15 +18,7 @@ from openai import OpenAI
 
 logger = logging.getLogger("VelocityMain")
 
-# Semaphore to limit concurrent background resume analysis tasks (lazy initialization)
-_resume_analysis_semaphore: Any = None
-
-def _get_semaphore() -> asyncio.Semaphore:
-    """Get or create the resume analysis semaphore."""
-    global _resume_analysis_semaphore
-    if _resume_analysis_semaphore is None:
-        _resume_analysis_semaphore = asyncio.Semaphore(3)
-    return _resume_analysis_semaphore
+QUEUE_TABLE = "resume_analysis_queue"
 
 DEEPSEEK_SYSTEM_PROMPT = """You are an expert resume analyzer. Given the raw text of a resume, extract the following information and return it as valid JSON only (no markdown, no explanation):
 
@@ -204,19 +198,114 @@ async def _run_resume_analysis_with_retry(
                 return
 
 
-async def run_resume_analysis(
+async def enqueue_resume_analysis(
     resume_id: str,
     user_id: str,
     file_path: str,
     supabase_client: Any,
-    api_key: str,
 ) -> None:
     """
-    Background resume analysis with concurrency control.
-    Limits concurrent analysis tasks to prevent connection pool exhaustion.
+    Enqueue a resume analysis task via Supabase table queue.
+    Stores task in resume_analysis_queue table for background processing.
+    API key is retrieved from environment at processing time, never stored.
     """
-    semaphore = _get_semaphore()
-    async with semaphore:
-        await _run_resume_analysis_with_retry(
-            resume_id, user_id, file_path, supabase_client, api_key
-        )
+    try:
+        def _send_message(*args: Any, **kwargs: Any) -> Any:
+            # Insert task into queue table (no API key stored)
+            return supabase_client.table(QUEUE_TABLE).insert({
+                "resume_id": resume_id,
+                "user_id": user_id,
+                "file_path": file_path,
+                "status": "pending"
+            }).execute()
+
+        await asyncio.to_thread(_send_message)
+        logger.info(f"[ResumeAI] Enqueued analysis task for resume {resume_id}")
+    except Exception as e:
+        logger.error(f"[ResumeAI] Failed to enqueue resume analysis: {e}")
+        raise
+
+
+async def process_resume_analysis_queue(
+    supabase_client: Any,
+) -> None:
+    """
+    Worker that continuously processes resume analysis tasks from table queue.
+    Runs one task at a time to prevent resource exhaustion.
+    Designed to run as a background service.
+    API key is retrieved from environment variables, never from database.
+    """
+    import os
+
+    api_key = os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        logger.error("[ResumeAI] DEEPSEEK_API_KEY environment variable not set")
+        return
+
+    logger.info(f"[ResumeAI] Starting queue processor for {QUEUE_TABLE}")
+
+    while True:
+        try:
+            # Fetch next pending task from queue table
+            def _read_message(*args: Any, **kwargs: Any) -> Any:
+                return supabase_client.table(QUEUE_TABLE).select(
+                    "*"
+                ).eq("status", "pending").order(
+                    "created_at", desc=False
+                ).limit(1).execute()
+
+            result = await asyncio.to_thread(_read_message)
+
+            if not result.data or len(result.data) == 0:
+                # No pending tasks, wait before retrying
+                await asyncio.sleep(2)
+                continue
+
+            task = result.data[0]
+            task_id = task.get("id")
+            resume_id = task.get("resume_id")
+            user_id = task.get("user_id")
+            file_path = task.get("file_path")
+
+            logger.info(f"[ResumeAI] Processing queue task {task_id} for resume {resume_id}")
+
+            try:
+                # Mark as processing
+                def _mark_processing(*args: Any, **kwargs: Any) -> Any:
+                    return supabase_client.table(QUEUE_TABLE).update({
+                        "status": "processing"
+                    }).eq("id", task_id).execute()
+
+                await asyncio.to_thread(_mark_processing)
+
+                # Run the analysis with API key from environment
+                await _run_resume_analysis_with_retry(
+                    resume_id, user_id, file_path, supabase_client, api_key
+                )
+
+                # Mark as completed and delete
+                def _mark_completed(*args: Any, **kwargs: Any) -> Any:
+                    return supabase_client.table(QUEUE_TABLE).delete().eq(
+                        "id", task_id
+                    ).execute()
+
+                await asyncio.to_thread(_mark_completed)
+                logger.info(f"[ResumeAI] Successfully processed and removed queue task {task_id} for resume {resume_id}")
+
+            except Exception as e:
+                logger.error(f"[ResumeAI] Error processing queue task {task_id} for {resume_id}: {e}")
+                # Mark as failed
+                try:
+                    def _mark_failed(*args: Any, **kwargs: Any) -> Any:
+                        return supabase_client.table(QUEUE_TABLE).update({
+                            "status": "failed",
+                            "error": str(e)[:500]
+                        }).eq("id", task_id).execute()
+
+                    await asyncio.to_thread(_mark_failed)
+                except Exception as update_e:
+                    logger.error(f"[ResumeAI] Could not mark task as failed: {update_e}")
+
+        except Exception as e:
+            logger.error(f"[ResumeAI] Queue processor error: {e}")
+            await asyncio.sleep(2)  # Wait before retrying
