@@ -8,12 +8,23 @@ uploaded PDF resumes using the deepseek-reasoner model.
 import json
 import logging
 from typing import Any
+import asyncio
 
 import PyPDF2
 import io
 from openai import OpenAI
 
 logger = logging.getLogger("VelocityMain")
+
+# Semaphore to limit concurrent background resume analysis tasks (lazy initialization)
+_resume_analysis_semaphore: Any = None
+
+def _get_semaphore() -> asyncio.Semaphore:
+    """Get or create the resume analysis semaphore."""
+    global _resume_analysis_semaphore
+    if _resume_analysis_semaphore is None:
+        _resume_analysis_semaphore = asyncio.Semaphore(3)
+    return _resume_analysis_semaphore
 
 DEEPSEEK_SYSTEM_PROMPT = """You are an expert resume analyzer. Given the raw text of a resume, extract the following information and return it as valid JSON only (no markdown, no explanation):
 
@@ -89,6 +100,110 @@ def analyze_resume_with_deepseek(resume_text: str, api_key: str) -> dict[str, An
     return result
 
 
+async def _run_resume_analysis_with_retry(
+    resume_id: str,
+    user_id: str,
+    file_path: str,
+    supabase_client: Any,
+    api_key: str,
+) -> None:
+    """
+    Internal resume analysis with retry logic.
+    Wrapped by run_resume_analysis() with semaphore control.
+    """
+    max_retries = 2
+    base_delay = 1  # seconds
+
+    for attempt in range(max_retries + 1):
+        try:
+            logger.info(f"[ResumeAI] Starting analysis for resume {resume_id} (attempt {attempt + 1})")
+
+            # 1. Download PDF from Supabase storage
+            def _download_pdf(*args: Any, **kwargs: Any) -> bytes:
+                return supabase_client.storage.from_("resumes").download(file_path)
+
+            pdf_bytes: bytes = await asyncio.to_thread(_download_pdf)
+
+            # 2. Extract text
+            resume_text = await asyncio.to_thread(extract_text_from_pdf, pdf_bytes)
+
+            if not resume_text.strip():
+                raise ValueError("Could not extract any text from the PDF")
+
+            logger.info(
+                f"[ResumeAI] Extracted {len(resume_text)} chars from resume {resume_id}"
+            )
+
+            # 3. Call DeepSeek (blocking HTTP call, run in thread)
+            analysis = await asyncio.to_thread(
+                analyze_resume_with_deepseek, resume_text, api_key
+            )
+
+            logger.info(f"[ResumeAI] DeepSeek analysis complete for resume {resume_id}")
+
+            # 4. Store results in resume_analysis table
+            def _store_analysis(*args: Any, **kwargs: Any) -> Any:
+                return supabase_client.table("resume_analysis").insert(
+                    {
+                        "resume_id": resume_id,
+                        "user_id": user_id,
+                        "education": json.dumps(analysis.get("education", [])),
+                        "certifications": json.dumps(
+                            analysis.get("certifications", [])
+                        ),
+                        "skills": json.dumps(analysis.get("skills", [])),
+                        "project_keywords": json.dumps(
+                            analysis.get("project_keywords", [])
+                        ),
+                        "summary": analysis.get("summary", ""),
+                        "raw_response": json.dumps(analysis),
+                    }
+                ).execute()
+
+            await asyncio.to_thread(_store_analysis)
+
+            # 5. Update status to completed
+            def _update_status_completed(*args: Any, **kwargs: Any) -> Any:
+                return (
+                    supabase_client.table("user_resumes")
+                    .update({"analysis_status": "completed"})
+                    .eq("id", resume_id)
+                    .execute()
+                )
+
+            await asyncio.to_thread(_update_status_completed)
+
+            logger.info(f"[ResumeAI] Analysis stored for resume {resume_id}")
+            return  # Success
+
+        except Exception as e:
+            if attempt < max_retries:
+                delay = base_delay * (2 ** attempt)  # Exponential backoff
+                logger.warning(
+                    f"[ResumeAI] Attempt {attempt + 1} failed for {resume_id}: {e}. "
+                    f"Retrying in {delay}s..."
+                )
+                await asyncio.sleep(delay)
+            else:
+                logger.error(f"[ResumeAI] All retries exhausted for resume {resume_id}: {e}")
+                # Update status to failed
+                try:
+                    def _update_status_failed(*args: Any, **kwargs: Any) -> Any:
+                        return (
+                            supabase_client.table("user_resumes")
+                            .update({"analysis_status": "failed"})
+                            .eq("id", resume_id)
+                            .execute()
+                        )
+
+                    await asyncio.to_thread(_update_status_failed)
+                except Exception as inner_e:
+                    logger.error(
+                        f"[ResumeAI] Could not update status to failed for {resume_id}: {inner_e}"
+                    )
+                return
+
+
 async def run_resume_analysis(
     resume_id: str,
     user_id: str,
@@ -97,92 +212,11 @@ async def run_resume_analysis(
     api_key: str,
 ) -> None:
     """
-    Full background analysis pipeline:
-    1. Download PDF from Supabase Storage
-    2. Extract text
-    3. Call DeepSeek
-    4. Store results in resume_analysis table
-    5. Update analysis_status on user_resumes
+    Background resume analysis with concurrency control.
+    Limits concurrent analysis tasks to prevent connection pool exhaustion.
     """
-    import asyncio
-
-    try:
-        logger.info(f"[ResumeAI] Starting analysis for resume {resume_id}")
-
-        # 1. Download PDF from Supabase storage
-        def _download_pdf(*args: Any, **kwargs: Any) -> bytes:
-            return supabase_client.storage.from_("resumes").download(file_path)
-
-        pdf_bytes: bytes = await asyncio.to_thread(_download_pdf)
-
-        # 2. Extract text
-        resume_text = await asyncio.to_thread(extract_text_from_pdf, pdf_bytes)
-
-        if not resume_text.strip():
-            raise ValueError("Could not extract any text from the PDF")
-
-        logger.info(
-            f"[ResumeAI] Extracted {len(resume_text)} chars from resume {resume_id}"
+    semaphore = _get_semaphore()
+    async with semaphore:
+        await _run_resume_analysis_with_retry(
+            resume_id, user_id, file_path, supabase_client, api_key
         )
-
-        # 3. Call DeepSeek (blocking HTTP call, run in thread)
-        analysis = await asyncio.to_thread(
-            analyze_resume_with_deepseek, resume_text, api_key
-        )
-
-        logger.info(f"[ResumeAI] DeepSeek analysis complete for resume {resume_id}")
-
-        # 4. Store results in resume_analysis table
-        def _store_analysis(*args: Any, **kwargs: Any) -> Any:
-            return supabase_client.table("resume_analysis").insert(
-                {
-                    "resume_id": resume_id,
-                    "user_id": user_id,
-                    "education": json.dumps(analysis.get("education", [])),
-                    "certifications": json.dumps(
-                        analysis.get("certifications", [])
-                    ),
-                    "skills": json.dumps(analysis.get("skills", [])),
-                    "project_keywords": json.dumps(
-                        analysis.get("project_keywords", [])
-                    ),
-                    "summary": analysis.get("summary", ""),
-                    "raw_response": json.dumps(analysis),
-                }
-            ).execute()
-
-        await asyncio.to_thread(_store_analysis)
-
-        # 5. Update status to completed
-        def _update_status_completed(*args: Any, **kwargs: Any) -> Any:
-            return (
-                supabase_client.table("user_resumes")
-                .update({"analysis_status": "completed"})
-                .eq("id", resume_id)
-                .execute()
-            )
-
-        await asyncio.to_thread(_update_status_completed)
-
-        logger.info(f"[ResumeAI] Analysis stored for resume {resume_id}")
-
-    except Exception as e:
-        logger.error(f"[ResumeAI] Analysis failed for resume {resume_id}: {e}")
-
-        # Update status to failed
-        try:
-            import asyncio
-
-            def _update_status_failed(*args: Any, **kwargs: Any) -> Any:
-                return (
-                    supabase_client.table("user_resumes")
-                    .update({"analysis_status": "failed"})
-                    .eq("id", resume_id)
-                    .execute()
-                )
-
-            await asyncio.to_thread(_update_status_failed)
-        except Exception as inner_e:
-            logger.error(
-                f"[ResumeAI] Could not update status to failed: {inner_e}"
-            )
