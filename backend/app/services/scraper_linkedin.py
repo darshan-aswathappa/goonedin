@@ -8,14 +8,25 @@ from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
 from app.core.supabase_config import get_target_keywords, get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
+from random_user_agent.user_agent import UserAgent
 
 settings = get_settings()
 logger = logging.getLogger("VelocityScraper")
+ua = UserAgent()
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
+    "User-Agent": ua.get_random_user_agent(),
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://www.linkedin.com/jobs",
+    "X-Requested-With": "XMLHttpRequest",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
 }
 
 
@@ -91,10 +102,10 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
 
     logger.info(f"Pinging LinkedIn Guest API for: {search_term} in {search_location}")
 
-    proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    # proxy = settings.PROXY_URL if settings.PROXY_URL else None
     max_retries = 3
     retries_used = 0
-    async with httpx.AsyncClient(follow_redirects=True, proxy=proxy) as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             response = None
             for attempt in range(1, max_retries + 1):
