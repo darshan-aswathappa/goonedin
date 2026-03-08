@@ -16,15 +16,17 @@ export function useJobsApi(enabled: boolean = true) {
   const fetchJobs = useCallback(async () => {
     try {
       const headers = await getAuthHeaders();
-      const [jobsRes, savedRes] = await Promise.all([
+      const [jobsRes, savedRes, customRes] = await Promise.all([
         fetch(`${API_URL}/jobs`, { headers }),
         fetch(`${API_URL}/jobs/saved`, { headers }),
+        fetch(`${API_URL}/config/custom-sources`, { headers }),
       ]);
       
       if (!jobsRes.ok) throw new Error(`HTTP ${jobsRes.status}`);
 
       const data = await jobsRes.json();
       const savedData = savedRes.ok ? await savedRes.json() : { jobs: [] };
+      const customData = customRes.ok ? await customRes.json() : { custom_sources: [] };
 
       const jobs: Job[] = data.jobs || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,6 +34,7 @@ export function useJobsApi(enabled: boolean = true) {
 
       setJobs(jobs);
       setSavedJobIds(savedIds);
+      useJobsStore.getState().setCustomSources(customData.custom_sources || []);
     } catch (error) {
       console.error("Error fetching jobs:", error);
     } finally {

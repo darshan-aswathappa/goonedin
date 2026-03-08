@@ -1,5 +1,5 @@
-import { useState, FormEvent, ChangeEvent } from "react";
-import { Plus, Buildings, Briefcase, Code, MagnifyingGlass, Monitor, Trash } from "@phosphor-icons/react";
+import { useState, useEffect, FormEvent, ChangeEvent } from "react";
+import { Plus, Buildings, Briefcase, Code, MagnifyingGlass, Monitor } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,8 +22,14 @@ const ICONS = [
   { name: "Monitor", component: Monitor },
 ];
 
-export function AddJobSourceModal() {
+interface AddJobSourceModalProps {
+  editSource?: CustomSource;
+  triggerNode?: React.ReactNode;
+}
+
+export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModalProps) {
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [icon, setIcon] = useState("Buildings");
@@ -31,8 +37,20 @@ export function AddJobSourceModal() {
   const [intervalMinutes, setIntervalMinutes] = useState("60");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const addCustomSource = useJobsStore((state) => state.addCustomSource);
-  const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
   const customSources = useJobsStore((state) => state.customSources);
+
+  useEffect(() => {
+    if (open && editSource) {
+      setEditingId(editSource.id);
+      setName(editSource.name);
+      setUrl(editSource.url);
+      setIcon(editSource.icon);
+      setTtlHours(editSource.ttl_hours.toString());
+      setIntervalMinutes(editSource.interval_minutes.toString());
+    } else if (!open) {
+      resetForm();
+    }
+  }, [open, editSource]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -42,13 +60,7 @@ export function AddJobSourceModal() {
       const headers = await getAuthHeaders();
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const res = await fetch(`${apiUrl}/config/custom-sources`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...headers
-        },
-        body: JSON.stringify({
+      const requestPayload = {
           source: {
             id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7),
             name,
@@ -57,15 +69,38 @@ export function AddJobSourceModal() {
             ttl_hours: parseInt(ttlHours),
             interval_minutes: parseInt(intervalMinutes)
           }
-        })
+      };
+
+      const endpoint = editingId 
+        ? `${apiUrl}/config/custom-sources/${editingId}`
+        : `${apiUrl}/config/custom-sources`;
+      const method = editingId ? "PUT" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          ...headers
+        },
+        body: JSON.stringify(requestPayload)
       });
 
-      if (!res.ok) throw new Error("Failed to add custom source");
+      if (!res.ok) throw new Error(`Failed to ${editingId ? 'update' : 'add'} custom source`);
 
-      const newSource = (await res.json()) as CustomSource;
-      addCustomSource(newSource);
+      const responseData = await res.json();
+      const newSourceList: CustomSource[] = responseData.custom_sources || [];
+      const newSource = newSourceList.find(s => s.id === requestPayload.source.id);
       
-      toast.success(`Tracking jobs from ${newSource.name}`);
+      if (newSource) {
+          if (!editingId) addCustomSource(newSource);
+          else useJobsStore.getState().setCustomSources(newSourceList);
+          toast.success(`${editingId ? 'Updated' : 'Tracking jobs from'} ${newSource.name}`);
+      } else {
+          // Fallback if not found for some reason, just update the whole list
+          useJobsStore.getState().setCustomSources(newSourceList);
+          toast.success(`${editingId ? 'Updated' : 'Tracking jobs from'} ${name}`);
+      }
+      
       setOpen(false);
       resetForm();
     } catch (err) {
@@ -76,26 +111,8 @@ export function AddJobSourceModal() {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-      try {
-          const headers = await getAuthHeaders();
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          
-          const res = await fetch(`${apiUrl}/config/custom-sources/${id}`, {
-              method: "DELETE",
-              headers
-          });
-          
-          if (!res.ok) throw new Error("Failed to delete");
-          removeCustomSource(id);
-          toast.success(`Deleted ${name}`);
-      } catch (err) {
-          toast.error("Error deleting job source");
-          console.error(err);
-      }
-  };
-
   const resetForm = () => {
+    setEditingId(null);
     setName("");
     setUrl("");
     setIcon("Buildings");
@@ -109,18 +126,20 @@ export function AddJobSourceModal() {
       if (!val) resetForm();
     }}>
       <DialogTrigger asChild>
-        <button
-          className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm bg-muted text-foreground shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:bg-neutral-200 dark:hover:bg-neutral-800 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none whitespace-nowrap shrink-0 flex items-center gap-2"
-        >
-          <Plus weight="bold" className="h-5 w-5" />
-          <span className="sr-only sm:not-sr-only sm:inline">Add Source</span>
-        </button>
+        {triggerNode || (
+          <button
+            className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm bg-muted text-foreground shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:bg-neutral-200 dark:hover:bg-neutral-800 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none whitespace-nowrap shrink-0 flex items-center gap-2"
+          >
+            <Plus weight="bold" className="h-5 w-5" />
+            <span className="sr-only sm:not-sr-only sm:inline">Add Source</span>
+          </button>
+        )}
       </DialogTrigger>
       
       <DialogContent className="sm:max-w-[425px] brutal-border brutal-shadow rounded-none sm:rounded-none bg-background">
         <DialogHeader>
           <DialogTitle className="font-black italic uppercase tracking-tighter text-2xl">
-            Custom Job Board
+            {editingId ? "Edit Custom Job Board" : "Custom Job Board"}
           </DialogTitle>
           <DialogDescription className="font-medium">
             AI Scrape jobs from any custom URL
@@ -197,42 +216,26 @@ export function AddJobSourceModal() {
             </div>
           </div>
           
-          <DialogFooter className="sm:justify-between items-center sm:items-center mt-2">
+          <DialogFooter className="sm:justify-between items-center sm:items-center mt-2 flex-row gap-2">
+            {editingId && (
+              <Button
+                type="button"
+                onClick={resetForm}
+                variant="outline"
+                className="brutal-border font-black italic uppercase w-full sm:w-auto shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+              >
+                Cancel Edit
+              </Button>
+            )}
             <Button
               type="submit"
               disabled={isSubmitting}
               className="brutal-border rounded-none font-black italic uppercase w-full bg-primary hover:bg-primary/90 text-white disabled:opacity-50 shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
             >
-              {isSubmitting ? "Saving..." : "Start Scraping"}
+              {isSubmitting ? "Saving..." : editingId ? "Update Source" : "Start Scraping"}
             </Button>
           </DialogFooter>
         </form>
-
-        {customSources.length > 0 && (
-            <div className="mt-4 pt-6 border-t-[3px] border-border">
-                <h4 className="font-black italic uppercase tracking-tight text-sm mb-4">Manage Sources</h4>
-                <div className="flex flex-col gap-3 max-h-[150px] overflow-y-auto pr-2 scrollbar-hide">
-                    {customSources.map((src) => {
-                         const IcoComponent = ICONS.find(i => i.name === src.icon)?.component || Buildings;
-                         return (
-                         <div key={src.id} className="flex items-center justify-between p-2 pb-1 pt-1 border-[3px] border-border bg-muted/50">
-                            <div className="flex items-center gap-3 overflow-hidden">
-                                <IcoComponent weight="bold" className="h-5 w-5 shrink-0" />
-                                <span className="font-bold text-sm tracking-tight truncate flex-1 block">{src.name}</span>
-                            </div>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-none shrink-0"
-                                onClick={() => handleDelete(src.id, src.name)}
-                            >
-                                <Trash weight="bold" className="h-5 w-5" />
-                            </Button>
-                         </div>
-                    )})}
-                </div>
-            </div>
-        )}
       </DialogContent>
     </Dialog>
   );

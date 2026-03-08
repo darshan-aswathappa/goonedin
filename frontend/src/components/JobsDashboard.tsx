@@ -11,7 +11,8 @@ import { AddJobSourceModal } from "./AddJobSourceModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCATION_FILTER } from "@/config/filters";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, getAuthHeaders } from "@/hooks/useAuth";
+import { toast } from "sonner";
 import {
   Briefcase,
   Globe,
@@ -27,6 +28,8 @@ import {
   SignOut,
   Sparkle,
   Plus,
+  PencilSimple,
+  Trash,
 } from "@phosphor-icons/react";
 import * as PhosphorIcons from "@phosphor-icons/react";
 import Link from "next/link";
@@ -49,6 +52,26 @@ export function JobsDashboard() {
   );
   const isLoading = useJobsStore((state) => state.isLoading);
   const customSources = useJobsStore((state) => state.customSources);
+  const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
+
+  const handleDeleteSource = async (id: string, name: string) => {
+      try {
+          const headers = await getAuthHeaders();
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          
+          const res = await fetch(`${apiUrl}/config/custom-sources/${id}`, {
+              method: "DELETE",
+              headers
+          });
+          
+          if (!res.ok) throw new Error("Failed to delete");
+          removeCustomSource(id);
+          toast.success(`Deleted source: ${name}`);
+      } catch (err) {
+          toast.error("Error deleting job source");
+          console.error(err);
+      }
+  };
 
   const getDynamicIcon = (iconName: string) => {
     const IconComponent = (PhosphorIcons as any)[iconName] || PhosphorIcons.Buildings;
@@ -141,8 +164,9 @@ export function JobsDashboard() {
         
         <Tabs defaultValue="all" className={!user ? "w-full mt-8" : "w-full"}>
           {user && (
-            <TabsList className="flex flex-nowrap h-auto gap-2 bg-transparent p-0 mb-10 items-start justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-2">
-              <TabsTrigger
+            <div className="flex items-center gap-4 w-full mb-10 overflow-hidden">
+              <TabsList className="flex flex-nowrap h-auto gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-2">
+                <TabsTrigger
                 value="all"
                 className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
@@ -230,8 +254,12 @@ export function JobsDashboard() {
                 );
               })}
 
-              <AddJobSourceModal />
-            </TabsList>
+              </TabsList>
+              
+              <div className="shrink-0 pb-2">
+                <AddJobSourceModal />
+              </div>
+            </div>
           )}
 
           <TabsContent value="all" className="mt-0">
@@ -296,9 +324,35 @@ export function JobsDashboard() {
             const sourceJobs = jobs.filter((j) => j.source === source.name);
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
+                <div className="flex items-center justify-between mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row flex-col gap-4 items-start sm:items-center">
+                  <div className="flex flex-col gap-1">
+                     <span className="font-black uppercase tracking-tighter text-xl">{source.name}</span>
+                     <span className="font-bold text-xs text-muted-foreground flex gap-2">
+                        <span className="px-2 py-0.5 border-2 border-black bg-yellow-100 dark:bg-yellow-900/50">Interval: {source.interval_minutes}m</span>
+                        <span className="px-2 py-0.5 border-2 border-black bg-blue-100 dark:bg-blue-900/50">TTL: {source.ttl_hours}h</span>
+                     </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AddJobSourceModal 
+                      editSource={source} 
+                      triggerNode={
+                        <button className="brutal-border px-3 py-1.5 font-bold text-sm bg-amber-300 text-black hover:bg-amber-400 flex items-center gap-1 transition-transform active:translate-y-[2px] active:translate-x-[2px] shadow-[2px_2px_0px_0px_var(--border)] active:shadow-none">
+                          <PencilSimple weight="bold" /> Edit
+                        </button>
+                      } 
+                    />
+                    <button 
+                      onClick={() => handleDeleteSource(source.id, source.name)}
+                      className="brutal-border px-3 py-1.5 font-bold text-sm bg-red-500 text-white hover:bg-red-600 flex items-center gap-1 transition-transform active:translate-y-[2px] active:translate-x-[2px] shadow-[2px_2px_0px_0px_var(--border)] active:shadow-none"
+                    >
+                      <Trash weight="bold" /> Delete
+                    </button>
+                  </div>
+                </div>
+
                 <JobList
                   jobs={sourceJobs}
-                  emptyMessage={`No jobs extracted from ${source.name} yet.`}
+                  emptyMessage={`Waiting for jobs from ${source.name}. This may take a few minutes while our AI processes the page...`}
                   isLocked={!user}
                 />
               </TabsContent>

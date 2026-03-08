@@ -429,6 +429,7 @@ async def run_pubsub_listener(ctx: UserContext):
     finally:
         await pubsub.unsubscribe(channel)
         await pubsub.aclose()
+        await pubsub_redis.aclose()
 
 
 async def run_high_frequency_loop(ctx: UserContext):
@@ -777,6 +778,31 @@ async def add_custom_source(
         raise HTTPException(status_code=500, detail="Failed to update config")
         
     return {"message": "Added custom source", "custom_sources": sources}
+
+
+@app.put("/config/custom-sources/{source_id}")
+async def update_custom_source(
+    source_id: str, request: CustomSourceRequest, ctx: UserContext = Depends(_get_ctx)
+):
+    sources = await get_custom_sources(ctx.redis_client)
+    
+    found = False
+    for i, s in enumerate(sources):
+        if s.get("id") == source_id:
+            updated_data = request.source.model_dump(mode="json")
+            updated_data["id"] = source_id
+            sources[i] = updated_data
+            found = True
+            break
+            
+    if not found:
+        raise HTTPException(status_code=404, detail="Custom source not found")
+        
+    success = await set_config_list(ctx.redis_client, "custom_sources", sources)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+        
+    return {"message": "Updated custom source", "custom_sources": sources}
 
 
 @app.delete("/config/custom-sources/{source_id}")

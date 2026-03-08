@@ -42,7 +42,7 @@ The schema MUST BE EXACTLY:
   ]
 }
 
-Ensure the URL is an absolute URL if possible.
+Ensure the URL is an absolute URL using the provided context. Follow hints in the text like [URL: /job/id] to reconstruct links.
 """
 
 def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
@@ -105,8 +105,15 @@ async def fetch_custom_jobs(source: CustomJobSource, redis_client) -> dict:
                 return {"jobs": [], "retries": 0, "failed": True, "recent_jobs": [], "source_config": source}
                 
             soup = BeautifulSoup(response.text, "html.parser")
-            for script in soup(["script", "style", "noscript", "svg"]):
-                script.extract()
+            for elem in soup(["script", "style", "noscript", "svg", "img"]):
+                elem.extract()
+                
+            # Embed hrefs into the text itself so get_text() leaves them behind for DeepSeek to parse
+            for a in soup.find_all('a', href=True):
+                href = a['href']
+                if href and not href.startswith(('javascript:', 'mailto:')):
+                    a.string = f"{a.get_text(strip=True)} [URL: {href}]"
+
             text = soup.get_text(separator=" ", strip=True)
             logger.info(f"Extracted HTML text len: {len(text)}. Snippet: {text[:200]}")
             
@@ -127,11 +134,12 @@ async def fetch_custom_jobs(source: CustomJobSource, redis_client) -> dict:
                 # Ensure job_url is absolute
                 job_url = urljoin(str(source.url), job_url)
                 
-                # We append a simple index and date to uniqueness.
-                # Usually we want a hash, but deepseek might return them in same order. 
-                # Let's use a simple hash of the title + company for external_id to prevent dupes across runs.
+                # We want a very stable hash. DeepSeek might slightly alter title/company casing or add URL params.
+                # Let's normalize by stripping and uppercasing to unify them as best as possible.
                 import hashlib
-                unique_str = f"{title}-{rj.get('company', '')}-{job_url}"
+                normalized_title = title.strip().upper()
+                normalized_company = rj.get('company', '').strip().upper()
+                unique_str = f"{normalized_title}-{normalized_company}"
                 ext_id = hashlib.md5(unique_str.encode()).hexdigest()
                 
                 job_create = JobCreate(
