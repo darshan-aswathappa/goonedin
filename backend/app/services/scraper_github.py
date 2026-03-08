@@ -2,7 +2,7 @@ import asyncio
 import httpx
 import logging
 from datetime import datetime, timezone, timedelta
-from app.core.redis_config import get_blocked_companies, get_title_filter_keywords
+from app.core.supabase_config import get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 GITHUB_LISTINGS_URL = "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/refs/heads/dev/.github/scripts/listings.json"
@@ -23,7 +23,7 @@ def is_posted_within_24h(date_posted: int | None) -> bool:
         return False
 
 
-async def fetch_github_jobs(redis_client) -> dict:
+async def fetch_github_jobs(supabase, user_id: str) -> dict:
     """
     Fetches new grad job listings from SimplifyJobs GitHub repository.
     Only returns active jobs posted in the last 30 minutes.
@@ -77,8 +77,8 @@ async def fetch_github_jobs(redis_client) -> dict:
             parsed_jobs = []
             recent_jobs = []
 
-            title_filter_keywords = await get_title_filter_keywords(redis_client)
-            blocked_companies = await get_blocked_companies(redis_client)
+            title_filter_keywords = await get_title_filter_keywords(supabase, user_id)
+            blocked_companies = await get_blocked_companies(supabase, user_id)
 
             for listing in listings:
                 try:

@@ -53,6 +53,7 @@ export function JobsDashboard() {
   const isLoading = useJobsStore((state) => state.isLoading);
   const customSources = useJobsStore((state) => state.customSources);
   const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
+  const sourceStatuses = useJobsStore((state) => state.sourceStatuses);
 
   const handleDeleteSource = async (id: string, name: string) => {
       try {
@@ -322,6 +323,12 @@ export function JobsDashboard() {
 
           {customSources.map((source) => {
             const sourceJobs = jobs.filter((j) => j.source === source.name);
+            const liveStatus = sourceStatuses[source.id];
+            const status = liveStatus?.status || source.status || "done";
+            const statusMessage = liveStatus?.message || source.status_message || "";
+            const isProcessing = status === "pending" || status === "fetching" || status === "parsing";
+            const isError = status === "error";
+            const progressPercent = status === "pending" ? 10 : status === "fetching" ? 40 : status === "parsing" ? 75 : 100;
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
                 <div className="flex items-center justify-between mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row flex-col gap-4 items-start sm:items-center">
@@ -350,9 +357,55 @@ export function JobsDashboard() {
                   </div>
                 </div>
 
+                {/* Processing status bar */}
+                {(isProcessing || isError) && (
+                  <div className="brutal-border mb-6 p-4 bg-card shadow-[4px_4px_0px_0px_var(--border)]">
+                    <div className="flex items-center gap-3 mb-3">
+                      {isProcessing && (
+                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin text-primary" />
+                      )}
+                      {isError && (
+                        <div className="h-5 w-5 text-red-500 font-black text-lg leading-none">✕</div>
+                      )}
+                      <span className={`font-black uppercase tracking-tighter text-sm ${
+                        isError ? "text-red-500" : "text-foreground"
+                      }`}>
+                        {statusMessage || (isProcessing ? "Processing..." : "Error")}
+                      </span>
+                    </div>
+                    {isProcessing && (
+                      <div className="w-full bg-muted brutal-border h-3 overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-700 ease-out"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    )}
+                    {isProcessing && (
+                      <div className="flex justify-between mt-2">
+                        {["Queued", "Fetching", "AI Parsing", "Done"].map((step, idx) => {
+                          const stepStatuses = ["pending", "fetching", "parsing", "done"];
+                          const currentIdx = stepStatuses.indexOf(status);
+                          const isActive = idx <= currentIdx;
+                          return (
+                            <span key={step} className={`text-[10px] font-black uppercase tracking-wider ${
+                              isActive ? "text-primary" : "text-muted-foreground/40"
+                            }`}>
+                              {step}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <JobList
                   jobs={sourceJobs}
-                  emptyMessage={`Waiting for jobs from ${source.name}. This may take a few minutes while our AI processes the page...`}
+                  emptyMessage={isProcessing
+                    ? `Processing ${source.name}... Jobs will appear here shortly.`
+                    : `Waiting for jobs from ${source.name}. This may take a few minutes while our AI processes the page...`
+                  }
                   isLocked={!user}
                 />
               </TabsContent>

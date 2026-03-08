@@ -13,7 +13,6 @@ import {
   Ban,
   Filter,
   RefreshCw,
-  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -222,28 +221,16 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState<string | null>(null);
 
-  const [telegramBotToken, setTelegramBotToken] = useState("");
-  const [telegramChatId, setTelegramChatId] = useState("");
-  const [savingTelegram, setSavingTelegram] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
       const headers = await getAuthHeaders();
-      const [configRes, meRes] = await Promise.all([
-        fetch(`${API_URL}/config`, { headers }),
-        fetch(`${API_URL}/me`, { headers }),
-      ]);
+      const configRes = await fetch(`${API_URL}/config`, { headers });
 
       if (configRes.ok) {
         const data = await configRes.json();
         setConfig(data);
         setOriginalConfig(data);
-      }
-
-      if (meRes.ok) {
-        const me = await meRes.json();
-        setTelegramBotToken(me.telegram_bot_token || "");
-        setTelegramChatId(me.telegram_chat_id || "");
       }
     } catch (error) {
       console.error("Failed to fetch config:", error);
@@ -288,31 +275,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveTelegram = async () => {
-    setSavingTelegram(true);
-    try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/me/notifications`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({
-          telegram_bot_token: telegramBotToken || null,
-          telegram_chat_id: telegramChatId || null,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success("Telegram notifications updated");
-      } else {
-        throw new Error("Failed to save");
-      }
-    } catch (error) {
-      console.error("Failed to save Telegram config:", error);
-      toast.error("Failed to update Telegram notifications");
-    } finally {
-      setSavingTelegram(false);
-    }
-  };
 
   const hasUnsavedChanges = (key: string) => {
     const current = config[key] || [];
@@ -349,66 +311,6 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Telegram Notifications */}
-            <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
-              <CardHeader className="pb-4 border-b-2 border-border bg-card">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
-                    <Bell className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">Telegram Notifications</CardTitle>
-                    <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1.5">
-                      Receive job alerts via Telegram. Leave blank to disable.
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6 pt-6">
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Bot Token</label>
-                    <input
-                      type="password"
-                      value={telegramBotToken}
-                      onChange={(e) => setTelegramBotToken(e.target.value)}
-                      placeholder="1234567890:ABCdef...wxyz"
-                      className="w-full brutal-border bg-muted px-4 py-3 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Chat ID</label>
-                    <input
-                      type="text"
-                      value={telegramChatId}
-                      onChange={(e) => setTelegramChatId(e.target.value)}
-                      placeholder="-1001234567890"
-                      className="w-full brutal-border bg-muted px-4 py-3 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                  <Button
-                    onClick={handleSaveTelegram}
-                    disabled={savingTelegram}
-                    className="brutal-border bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-black uppercase tracking-widest px-6"
-                  >
-                    {savingTelegram ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Telegram
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Resume Upload / Manager */}
             <ResumeManager />
 
@@ -434,7 +336,7 @@ export default function SettingsPage() {
       <Toaster
         position="bottom-right"
         toastOptions={{
-          className: "bg-[#161b22] border-gray-800 text-white",
+          className: "brutal-border bg-card text-foreground",
         }}
       />
     </div>

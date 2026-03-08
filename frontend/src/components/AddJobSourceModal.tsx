@@ -62,7 +62,7 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const requestPayload = {
           source: {
-            id: editingId || name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 7),
+            id: editingId || crypto.randomUUID(),
             name,
             icon,
             url,

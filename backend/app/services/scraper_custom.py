@@ -89,7 +89,7 @@ def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
         logger.error(f"DeepSeek extraction failed for {source_url}: {e}")
         return []
 
-async def fetch_custom_jobs(source: CustomJobSource, redis_client) -> dict:
+async def fetch_custom_jobs(source: CustomJobSource, supabase) -> dict:
     logger.info(f"Fetching custom job source: {source.name} from {source.url}")
 
     try:

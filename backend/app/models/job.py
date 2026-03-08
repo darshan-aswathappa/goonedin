@@ -14,7 +14,7 @@ class JobBase(BaseModel):
     posted_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     # We want to track if we've already alerted you about this one
     is_new: bool = True
-    # Track whether a notification (Telegram + WebSocket) has been sent
+    # Track whether a notification (WebSocket) has been sent
     is_notified: bool = False
     
     # Fast extraction fields

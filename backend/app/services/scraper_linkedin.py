@@ -6,7 +6,7 @@ import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
-from app.core.redis_config import get_target_keywords, get_blocked_companies, get_title_filter_keywords
+from app.core.supabase_config import get_target_keywords, get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -65,14 +65,14 @@ def parse_posted_at(time_tag) -> datetime | None:
     return None
 
 
-async def fetch_linkedin_jobs(redis_client, keywords: str = None, location: str = None) -> dict:
+async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, location: str = None) -> dict:
     """
     Hits the public LinkedIn guest API and parses the HTML response
     into a list of JobCreate objects with real posted_at timestamps.
     Uses filters: sortBy=DD (date), f_TPR=r120 (last 2 min), f_JT=F (full-time), f_E=2,3 (entry/associate).
     Returns dict with keys: jobs, retries, failed.
     """
-    target_keywords = await get_target_keywords(redis_client)
+    target_keywords = await get_target_keywords(supabase, user_id)
     search_term = keywords or (target_keywords[0] if target_keywords else "Software Engineer")
     search_location = location or "United States"
     encoded_keywords = urllib.parse.quote(search_term)
@@ -122,9 +122,9 @@ async def fetch_linkedin_jobs(redis_client, keywords: str = None, location: str 
             job_cards = soup.find_all("li")
             parsed_jobs = []
 
-            # Get config from Redis
-            title_filter_keywords = await get_title_filter_keywords(redis_client)
-            blocked_companies = await get_blocked_companies(redis_client)
+            # Get config from Supabase
+            title_filter_keywords = await get_title_filter_keywords(supabase, user_id)
+            blocked_companies = await get_blocked_companies(supabase, user_id)
 
             for card in job_cards:
                 try:

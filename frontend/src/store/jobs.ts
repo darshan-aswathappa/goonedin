@@ -17,6 +17,8 @@ export interface CustomSource {
   url: string;
   ttl_hours: number;
   interval_minutes: number;
+  status?: string;
+  status_message?: string;
 }
 
 export interface Job {
@@ -86,6 +88,8 @@ interface JobsState {
   addCustomSource: (source: CustomSource) => void;
   removeCustomSource: (id: string) => void;
   updateCustomSource: (id: string, updates: Partial<CustomSource>) => void;
+  sourceStatuses: Record<string, { status: string; message: string }>;
+  setSourceStatus: (id: string, status: string, message: string) => void;
 }
 
 export const useJobsStore = create<JobsState>((set) => ({
@@ -101,6 +105,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   savedJobIds: new Set<string>(),
   dismissedJobIds: new Set<string>(),
   customSources: [],
+  sourceStatuses: {},
 
   addJob: (job) =>
     set((state) => {
@@ -239,5 +244,13 @@ export const useJobsStore = create<JobsState>((set) => ({
       customSources: state.customSources.map((s) =>
         s.id === id ? { ...s, ...updates } : s
       ),
+    })),
+
+  setSourceStatus: (id, status, message) =>
+    set((state) => ({
+      sourceStatuses: {
+        ...state.sourceStatuses,
+        [id]: { status, message },
+      },
     })),
 }));

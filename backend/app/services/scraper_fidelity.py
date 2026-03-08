@@ -3,7 +3,7 @@ import httpx
 import logging
 from datetime import datetime, timezone
 from app.core.config import get_settings
-from app.core.redis_config import get_blocked_companies, get_title_filter_keywords
+from app.core.supabase_config import get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -54,7 +54,7 @@ def is_posted_today(posted_on: str | None) -> bool:
     return posted_on.lower() == "posted today"
 
 
-async def fetch_fidelity_jobs(redis_client) -> dict:
+async def fetch_fidelity_jobs(supabase, user_id: str) -> dict:
     """
     Fetches jobs from Fidelity Investments career page (Workday API).
     Only returns jobs posted today.
@@ -112,9 +112,9 @@ async def fetch_fidelity_jobs(redis_client) -> dict:
             parsed_jobs = []
             recent_jobs = []
 
-            # Get config from Redis
-            title_filter_keywords = await get_title_filter_keywords(redis_client)
-            blocked_companies = await get_blocked_companies(redis_client)
+            # Get config from Supabase
+            title_filter_keywords = await get_title_filter_keywords(supabase, user_id)
+            blocked_companies = await get_blocked_companies(supabase, user_id)
 
             for job in job_postings:
                 try:

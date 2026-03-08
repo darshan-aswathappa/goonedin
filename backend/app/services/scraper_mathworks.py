@@ -4,7 +4,7 @@ import httpx
 import logging
 from bs4 import BeautifulSoup
 from app.core.config import get_settings
-from app.core.redis_config import get_blocked_companies, get_title_filter_keywords
+from app.core.supabase_config import get_blocked_companies, get_title_filter_keywords
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -38,7 +38,7 @@ HEADERS = {
 }
 
 
-async def fetch_mathworks_jobs(redis_client) -> dict:
+async def fetch_mathworks_jobs(supabase, user_id: str) -> dict:
     """
     Fetches jobs from MathWorks career page using BeautifulSoup.
     Returns dict with keys: jobs, retries, failed, recent_jobs.
@@ -50,9 +50,9 @@ async def fetch_mathworks_jobs(redis_client) -> dict:
     parsed_jobs = []
     recent_jobs = []
 
-    # Get config from Redis
-    title_filter_keywords = await get_title_filter_keywords(redis_client)
-    blocked_companies = await get_blocked_companies(redis_client)
+    # Get config from Supabase
+    title_filter_keywords = await get_title_filter_keywords(supabase, user_id)
+    blocked_companies = await get_blocked_companies(supabase, user_id)
 
     proxy = settings.PROXY_URL if settings.PROXY_URL else None
     if proxy:

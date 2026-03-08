@@ -34,7 +34,19 @@ export function useJobsApi(enabled: boolean = true) {
 
       setJobs(jobs);
       setSavedJobIds(savedIds);
-      useJobsStore.getState().setCustomSources(customData.custom_sources || []);
+      const customSourcesList = customData.custom_sources || [];
+      useJobsStore.getState().setCustomSources(customSourcesList);
+      // Seed source statuses from initial API response
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const src of customSourcesList as any[]) {
+        if (src.status && src.status !== "done") {
+          useJobsStore.getState().setSourceStatus(
+            src.id,
+            src.status,
+            src.status_message || ""
+          );
+        }
+      }
     } catch (error) {
       console.error("Error fetching jobs:", error);
     } finally {

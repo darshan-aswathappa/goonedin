@@ -268,8 +268,8 @@ export function ResumeManager() {
 
   return (
     <>
-      <Card className="border-gray-800 bg-[#161b22]">
-        <CardHeader className="pb-3 border-b-2 border-border">
+      <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
+        <CardHeader className="pb-4 border-b-2 border-border bg-card">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
               <FileText className="h-6 w-6" />
@@ -425,9 +425,9 @@ export function ResumeManager() {
         <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground brutal-border rounded-none shadow-[12px_12px_0px_0px_var(--border)] sm:max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
           <DialogHeader className="p-8 bg-foreground text-background space-y-2 relative border-b-2 border-background">
             <DialogTitle className="flex items-center gap-3 text-3xl font-black italic uppercase tracking-tighter text-background leading-none">
-              <Brain className="h-8 w-8 text-primary shadow-[2px_2px_0px_0px_var(--border)]" />
-              AI Resume Analysis
-            </DialogTitle>
+            <Brain className="h-8 w-8 text-primary shadow-[2px_2px_0px_0px_var(--border)]" />
+            AI Resume Analysis
+          </DialogTitle>
             <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-background/70">
               {selectedResume?.filename}
             </DialogDescription>

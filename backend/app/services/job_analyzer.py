@@ -187,7 +187,6 @@ def analyze_job_with_deepseek(description: str, api_key: str) -> dict[str, Any]:
 async def run_job_analysis(
     external_id: str,
     job_url: str,
-    redis_client: Any,
     api_key: str,
 ) -> Optional[dict[str, Any]]:
     """
@@ -195,8 +194,8 @@ async def run_job_analysis(
     1. Extract job ID from URL
     2. Fetch job description from LinkedIn API
     3. Analyze with DeepSeek
-    4. Store result in Redis
     Returns the analysis dict, or None on failure.
+    (Caller is responsible for persisting the result.)
     """
     import asyncio
 
@@ -224,18 +223,6 @@ async def run_job_analysis(
         )
 
         logger.info(f"[JobAnalyzer] DeepSeek analysis complete for job {external_id}")
-
-        # 4. Store in Redis
-        analysis_key = f"job_analysis:{external_id}"
-        await redis_client.set(analysis_key, json.dumps(analysis))
-
-        # Also set the same TTL as the job itself if it has one
-        job_key = f"seen_job:LinkedIn:{external_id}"
-        job_ttl = await redis_client.ttl(job_key)
-        if job_ttl > 0:
-            await redis_client.expire(analysis_key, job_ttl)
-
-        logger.info(f"[JobAnalyzer] Analysis stored for job {external_id}")
         return analysis
 
     except Exception as e:

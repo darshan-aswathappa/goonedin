@@ -25,14 +25,18 @@ interface UpdateJobMessage {
   type: "UPDATE_JOB";
   data: Job;
 }
+interface CustomSourceStatusMessage {
+  type: "CUSTOM_SOURCE_STATUS";
+  data: { source_id: string; status: string; message: string };
+}
 
-type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage | UpdateJobMessage;
+type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage | UpdateJobMessage | CustomSourceStatusMessage;
 
 export function useWebSocket({ enabled = true } = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const { addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus } = useJobsStore();
+  const { addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus, setSourceStatus } = useJobsStore();
 
   const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -73,6 +77,12 @@ export function useWebSocket({ enabled = true } = {}) {
           removeJob(message.data.external_id);
         } else if (message.type === "UPDATE_JOB" && message.data) {
           updateJob(message.data.external_id, message.data);
+        } else if (message.type === "CUSTOM_SOURCE_STATUS" && message.data) {
+          setSourceStatus(
+            message.data.source_id,
+            message.data.status,
+            message.data.message
+          );
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -86,7 +96,7 @@ export function useWebSocket({ enabled = true } = {}) {
     };
 
     ws.onerror = () => ws.close();
-  }, [addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus]);
+  }, [addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus, setSourceStatus]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);

@@ -12,9 +12,6 @@ class Settings(BaseSettings):
     # --- PROXY & NETWORK ---
     PROXY_URL: str = os.getenv("PROXY_URL", "")
 
-    # --- DATABASE (REDIS) ---
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379")
-
     # --- SUPABASE ---
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
     SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")

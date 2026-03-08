@@ -11,21 +11,39 @@ from typing import Optional, Any, Dict, List
 
 from app.core.config import get_settings
 from app.core.auth import get_current_user
-from app.core.redis_config import (
+from app.core.supabase_config import (
     get_target_keywords,
     get_blocked_companies,
     get_title_filter_keywords,
-    get_custom_sources,
     get_all_config,
     set_config_list,
 )
+from app.services.supabase_jobs import (
+    is_already_seen as is_already_seen_sb,
+    upsert_job,
+    update_job,
+    get_all_jobs,
+    get_job,
+    dismiss_job as dismiss_job_sb,
+    delete_jobs_by_company,
+    cleanup_expired_jobs,
+)
 from app.models.custom_source import CustomJobSource
+from app.services.custom_source_supabase import (
+    get_custom_sources as get_custom_sources_sb,
+    add_custom_source as add_custom_source_sb,
+    update_custom_source as update_custom_source_sb,
+    delete_custom_source as delete_custom_source_sb,
+    update_source_status,
+    upsert_custom_jobs,
+    get_custom_jobs,
+    delete_expired_jobs,
+)
 from app.core.user_manager import (
     UserContext,
     user_registry,
     set_supabase_client,
     get_or_create_user_context,
-    update_user_telegram,
     load_all_users,
     get_supabase_client,
 )
@@ -35,7 +53,7 @@ from app.services.scraper_fidelity import fetch_fidelity_jobs
 from app.services.scraper_statestreet import fetch_statestreet_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.scraper_github import fetch_github_jobs
-from app.services.notification import send_telegram_alert
+
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 from app.services.resume_analyzer import run_resume_analysis
@@ -63,16 +81,28 @@ async def lifespan(app: FastAPI):
     set_supabase_client(supabase)
     logger.info("Supabase client initialized.")
 
+    # Periodic cleanup task for expired scraped jobs
+    async def _cleanup_loop():
+        while True:
+            try:
+                await cleanup_expired_jobs(supabase)
+            except Exception as e:
+                logger.warning(f"Expired job cleanup error: {e}")
+            await asyncio.sleep(300)  # every 5 minutes
+
+    cleanup_task = asyncio.create_task(_cleanup_loop())
+
     try:
         contexts = await load_all_users()
         for ctx in contexts:
             start_user_scrapers(ctx)
-            logger.info(f"Started scrapers for existing user (db={ctx.redis_db_index})")
+            logger.info(f"Started scrapers for existing user {ctx.user_id}")
     except Exception as e:
         logger.warning(f"Failed to load existing users at startup: {e}. Server will continue.")
 
     yield
 
+    cleanup_task.cancel()
     for ctx in user_registry.values():
         if ctx.hf_task and not ctx.hf_task.done():
             ctx.hf_task.cancel()
@@ -80,11 +110,8 @@ async def lifespan(app: FastAPI):
             ctx.lf_task.cancel()
         if ctx.analysis_worker_task and not ctx.analysis_worker_task.done():
             ctx.analysis_worker_task.cancel()
-        if ctx.pubsub_listener_task and not ctx.pubsub_listener_task.done():
-            ctx.pubsub_listener_task.cancel()
         if ctx.custom_sources_task and not ctx.custom_sources_task.done():
             ctx.custom_sources_task.cancel()
-        await ctx.redis_client.aclose()
 
 
 app = FastAPI(
@@ -113,40 +140,14 @@ def is_recent(posted_at: datetime | None) -> bool:
     return (now - posted_at) <= timedelta(minutes=JOB_RECENCY_MINUTES)
 
 
-async def matches_target_keywords(job, redis_client) -> bool:
+async def matches_target_keywords(job, supabase, user_id: str) -> bool:
     title_lower = job.title.lower()
-    target_keywords = await get_target_keywords(redis_client)
+    target_keywords = await get_target_keywords(supabase, user_id)
     return any(kw.lower() in title_lower for kw in target_keywords)
 
 
-async def is_already_seen(redis_client, job_key: str) -> bool:
-    try:
-        return bool(await redis_client.exists(job_key))
-    except Exception:
-        return False
-
-
-async def mark_as_seen(redis_client: Any, job_key: str, job_data: Optional[Dict[str, Any]] = None, ttl_seconds: Optional[int] = None) -> None:
-    try:
-        import json
-        ttl = ttl_seconds if ttl_seconds is not None else SEEN_JOB_TTL_SECONDS
-        value = json.dumps(job_data) if job_data else "1"
-        await redis_client.setex(job_key, ttl, value)
-    except Exception as e:
-        logger.warning(f"Redis write failed for {job_key}: {e}")
-
-
-async def mark_as_seen_permanent(redis_client: Any, job_key: str, job_data: Optional[Dict[str, Any]] = None) -> None:
-    try:
-        import json
-        value = json.dumps(job_data) if job_data else "1"
-        await redis_client.set(job_key, value)
-    except Exception as e:
-        logger.warning(f"Redis write failed for {job_key}: {e}")
-
-
 async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
-    rc = ctx.redis_client
+    supabase = get_supabase_client()
     all_jobs: List[Any] = []
     fidelity_jobs: List[Any] = []
     statestreet_jobs: List[Any] = []
@@ -174,123 +175,111 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     for job in all_jobs:
         if not is_recent(job.posted_at):
             continue
-        if not await matches_target_keywords(job, rc):
+        if not await matches_target_keywords(job, supabase, ctx.user_id):
             continue
-        job_key = f"seen_job:{job.source}:{job.external_id}"
-        if await is_already_seen(rc, job_key):
+        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
-            
+
         job_dict = job.model_dump(mode="json")
         job_dict["visible"] = False
-        await mark_as_seen(rc, job_key, job_dict)
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         total_finds = total_finds + 1  # type: ignore
 
         if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
-            # Push to analysis queue — worker will process, retry, and broadcast
-            queue_key = f"analysis_queue:{ctx.user_id}"
-            queue_item = json_module.dumps({
+            # Push to in-memory analysis queue
+            await ctx.analysis_queue.put({
                 "external_id": job_dict["external_id"],
-                "job_key": job_key,
                 "job_url": job_dict["url"],
                 "source": job_dict["source"],
                 "retry_count": 0,
             })
-            await rc.lpush(queue_key, queue_item)
             logger.info(f"Queued job {job_dict['external_id']} for analysis")
         else:
             job_dict["visible"] = True
-            await mark_as_seen(rc, job_key, job_dict)
+            await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
             await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-            await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
             job_dict["is_notified"] = True
-            await mark_as_seen(rc, job_key, job_dict)
+            await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
             logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
 
     for job in fidelity_jobs:
-        job_key = f"seen_job:{job.source}:{job.external_id}"
-        if await is_already_seen(rc, job_key):
+        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
         job_dict = job.model_dump(mode="json")
-        await mark_as_seen(rc, job_key, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
+        job_dict["visible"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
         total_finds = total_finds + 1
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
         job_dict["is_notified"] = True
-        await mark_as_seen(rc, job_key, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
         logger.info(f"New Target (Fidelity): {job.title} @ {job.company}")
 
     for job in statestreet_jobs:
-        job_key = f"seen_job:{job.source}:{job.external_id}"
-        if await is_already_seen(rc, job_key):
+        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
         job_dict = job.model_dump(mode="json")
-        await mark_as_seen(rc, job_key, job_dict)
+        job_dict["visible"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         total_finds = total_finds + 1
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
         job_dict["is_notified"] = True
-        await mark_as_seen(rc, job_key, job_dict)
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         logger.info(f"New Target (StateStreet): {job.title} @ {job.company}")
 
     for job in mathworks_jobs:
-        job_key = f"seen_job:{job.source}:{job.external_id}"
-        if await is_already_seen(rc, job_key):
+        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
         job_dict = job.model_dump(mode="json")
-        await mark_as_seen_permanent(rc, job_key, job_dict)
+        job_dict["visible"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict)  # permanent — no TTL
         total_finds = total_finds + 1
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
         job_dict["is_notified"] = True
-        await mark_as_seen_permanent(rc, job_key, job_dict)
+        await upsert_job(supabase, ctx.user_id, job_dict)
         logger.info(f"New Target (MathWorks): {job.title} @ {job.company}")
 
     for job in github_jobs:
-        if not await matches_target_keywords(job, rc):
+        if not await matches_target_keywords(job, supabase, ctx.user_id):
             continue
-        job_key = f"seen_job:{job.source}:{job.external_id}"
-        if await is_already_seen(rc, job_key):
+        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
         job_dict = job.model_dump(mode="json")
-        await mark_as_seen(rc, job_key, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
+        job_dict["visible"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
         total_finds = total_finds + 1  # type: ignore
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
         job_dict["is_notified"] = True
-        await mark_as_seen(rc, job_key, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
         logger.info(f"New Target (GitHub): {job.title} @ {job.company}")
 
     return total_finds
 
 
 # ---------------------------------------------------------------------------
-# Analysis Worker — BRPOP loop with retries
+# Analysis Worker — asyncio.Queue loop with retries
 # ---------------------------------------------------------------------------
 ANALYSIS_MAX_RETRIES = 2
 
 async def run_analysis_worker(ctx: UserContext):
     """
-    Continuously pops jobs from the analysis queue, runs DeepSeek analysis,
-    and publishes results via Redis Pub/Sub. Retries up to ANALYSIS_MAX_RETRIES
+    Continuously takes jobs from the in-memory analysis queue, runs DeepSeek analysis,
+    and broadcasts results directly via WebSocket. Retries up to ANALYSIS_MAX_RETRIES
     times on failure before marking the job as analysis_unavailable.
     """
-    rc = ctx.redis_client
-    queue_key = f"analysis_queue:{ctx.user_id}"
-    publish_channel = f"job_ready:{ctx.user_id}"
-    logger.info(f"[AnalysisWorker] Started for user {ctx.user_id} (db={ctx.redis_db_index})")
+    supabase = get_supabase_client()
+    logger.info(f"[AnalysisWorker] Started for user {ctx.user_id}")
 
     while True:
         try:
-            # BRPOP blocks until an item is available (timeout=5s to allow cancellation checks)
-            result = await rc.brpop(queue_key, timeout=5)
-            if result is None:
+            # Await next item from the in-memory queue
+            try:
+                task = await asyncio.wait_for(ctx.analysis_queue.get(), timeout=5)
+            except asyncio.TimeoutError:
                 continue
 
-            _, raw = result
-            task = json_module.loads(raw)
             external_id = task["external_id"]
-            job_key = task["job_key"]
             job_url = task["job_url"]
+            source = task.get("source", "LinkedIn")
             retry_count = task.get("retry_count", 0)
 
             logger.info(
@@ -298,18 +287,16 @@ async def run_analysis_worker(ctx: UserContext):
                 f"(attempt {retry_count + 1}/{ANALYSIS_MAX_RETRIES + 1})"
             )
 
-            # Load the current job dict from Redis
-            raw_job = await rc.get(job_key)
-            if not raw_job:
-                logger.warning(f"[AnalysisWorker] Job {job_key} not found in Redis, skipping.")
+            # Load the current job from Supabase
+            job_dict = await get_job(supabase, ctx.user_id, source, external_id)
+            if not job_dict:
+                logger.warning(f"[AnalysisWorker] Job {external_id} not found in Supabase, skipping.")
                 continue
-            job_dict = json_module.loads(raw_job)
 
             try:
                 analysis_data = await run_job_analysis(
                     external_id=external_id,
                     job_url=job_url,
-                    redis_client=rc,
                     api_key=settings.DEEPSEEK_API_KEY,
                 )
 
@@ -331,7 +318,7 @@ async def run_analysis_worker(ctx: UserContext):
                 if retry_count < ANALYSIS_MAX_RETRIES:
                     # Re-queue with incremented retry count
                     task["retry_count"] = retry_count + 1
-                    await rc.lpush(queue_key, json_module.dumps(task))
+                    await ctx.analysis_queue.put(task)
                     logger.info(
                         f"[AnalysisWorker] Re-queued {external_id} "
                         f"for retry {retry_count + 2}/{ANALYSIS_MAX_RETRIES + 1}"
@@ -346,7 +333,7 @@ async def run_analysis_worker(ctx: UserContext):
                     job_dict["analysis_status"] = "unavailable"
 
             # Check blocked companies before making visible
-            blocked_companies = await get_blocked_companies(rc)
+            blocked_companies = await get_blocked_companies(supabase, ctx.user_id)
             job_company = (job_dict.get("company") or "").lower()
             if any(b.lower() in job_company for b in blocked_companies):
                 logger.info(
@@ -355,30 +342,24 @@ async def run_analysis_worker(ctx: UserContext):
                 )
                 continue
 
-            # Make visible and persist
+            # Make visible and persist in Supabase
             job_dict["visible"] = True
-            await mark_as_seen(rc, job_key, job_dict)
+            updates = {
+                "visible": True,
+                "analysis_status": job_dict.get("analysis_status"),
+                "analysis": job_dict.get("analysis"),
+                "salary": job_dict.get("salary"),
+                "visa": job_dict.get("visa"),
+            }
+            await update_job(supabase, ctx.user_id, source, external_id, updates)
 
-            # Publish to Pub/Sub for WebSocket broadcast
-            await rc.publish(publish_channel, json_module.dumps(job_dict))
+            # Broadcast directly via WebSocket (no Pub/Sub needed)
+            await manager.broadcast(ctx.user_id, {
+                "type": "NEW_JOB",
+                "data": job_dict,
+            })
 
-            # Send Telegram alert
-            try:
-                from app.models.job import JobCreate
-                job_obj = JobCreate(
-                    title=job_dict.get("title", ""),
-                    company=job_dict.get("company", ""),
-                    location=job_dict.get("location", ""),
-                    url=job_dict.get("url", ""),
-                    source=job_dict.get("source", "LinkedIn"),
-                    external_id=external_id,
-                    posted_at=None,
-                )
-                await send_telegram_alert(job_obj, ctx.telegram_bot_token, ctx.telegram_chat_id)
-                job_dict["is_notified"] = True
-                await mark_as_seen(rc, job_key, job_dict)
-            except Exception as te:
-                logger.warning(f"[AnalysisWorker] Telegram alert failed for {external_id}: {te}")
+            await update_job(supabase, ctx.user_id, source, external_id, {"is_notified": True})
 
             status = job_dict.get("analysis_status", "unknown")
             logger.info(f"[AnalysisWorker] Done {external_id} — status={status}")
@@ -390,160 +371,189 @@ async def run_analysis_worker(ctx: UserContext):
             logger.error(f"[AnalysisWorker] Unexpected error: {e}")
             await asyncio.sleep(2)
 
-
-# ---------------------------------------------------------------------------
-# Pub/Sub Listener — bridges Redis Pub/Sub → WebSocket
-# ---------------------------------------------------------------------------
-async def run_pubsub_listener(ctx: UserContext):
-    """
-    Subscribes to the job_ready:{user_id} Redis Pub/Sub channel and
-    broadcasts each message to the user's WebSocket connections.
-    """
-    rc = ctx.redis_client
-    channel = f"job_ready:{ctx.user_id}"
-    logger.info(f"[PubSubListener] Subscribed to {channel}")
-
-    pubsub = rc.pubsub()
-    await pubsub.subscribe(channel)
-
-    try:
-        while True:
-            message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=5.0)
-            if message is None:
-                continue
-            if message["type"] == "message":
-                try:
-                    job_data = json_module.loads(message["data"])
-                    await manager.broadcast(ctx.user_id, {
-                        "type": "NEW_JOB",
-                        "data": job_data,
-                    })
-                    logger.info(
-                        f"[PubSubListener] Broadcast job {job_data.get('external_id', '?')} "
-                        f"to user {ctx.user_id}"
-                    )
-                except Exception as e:
-                    logger.error(f"[PubSubListener] Failed to broadcast: {e}")
-    except asyncio.CancelledError:
-        logger.info(f"[PubSubListener] Cancelled for user {ctx.user_id}")
-    finally:
-        await pubsub.unsubscribe(channel)
-        await pubsub.aclose()
-
 async def run_high_frequency_loop(ctx: UserContext):
-    logger.info(f"[HF] Scraper started (db={ctx.redis_db_index})")
+    supabase = get_supabase_client()
+    logger.info(f"[HF] Scraper started for {ctx.user_id}")
     while True:
         try:
-            target_keywords = await get_target_keywords(ctx.redis_client)
+            target_keywords = await get_target_keywords(supabase, ctx.user_id)
             results = await asyncio.gather(
                 *[
-                    fetch_linkedin_jobs(ctx.redis_client, keywords=kw, location="United States")
+                    fetch_linkedin_jobs(supabase, ctx.user_id, keywords=kw, location="United States")
                     for kw in target_keywords
                 ],
-                fetch_statestreet_jobs(ctx.redis_client),
+                fetch_statestreet_jobs(supabase, ctx.user_id),
             )
             total = len(results)
             failed = sum(1 for r in results if r["failed"])
             logger.info(
-                f"[HF] db={ctx.redis_db_index} | {total} calls | "
+                f"[HF] {ctx.user_id} | {total} calls | "
                 f"{total - failed} passed | {failed} failed"
             )
             new_finds = await process_and_alert_jobs(results, ctx)
             if new_finds == 0:
-                logger.debug(f"[HF] db={ctx.redis_db_index} No new targets.")
+                logger.debug(f"[HF] {ctx.user_id} No new targets.")
         except Exception as e:
-            logger.error(f"[HF] db={ctx.redis_db_index} Error: {e}")
+            logger.error(f"[HF] {ctx.user_id} Error: {e}")
         await asyncio.sleep(90 + random.uniform(-10, 10))
 
 
 async def run_low_frequency_loop(ctx: UserContext):
-    logger.info(f"[LF] Scraper started (db={ctx.redis_db_index})")
+    supabase = get_supabase_client()
+    logger.info(f"[LF] Scraper started for {ctx.user_id}")
     while True:
         try:
             results = await asyncio.gather(
-                fetch_fidelity_jobs(ctx.redis_client),
-                fetch_mathworks_jobs(ctx.redis_client),
-                fetch_github_jobs(ctx.redis_client),
+                fetch_fidelity_jobs(supabase, ctx.user_id),
+                fetch_mathworks_jobs(supabase, ctx.user_id),
+                fetch_github_jobs(supabase, ctx.user_id),
             )
             total = len(results)
             failed = sum(1 for r in results if r["failed"])
             logger.info(
-                f"[LF] db={ctx.redis_db_index} | {total} calls | "
+                f"[LF] {ctx.user_id} | {total} calls | "
                 f"{total - failed} passed | {failed} failed"
             )
             new_finds = await process_and_alert_jobs(results, ctx)
             if new_finds == 0:
-                logger.debug(f"[LF] db={ctx.redis_db_index} No new targets.")
+                logger.debug(f"[LF] {ctx.user_id} No new targets.")
         except Exception as e:
-            logger.error(f"[LF] db={ctx.redis_db_index} Error: {e}")
+            logger.error(f"[LF] {ctx.user_id} Error: {e}")
         await asyncio.sleep(1200 + random.uniform(-30, 30))
 
 
 async def run_custom_sources_loop(ctx: UserContext):
-    logger.info(f"[Custom] Scraper started (db={ctx.redis_db_index})")
-    last_scraped = {}
-    
+    logger.info(f"[Custom] Scraper started for {ctx.user_id}")
+    supabase = get_supabase_client()
+    last_scraped: dict[str, datetime] = {}
+    cleanup_counter = 0
+
     while True:
         try:
-            from app.core.redis_config import get_custom_sources
             from app.models.custom_source import CustomJobSource
             from app.services.scraper_custom import fetch_custom_jobs
-            
-            custom_sources = await get_custom_sources(ctx.redis_client)
+
+            custom_sources = await get_custom_sources_sb(supabase, ctx.user_id)
             if not custom_sources:
                 await asyncio.sleep(60)
                 continue
-                
+
             now = datetime.now(timezone.utc)
-            tasks = []
-            
-            for dict_source in custom_sources:
-                source = CustomJobSource(**dict_source)
+
+            for src_row in custom_sources:
+                source = CustomJobSource(**{
+                    "id": src_row["id"],
+                    "name": src_row["name"],
+                    "icon": src_row["icon"],
+                    "url": src_row["url"],
+                    "ttl_hours": src_row.get("ttl_hours", 24),
+                    "interval_minutes": src_row.get("interval_minutes", 60),
+                })
+
+                # Determine if we should scrape this source now
+                should_scrape = False
                 if source.id not in last_scraped:
-                    tasks.append(fetch_custom_jobs(source, ctx.redis_client))
-                    last_scraped[source.id] = now
+                    should_scrape = True
                 else:
-                    last_time = last_scraped[source.id]
-                    if (now - last_time).total_seconds() >= source.interval_minutes * 60:
-                        tasks.append(fetch_custom_jobs(source, ctx.redis_client))
-                        last_scraped[source.id] = now
-                    
-            if tasks:
-                results = await asyncio.gather(*tasks)
-                total = len(results)
-                failed = sum(1 for r in results if r["failed"])
-                logger.info(
-                    f"[Custom] db={ctx.redis_db_index} | {total} calls | "
-                    f"{total - failed} passed | {failed} failed"
+                    elapsed = (now - last_scraped[source.id]).total_seconds()
+                    if elapsed >= source.interval_minutes * 60:
+                        should_scrape = True
+                # Also scrape if status is 'pending' (newly added source)
+                if src_row.get("status") == "pending":
+                    should_scrape = True
+
+                if not should_scrape:
+                    continue
+
+                # --- Status: fetching ---
+                await update_source_status(
+                    supabase, source.id, ctx.user_id,
+                    "fetching", "Fetching page content..."
                 )
-                
-                for r in results:
-                    if r.get("failed") or not r.get("jobs"): continue
-                    
-                    source_config = r.get("source_config")
-                    ttl_seconds = source_config.ttl_hours * 3600 if source_config else 24 * 3600
-                    
-                    for job in r["jobs"]:
-                        job_key = f"seen_job:{job.source}:{job.external_id}"
-                        if await is_already_seen(ctx.redis_client, job_key):
-                            continue
-                            
-                        job_dict = job.model_dump(mode="json")
-                        job_dict["visible"] = True
-                        
-                        await mark_as_seen(ctx.redis_client, job_key, job_dict, ttl_seconds=ttl_seconds)
-                        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-                        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
-                        
-                        job_dict["is_notified"] = True
-                        await mark_as_seen(ctx.redis_client, job_key, job_dict, ttl_seconds=ttl_seconds)
-                        logger.info(f"New Target (Custom {job.source}): {job.title} @ {job.company}")
-                        
+                await manager.broadcast(ctx.user_id, {
+                    "type": "CUSTOM_SOURCE_STATUS",
+                    "data": {"source_id": source.id, "status": "fetching",
+                             "message": "Fetching page content..."}
+                })
+
+                result = await fetch_custom_jobs(source, supabase)
+                last_scraped[source.id] = now
+
+                if result.get("failed"):
+                    await update_source_status(
+                        supabase, source.id, ctx.user_id,
+                        "error", "Failed to fetch page."
+                    )
+                    await manager.broadcast(ctx.user_id, {
+                        "type": "CUSTOM_SOURCE_STATUS",
+                        "data": {"source_id": source.id, "status": "error",
+                                 "message": "Failed to fetch page."}
+                    })
+                    continue
+
+                # --- Status: parsing ---
+                await update_source_status(
+                    supabase, source.id, ctx.user_id,
+                    "parsing", "AI is extracting jobs..."
+                )
+                await manager.broadcast(ctx.user_id, {
+                    "type": "CUSTOM_SOURCE_STATUS",
+                    "data": {"source_id": source.id, "status": "parsing",
+                             "message": "AI is extracting jobs..."}
+                })
+
+                parsed_jobs = result.get("jobs", [])
+                job_dicts = [j.model_dump(mode="json") for j in parsed_jobs]
+
+                # Store jobs in Supabase
+                new_jobs = await upsert_custom_jobs(
+                    supabase, ctx.user_id, source.id, source.name, job_dicts
+                )
+
+                # --- Status: done ---
+                msg = f"Found {len(parsed_jobs)} jobs."
+                await update_source_status(
+                    supabase, source.id, ctx.user_id,
+                    "done", msg, set_last_scraped=True,
+                )
+                await manager.broadcast(ctx.user_id, {
+                    "type": "CUSTOM_SOURCE_STATUS",
+                    "data": {"source_id": source.id, "status": "done",
+                             "message": msg}
+                })
+
+                # Broadcast each new job to the frontend
+                for job_row in new_jobs:
+                    job_ws = {
+                        "title": job_row.get("title", ""),
+                        "company": job_row.get("company", ""),
+                        "location": job_row.get("location", ""),
+                        "url": job_row.get("url", ""),
+                        "source": job_row.get("source_name", source.name),
+                        "external_id": job_row.get("external_id", ""),
+                        "posted_at": job_row.get("posted_at", ""),
+                        "visible": True,
+                    }
+                    await manager.broadcast(ctx.user_id, {
+                        "type": "NEW_JOB", "data": job_ws
+                    })
+
+                logger.info(
+                    f"[Custom] {source.name}: scraped {len(parsed_jobs)} jobs, "
+                    f"{len(new_jobs)} upserted"
+                )
+
+            # Periodic cleanup of expired jobs (every 10 iterations ≈ 10 min)
+            cleanup_counter += 1
+            if cleanup_counter >= 10:
+                await delete_expired_jobs(supabase)
+                cleanup_counter = 0
+
         except asyncio.CancelledError:
             break
         except Exception as e:
-            logger.error(f"[Custom] db={ctx.redis_db_index} Error: {e}")
-            
+            logger.error(f"[Custom] Error for {ctx.user_id}: {e}")
+
         await asyncio.sleep(60)
 
 
@@ -559,8 +569,6 @@ def start_user_scrapers(ctx: UserContext) -> None:
         ctx.lf_task = asyncio.create_task(run_low_frequency_loop(ctx))
     if ctx.analysis_worker_task is None or ctx.analysis_worker_task.done():
         ctx.analysis_worker_task = asyncio.create_task(run_analysis_worker(ctx))
-    if ctx.pubsub_listener_task is None or ctx.pubsub_listener_task.done():
-        ctx.pubsub_listener_task = asyncio.create_task(run_pubsub_listener(ctx))
     if getattr(ctx, "custom_sources_task", None) is None or ctx.custom_sources_task.done():
         ctx.custom_sources_task = asyncio.create_task(run_custom_sources_loop(ctx))
     
@@ -606,71 +614,46 @@ async def get_me(user: dict = Depends(get_current_user)):
     return {
         "user_id": ctx.user_id,
         "email": user["email"],
-        "redis_db_index": ctx.redis_db_index,
-        "telegram_bot_token": ctx.telegram_bot_token or "",
-        "telegram_chat_id": ctx.telegram_chat_id or "",
     }
 
-
-class NotificationConfig(BaseModel):
-    telegram_bot_token: str
-    telegram_chat_id: str
-
-
-@app.put("/me/notifications")
-async def update_notifications(
-    request: NotificationConfig, user: dict = Depends(get_current_user)
-):
-    await get_or_create_user_context(user["user_id"], user["email"])
-    bot_token = request.telegram_bot_token.strip() or None
-    chat_id = request.telegram_chat_id.strip() or None
-    await update_user_telegram(user["user_id"], bot_token, chat_id)
-    return {"message": "Updated", "telegram_configured": bool(bot_token and chat_id)}
-
 @app.get("/jobs")
-async def get_jobs(ctx: UserContext = Depends(_get_ctx)):
-    import json
-    jobs = []
-    blocked_companies = await get_blocked_companies(ctx.redis_client)
+async def get_jobs_endpoint(ctx: UserContext = Depends(_get_ctx)):
+    supabase = get_supabase_client()
+    blocked_companies = await get_blocked_companies(supabase, ctx.user_id)
     blocked_lower = [b.lower() for b in blocked_companies]
     try:
-        cursor = 0
-        while True:
-            cursor, keys = await ctx.redis_client.scan(cursor, match="seen_job:*", count=100)
-            for key in keys:
-                try:
-                    value = await ctx.redis_client.get(key)
-                    if value and value != "1":
-                        job_data = json.loads(value)
-                        if job_data.get("visible") is False:
-                            continue
-
-                        # Filter out jobs from blocked companies
-                        company = (job_data.get("company") or "").lower()
-                        if any(b in company for b in blocked_lower):
-                            continue
-
-                        ttl = await ctx.redis_client.ttl(key)
-                        job_data["ttl"] = ttl
-                        
-                        # Enrich LinkedIn jobs with analysis if not already embedded
-                        if job_data.get("source") == "LinkedIn" and not job_data.get("analysis"):
-                            analysis_key = f"job_analysis:{job_data.get('external_id', '')}"
-                            try:
-                                cached_analysis = await ctx.redis_client.get(analysis_key)
-                                if cached_analysis and cached_analysis != "1":
-                                    job_data["analysis"] = json.loads(cached_analysis)
-                            except Exception:
-                                pass
-                        
-                        jobs.append(job_data)
-                except (json.JSONDecodeError, Exception):
-                    continue
-            if cursor == 0:
-                break
+        # Fetch all visible scraped jobs from Supabase
+        all_scraped = await get_all_jobs(supabase, ctx.user_id)
+        jobs = []
+        for job_data in all_scraped:
+            company = (job_data.get("company") or "").lower()
+            if any(b in company for b in blocked_lower):
+                continue
+            jobs.append(job_data)
     except Exception as e:
-        logger.error(f"Error fetching jobs from Redis: {e}")
-        raise HTTPException(status_code=503, detail="Redis temporarily unavailable")
+        logger.error(f"Error fetching jobs from Supabase: {e}")
+        raise HTTPException(status_code=503, detail="Database temporarily unavailable")
+
+    # --- Merge custom-source jobs from Supabase ---
+    try:
+        custom_jobs = await get_custom_jobs(supabase, ctx.user_id)
+        for cj in custom_jobs:
+            company = (cj.get("company") or "").lower()
+            if any(b in company for b in blocked_lower):
+                continue
+            jobs.append({
+                "title": cj.get("title", ""),
+                "company": cj.get("company", ""),
+                "location": cj.get("location", ""),
+                "url": cj.get("url", ""),
+                "source": cj.get("source_name", ""),
+                "external_id": cj.get("external_id", ""),
+                "posted_at": cj.get("posted_at", ""),
+                "visible": True,
+                "ttl": -1,
+            })
+    except Exception as e:
+        logger.warning(f"Failed to fetch custom jobs from Supabase: {e}")
 
     jobs.sort(key=lambda x: x.get("posted_at") or "", reverse=True)
     return {"jobs": jobs, "count": len(jobs)}
@@ -682,12 +665,14 @@ class ConfigUpdateRequest(BaseModel):
 
 @app.get("/config")
 async def get_config(ctx: UserContext = Depends(_get_ctx)):
-    return await get_all_config(ctx.redis_client)
+    supabase = get_supabase_client()
+    return await get_all_config(supabase, ctx.user_id)
 
 
 @app.get("/config/target-keywords")
 async def get_target_keywords_endpoint(ctx: UserContext = Depends(_get_ctx)):
-    keywords = await get_target_keywords(ctx.redis_client)
+    supabase = get_supabase_client()
+    keywords = await get_target_keywords(supabase, ctx.user_id)
     return {"target_keywords": keywords, "count": len(keywords)}
 
 
@@ -695,7 +680,8 @@ async def get_target_keywords_endpoint(ctx: UserContext = Depends(_get_ctx)):
 async def update_target_keywords(
     request: ConfigUpdateRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    success = await set_config_list(ctx.redis_client, "target_keywords", request.values)
+    supabase = get_supabase_client()
+    success = await set_config_list(supabase, ctx.user_id, "target_keywords", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     return {"message": "Updated", "target_keywords": request.values}
@@ -703,8 +689,9 @@ async def update_target_keywords(
 
 @app.get("/config/target-locations")
 async def get_target_locations_endpoint(ctx: UserContext = Depends(_get_ctx)):
-    from app.core.redis_config import get_target_locations
-    locations = await get_target_locations(ctx.redis_client)
+    from app.core.supabase_config import get_target_locations
+    supabase = get_supabase_client()
+    locations = await get_target_locations(supabase, ctx.user_id)
     return {"target_locations": locations, "count": len(locations)}
 
 
@@ -712,7 +699,8 @@ async def get_target_locations_endpoint(ctx: UserContext = Depends(_get_ctx)):
 async def update_target_locations(
     request: ConfigUpdateRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    success = await set_config_list(ctx.redis_client, "target_locations", request.values)
+    supabase = get_supabase_client()
+    success = await set_config_list(supabase, ctx.user_id, "target_locations", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     return {"message": "Updated", "target_locations": request.values}
@@ -720,7 +708,8 @@ async def update_target_locations(
 
 @app.get("/config/blocked-companies")
 async def get_blocked_companies_endpoint(ctx: UserContext = Depends(_get_ctx)):
-    companies = await get_blocked_companies(ctx.redis_client)
+    supabase = get_supabase_client()
+    companies = await get_blocked_companies(supabase, ctx.user_id)
     return {"blocked_companies": companies, "count": len(companies)}
 
 
@@ -728,7 +717,8 @@ async def get_blocked_companies_endpoint(ctx: UserContext = Depends(_get_ctx)):
 async def update_blocked_companies(
     request: ConfigUpdateRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    success = await set_config_list(ctx.redis_client, "blocked_companies", request.values)
+    supabase = get_supabase_client()
+    success = await set_config_list(supabase, ctx.user_id, "blocked_companies", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     return {"message": "Updated", "blocked_companies": request.values}
@@ -736,7 +726,8 @@ async def update_blocked_companies(
 
 @app.get("/config/title-filter-keywords")
 async def get_title_filter_keywords_endpoint(ctx: UserContext = Depends(_get_ctx)):
-    keywords = await get_title_filter_keywords(ctx.redis_client)
+    supabase = get_supabase_client()
+    keywords = await get_title_filter_keywords(supabase, ctx.user_id)
     return {"title_filter_keywords": keywords, "count": len(keywords)}
 
 
@@ -744,7 +735,8 @@ async def get_title_filter_keywords_endpoint(ctx: UserContext = Depends(_get_ctx
 async def update_title_filter_keywords(
     request: ConfigUpdateRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    success = await set_config_list(ctx.redis_client, "title_filter_keywords", request.values)
+    supabase = get_supabase_client()
+    success = await set_config_list(supabase, ctx.user_id, "title_filter_keywords", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     return {"message": "Updated", "title_filter_keywords": request.values}
@@ -756,7 +748,8 @@ class CustomSourceRequest(BaseModel):
 
 @app.get("/config/custom-sources")
 async def get_custom_sources_endpoint(ctx: UserContext = Depends(_get_ctx)):
-    sources = await get_custom_sources(ctx.redis_client)
+    supabase = get_supabase_client()
+    sources = await get_custom_sources_sb(supabase, ctx.user_id)
     return {"custom_sources": sources, "count": len(sources)}
 
 
@@ -764,62 +757,61 @@ async def get_custom_sources_endpoint(ctx: UserContext = Depends(_get_ctx)):
 async def add_custom_source(
     request: CustomSourceRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    sources = await get_custom_sources(ctx.redis_client)
-    
+    supabase = get_supabase_client()
+    sources = await get_custom_sources_sb(supabase, ctx.user_id)
+
     # Check if exists
     if any(s.get("id") == request.source.id for s in sources):
         raise HTTPException(status_code=400, detail="Custom source with this ID already exists")
-        
-    sources.append(request.source.model_dump(mode="json"))
-    success = await set_config_list(ctx.redis_client, "custom_sources", sources)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to update config")
-        
-    return {"message": "Added custom source", "custom_sources": sources}
+
+    source_data = request.source.model_dump(mode="json")
+    await add_custom_source_sb(supabase, ctx.user_id, source_data)
+
+    # Broadcast pending status so frontend shows loading bar immediately
+    await manager.broadcast(ctx.user_id, {
+        "type": "CUSTOM_SOURCE_STATUS",
+        "data": {"source_id": request.source.id, "status": "pending",
+                 "message": "Waiting to start..."}
+    })
+
+    updated_sources = await get_custom_sources_sb(supabase, ctx.user_id)
+    return {"message": "Added custom source", "custom_sources": updated_sources}
 
 
 @app.put("/config/custom-sources/{source_id}")
 async def update_custom_source(
     source_id: str, request: CustomSourceRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    sources = await get_custom_sources(ctx.redis_client)
-    
-    found = False
-    for i, s in enumerate(sources):
-        if s.get("id") == source_id:
-            updated_data = request.source.model_dump(mode="json")
-            updated_data["id"] = source_id
-            sources[i] = updated_data
-            found = True
-            break
-            
-    if not found:
+    supabase = get_supabase_client()
+    sources = await get_custom_sources_sb(supabase, ctx.user_id)
+
+    if not any(s.get("id") == source_id for s in sources):
         raise HTTPException(status_code=404, detail="Custom source not found")
-        
-    success = await set_config_list(ctx.redis_client, "custom_sources", sources)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to update config")
-        
-    return {"message": "Updated custom source", "custom_sources": sources}
+
+    source_data = request.source.model_dump(mode="json")
+    source_data["id"] = source_id
+    await update_custom_source_sb(supabase, ctx.user_id, source_id, source_data)
+
+    updated_sources = await get_custom_sources_sb(supabase, ctx.user_id)
+    return {"message": "Updated custom source", "custom_sources": updated_sources}
 
 
 @app.delete("/config/custom-sources/{source_id}")
 async def delete_custom_source(
     source_id: str, ctx: UserContext = Depends(_get_ctx)
 ):
-    sources = await get_custom_sources(ctx.redis_client)
-    
-    initial_len = len(sources)
-    sources = [s for s in sources if s.get("id") != source_id]
-    
-    if len(sources) == initial_len:
+    supabase = get_supabase_client()
+    sources = await get_custom_sources_sb(supabase, ctx.user_id)
+
+    if not any(s.get("id") == source_id for s in sources):
         raise HTTPException(status_code=404, detail="Custom source not found")
-        
-    success = await set_config_list(ctx.redis_client, "custom_sources", sources)
+
+    success = await delete_custom_source_sb(supabase, ctx.user_id, source_id)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to update config")
-        
-    return {"message": "Deleted custom source", "custom_sources": sources}
+        raise HTTPException(status_code=500, detail="Failed to delete custom source")
+
+    updated_sources = await get_custom_sources_sb(supabase, ctx.user_id)
+    return {"message": "Deleted custom source", "custom_sources": updated_sources}
 
 
 @app.get("/logs")
@@ -836,30 +828,14 @@ class BlockCompanyRequest(BaseModel):
 async def block_company_and_remove_jobs(
     request: BlockCompanyRequest, ctx: UserContext = Depends(_get_ctx)
 ):
-    import json
+    supabase = get_supabase_client()
     try:
-        blocked_companies = await get_blocked_companies(ctx.redis_client)
+        blocked_companies = await get_blocked_companies(supabase, ctx.user_id)
         if request.company not in blocked_companies:
             blocked_companies.append(request.company)
-            await set_config_list(ctx.redis_client, "blocked_companies", blocked_companies)
+            await set_config_list(supabase, ctx.user_id, "blocked_companies", blocked_companies)
 
-        deleted_job_ids = []
-        cursor = 0
-        while True:
-            cursor, keys = await ctx.redis_client.scan(cursor, match="seen_job:*", count=100)
-            for key in keys:
-                try:
-                    value = await ctx.redis_client.get(key)
-                    if value and value != "1":
-                        job_data = json.loads(value)
-                        job_company = (job_data.get("company") or "").lower()
-                        if request.company.lower() in job_company or job_company == request.company.lower():
-                            await ctx.redis_client.delete(key)
-                            deleted_job_ids.append(job_data.get("external_id"))
-                except (json.JSONDecodeError, Exception):
-                    continue
-            if cursor == 0:
-                break
+        deleted_job_ids = await delete_jobs_by_company(supabase, ctx.user_id, request.company)
 
         await manager.broadcast(
             ctx.user_id,
@@ -884,20 +860,10 @@ class DismissJobRequest(BaseModel):
 
 
 @app.post("/jobs/dismiss")
-async def dismiss_job(request: DismissJobRequest, ctx: UserContext = Depends(_get_ctx)):
-    import json
+async def dismiss_job_endpoint(request: DismissJobRequest, ctx: UserContext = Depends(_get_ctx)):
+    supabase = get_supabase_client()
     try:
-        job_key = f"seen_job:{request.source}:{request.external_id}"
-        value = await ctx.redis_client.get(job_key)
-
-        if value and value != "1":
-            job_data = json.loads(value)
-            job_data["visible"] = False
-            ttl = await ctx.redis_client.ttl(job_key)
-            if ttl > 0:
-                await ctx.redis_client.setex(job_key, ttl, json.dumps(job_data))
-            else:
-                await ctx.redis_client.set(job_key, json.dumps(job_data))
+        await dismiss_job_sb(supabase, ctx.user_id, request.source, request.external_id)
 
         await manager.broadcast(
             ctx.user_id,
@@ -984,31 +950,17 @@ async def unsave_job(external_id: str, user: dict = Depends(get_current_user)):
 @app.get("/jobs/{external_id}/analysis")
 async def get_job_analysis(external_id: str, ctx: UserContext = Depends(_get_ctx)):
     """Fetch pre-computed AI analysis for a job posting. Returns cached result only."""
-    import json as _json
-    rc = ctx.redis_client
-    analysis_key = f"job_analysis:{external_id}"
-
+    supabase = get_supabase_client()
     try:
-        # Check dedicated analysis cache first
-        cached = await rc.get(analysis_key)
-        if cached and cached != "1":
-            try:
-                return {"status": "completed", "analysis": _json.loads(cached)}
-            except _json.JSONDecodeError:
-                pass
+        # Check scraped_jobs table for analysis
+        job_data = await get_job(supabase, ctx.user_id, "LinkedIn", external_id)
+        if job_data and job_data.get("analysis"):
+            return {"status": "completed", "analysis": job_data["analysis"]}
 
-        # Fallback: check if analysis is embedded in the job data itself
-        job_key = f"seen_job:LinkedIn:{external_id}"
-        job_raw = await rc.get(job_key)
-        if job_raw and job_raw != "1":
-            try:
-                job_data = _json.loads(job_raw)
-                if job_data.get("analysis"):
-                    return {"status": "completed", "analysis": job_data["analysis"]}
-            except _json.JSONDecodeError:
-                pass
+        if job_data and job_data.get("analysis_status") == "unavailable":
+            return {"status": "unavailable", "analysis": None}
 
-        # Not cached yet — analysis may still be in progress or failed
+        # Not available yet — analysis may still be in progress
         return {"status": "pending", "analysis": None}
 
     except Exception as e:
