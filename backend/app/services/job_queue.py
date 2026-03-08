@@ -63,42 +63,47 @@ async def create_cache_entry(
 async def write_analysis_to_cache(
     supabase: Any,
     external_id: str,
+    job_url: str,
     analysis: dict,
     salary: Optional[str],
     visa: Optional[str],
 ) -> bool:
-    """Update cache entry with completed analysis results."""
+    """Write (or create) cache entry with completed analysis results."""
     try:
-        updates = {
+        logger.info(f"[CacheWrite] Starting write_analysis_to_cache for {external_id}")
+        row = {
+            "external_id": external_id,
+            "job_url": job_url,
             "analysis": json.dumps(analysis) if analysis else None,
             "analysis_status": "completed",
             "salary": salary,
             "visa": visa,
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
-        await asyncio.to_thread(
+        logger.debug(f"[CacheWrite] Row data: {row}")
+        result = await asyncio.to_thread(
             lambda: supabase.table("job_analysis_cache")
-            .update(updates)
-            .eq("external_id", external_id)
+            .upsert(row, on_conflict="external_id")
             .execute()
         )
+        logger.info(f"[CacheWrite] Successfully wrote cache for {external_id}. Result: {result}")
         return True
     except Exception as e:
-        logger.error(f"write_analysis_to_cache failed for {external_id}: {e}")
+        logger.error(f"[CacheWrite] write_analysis_to_cache FAILED for {external_id}: {e}", exc_info=True)
         return False
 
 
 async def mark_cache_unavailable(supabase: Any, external_id: str) -> bool:
     """Mark cache entry as unavailable (analysis failed after retries)."""
     try:
-        updates = {
+        row = {
+            "external_id": external_id,
             "analysis_status": "unavailable",
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
         await asyncio.to_thread(
             lambda: supabase.table("job_analysis_cache")
-            .update(updates)
-            .eq("external_id", external_id)
+            .upsert(row, on_conflict="external_id")
             .execute()
         )
         return True
@@ -110,8 +115,14 @@ async def mark_cache_unavailable(supabase: Any, external_id: str) -> bool:
 async def enqueue_job(
     supabase: Any, external_id: str, job_url: str
 ) -> bool:
-    """Enqueue a job for analysis (ignore if already enqueued via UNIQUE constraint)."""
+    """Enqueue a job for analysis (skip if already completed)."""
     try:
+        # Check if already analyzed and cached
+        cache_entry = await get_cache_entry(supabase, external_id)
+        if cache_entry and cache_entry.get("analysis_status") == "completed":
+            logger.debug(f"Job {external_id} already analyzed and cached, skipping re-enqueue")
+            return True
+
         row = {
             "external_id": external_id,
             "job_url": job_url,

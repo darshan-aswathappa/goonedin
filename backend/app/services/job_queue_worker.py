@@ -58,7 +58,7 @@ async def process_job_analysis_queue(supabase: Any):
                 .select("*")
                 .eq("status", "pending")
                 .lte("next_retry_at", now_iso)
-                .limit(settings.ANALYSIS_WORKER_CONCURRENCY)
+                .limit(1)  # Process one job at a time
                 .execute()
             )
             rows_data = rows.data or []
@@ -66,7 +66,7 @@ async def process_job_analysis_queue(supabase: Any):
             if rows_data:
                 logger.debug(f"[JobQueue] Polled {len(rows_data)} pending jobs")
                 for row in rows_data:
-                    asyncio.create_task(_process_one(supabase, row))
+                    await _process_one(supabase, row)  # Sequential: await each job
 
         except Exception as e:
             logger.error(f"[JobQueue] Poll error: {e}")
@@ -110,7 +110,9 @@ async def _process_one(supabase: Any, row: dict):
                 visa = analysis.pop("visa_status", None)
 
                 # Write to global cache
-                await write_analysis_to_cache(supabase, external_id, analysis, salary, visa)
+                logger.info(f"[JobQueue] Analysis successful for {external_id}, calling write_analysis_to_cache...")
+                cache_result = await write_analysis_to_cache(supabase, external_id, job_url, analysis, salary, visa)
+                logger.info(f"[JobQueue] write_analysis_to_cache returned {cache_result} for {external_id}")
 
                 # Bulk update all user rows for this job
                 await bulk_apply_analysis(supabase, external_id, analysis, salary, visa)

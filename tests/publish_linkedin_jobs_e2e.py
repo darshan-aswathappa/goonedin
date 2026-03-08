@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 End-to-End Test: Real LinkedIn Jobs Analysis Pipeline
-This script tests the full job analysis pipeline using 2 real LinkedIn job URLs.
+This script tests the full job analysis pipeline by:
+1. Fetching live job listings from LinkedIn with random keywords and location
+2. Extracting the first 2 jobs
+3. Submitting them for analysis
 """
 
 import sys
@@ -11,6 +14,7 @@ from typing import Optional
 from dotenv import load_dotenv
 import asyncio
 import time
+import random
 
 # Load .env from backend directory
 backend_dir = os.path.join(os.path.dirname(__file__), '..', 'backend')
@@ -21,35 +25,49 @@ sys.path.insert(0, backend_dir)
 
 from app.core.config import get_settings
 from app.services.supabase_jobs import upsert_job, get_job
-from app.services.job_queue import enqueue_job
+from app.services.job_queue import enqueue_job, get_cache_entry
+from app.services.scraper_linkedin import fetch_linkedin_jobs
 from supabase import create_client
 import json
 
 
-async def submit_linkedin_job_for_analysis(
+# Random keywords and locations for variety
+KEYWORDS = [
+    "Software",
+]
+
+LOCATIONS = [
+    "United States"
+]
+
+
+async def submit_job_for_analysis(
     supabase,
     user_id: str,
     title: str,
     company: str,
     location: str,
     url: str,
+    source: str = "LinkedIn",
+    external_id: Optional[str] = None,
     salary: Optional[str] = None,
     visa: Optional[str] = None,
     wait_for_analysis: bool = True,
     max_wait_seconds: int = 45,
 ) -> Optional[dict]:
     """
-    Submit a real LinkedIn job for analysis and optionally wait for results.
+    Submit a job for analysis and optionally wait for results.
 
     The job is inserted into the database, enqueued for async processing,
     and the background worker analyzes it using DeepSeek AI.
     """
 
-    # Extract external_id from LinkedIn URL
-    try:
-        external_id = url.split('/')[-2] if '/' in url else url
-    except:
-        external_id = url
+    # Extract external_id if not provided
+    if not external_id:
+        try:
+            external_id = url.split('/')[-2] if '/' in url else url
+        except:
+            external_id = url
 
     try:
         print(f"  📤 Submitting: {title}")
@@ -57,7 +75,7 @@ async def submit_linkedin_job_for_analysis(
         # Create job data
         job_data = {
             "user_id": user_id,
-            "source": "LinkedIn",
+            "source": source,
             "external_id": external_id,
             "title": title,
             "company": company,
@@ -76,6 +94,7 @@ async def submit_linkedin_job_for_analysis(
         job_record = await upsert_job(supabase, user_id, job_data)
 
         # Enqueue for background analysis
+        print(f"    ℹ️  Enqueueing job with external_id: {external_id}")
         await enqueue_job(supabase, external_id, url)
 
         print(f"    ✓ Job queued (ID: {external_id})")
@@ -87,13 +106,10 @@ async def submit_linkedin_job_for_analysis(
         if wait_for_analysis:
             print(f"    ⏳ Polling for analysis results...")
             start_time = time.time()
-            poll_count = 0
 
             while time.time() - start_time < max_wait_seconds:
-                poll_count += 1
-
                 # Re-fetch job to check analysis status
-                job_record = await get_job(supabase, user_id, "LinkedIn", external_id)
+                job_record = await get_job(supabase, user_id, source, external_id)
 
                 if job_record and job_record.get("analysis_status") == "completed":
                     print(f"    ✅ Analysis completed!")
@@ -139,7 +155,7 @@ async def submit_linkedin_job_for_analysis(
 
 
 async def main():
-    """Main function with 2 real LinkedIn jobs."""
+    """Main function: fetch live jobs and analyze top 2."""
 
     # Get settings
     settings = get_settings()
@@ -156,51 +172,89 @@ async def main():
 
     print(f"\n🔗 Using test user ID: {test_user_id}\n")
 
-    # Real Job 1: Executive Assistant at WIRAA
-    print("=" * 75)
-    print("JOB 1: Executive Assistant at WIRAA")
-    print("=" * 75)
-    job1 = await submit_linkedin_job_for_analysis(
-        supabase=supabase,
-        user_id=test_user_id,
-        title="Executive Assistant",
-        company="WIRAA",
-        location="Remote",
-        url="https://www.linkedin.com/jobs/view/executive-assistant-at-wiraa-4382658811/",
-        wait_for_analysis=True,
-        max_wait_seconds=45,
-    )
+    # Pick random keyword and location
+    random_keyword = random.choice(KEYWORDS)
+    random_location = random.choice(LOCATIONS)
 
+    print("=" * 75)
+    print(f"FETCHING JOBS: '{random_keyword}' in '{random_location}'")
+    print("=" * 75)
     print()
 
-    # Real Job 2: PLM TeamCenter Software Developers at Maxil
-    print("=" * 75)
-    print("JOB 2: PLM TeamCenter Software Developers at Maxil")
-    print("=" * 75)
-    job2 = await submit_linkedin_job_for_analysis(
-        supabase=supabase,
-        user_id=test_user_id,
-        title="PLM TeamCenter Software Developers",
-        company="Maxil Technology Solutions Inc",
-        location="USA",
-        url="https://www.linkedin.com/jobs/view/plm-teamcenter-software-developers-at-maxil-technology-solutions-inc-4381540211/",
-        wait_for_analysis=True,
-        max_wait_seconds=45,
-    )
+    # Fetch jobs from LinkedIn
+    result = await fetch_linkedin_jobs(supabase, test_user_id, keywords=random_keyword, location=random_location)
+    jobs = result.get("jobs", [])
+    failed = result.get("failed", False)
+
+    if failed or not jobs:
+        print(f"❌ Failed to fetch jobs or no jobs found")
+        return
+
+    print(f"✅ Found {len(jobs)} jobs. Analyzing top 2...\n")
+
+    # Take only the first 2 jobs
+    top_2_jobs = jobs[:2]
+
+    job_results = []
+
+    # Submit Job 1
+    if len(top_2_jobs) > 0:
+        job = top_2_jobs[0]
+        print("=" * 75)
+        print(f"JOB 1: {job.title} @ {job.company}")
+        print("=" * 75)
+        job_result = await submit_job_for_analysis(
+            supabase=supabase,
+            user_id=test_user_id,
+            title=job.title,
+            company=job.company,
+            location=job.location,
+            url=str(job.url),
+            source=job.source,
+            external_id=job.external_id,
+            wait_for_analysis=True,
+            max_wait_seconds=45,
+        )
+        job_results.append(job_result)
+        print()
+
+    # Submit Job 2
+    if len(top_2_jobs) > 1:
+        job = top_2_jobs[1]
+        print("=" * 75)
+        print(f"JOB 2: {job.title} @ {job.company}")
+        print("=" * 75)
+        job_result = await submit_job_for_analysis(
+            supabase=supabase,
+            user_id=test_user_id,
+            title=job.title,
+            company=job.company,
+            location=job.location,
+            url=str(job.url),
+            source=job.source,
+            external_id=job.external_id,
+            wait_for_analysis=True,
+            max_wait_seconds=45,
+        )
+        job_results.append(job_result)
+        print()
 
     print("\n" + "=" * 75)
     print("✨ END-TO-END TEST SUMMARY")
     print("=" * 75)
     print("\n✅ Pipeline Steps Tested:")
-    print("  1. Job insertion into database")
-    print("  2. Job enqueuing in analysis queue")
-    print("  3. Background worker processing")
-    print("  4. DeepSeek AI analysis")
-    print("  5. Results storage and polling")
+    print("  1. Dynamic LinkedIn job scraping")
+    print("  2. Job extraction (first 2 jobs)")
+    print("  3. Job insertion into database")
+    print("  4. Job enqueuing in analysis queue")
+    print("  5. Background worker processing")
+    print("  6. DeepSeek AI analysis")
+    print("  7. Results storage and polling")
 
     print(f"\n📊 Results:")
-    print(f"  Job 1 (Executive Assistant): {'✅ Analyzed' if job1 and job1.get('analysis_status') == 'completed' else '⏳ Pending/Processing'}")
-    print(f"  Job 2 (PLM Developer): {'✅ Analyzed' if job2 and job2.get('analysis_status') == 'completed' else '⏳ Pending/Processing'}")
+    for i, job_result in enumerate(job_results, 1):
+        status = '✅ Analyzed' if job_result and job_result.get('analysis_status') == 'completed' else '⏳ Pending/Processing'
+        print(f"  Job {i}: {status}")
     print()
 
 
@@ -209,11 +263,14 @@ if __name__ == "__main__":
     print("🚀 END-TO-END LINKEDIN JOBS ANALYSIS TEST")
     print("=" * 75)
     print("\nTesting real job analysis with:")
-    print("  • 2 real LinkedIn job URLs")
+    print("  • Dynamic job scraping from LinkedIn")
+    print("  • Random keywords and locations")
+    print("  • First 2 fetched jobs")
     print("  • Supabase database integration")
     print("  • Async job queue system")
     print("  • DeepSeek AI analysis")
     print("\nThis validates:")
+    print("  ✓ LinkedIn scraper integration")
     print("  ✓ Job creation and storage")
     print("  ✓ Async queue integration")
     print("  ✓ Background worker processing")
