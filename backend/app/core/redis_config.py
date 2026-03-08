@@ -13,6 +13,7 @@ CONFIG_KEYS = {
     "target_locations": "config:target_locations",
     "blocked_companies": "config:blocked_companies",
     "title_filter_keywords": "config:title_filter_keywords",
+    "custom_sources": "config:custom_sources",
 }
 
 DEFAULT_TARGET_KEYWORDS = [
@@ -88,6 +89,8 @@ DEFAULT_TITLE_FILTER_KEYWORDS = [
     "Veterinarian",
 ]
 
+DEFAULT_CUSTOM_SOURCES = []
+
 
 async def get_config_list(redis_client, key: str, default: list) -> list:
     """Get a list config from Redis, returning default if not found. Uses in-memory cache to reduce Redis load."""
@@ -148,6 +151,11 @@ async def get_title_filter_keywords(redis_client) -> list[str]:
     return await get_config_list(redis_client, "title_filter_keywords", DEFAULT_TITLE_FILTER_KEYWORDS)
 
 
+async def get_custom_sources(redis_client) -> list[dict]:
+    """Get custom job sources from Redis."""
+    return await get_config_list(redis_client, "custom_sources", DEFAULT_CUSTOM_SOURCES)
+
+
 async def seed_config_if_missing(redis_client) -> None:
     """Seed default config values in Redis if they don't exist."""
     try:
@@ -159,6 +167,7 @@ async def seed_config_if_missing(redis_client) -> None:
                     "target_locations": DEFAULT_TARGET_LOCATIONS,
                     "blocked_companies": DEFAULT_BLOCKED_COMPANIES,
                     "title_filter_keywords": DEFAULT_TITLE_FILTER_KEYWORDS,
+                    "custom_sources": DEFAULT_CUSTOM_SOURCES,
                 }.get(key, [])
                 await redis_client.set(redis_key, json.dumps(default))
                 logger.info(f"Seeded config '{key}' with {len(default)} default values")
@@ -175,4 +184,5 @@ async def get_all_config(redis_client) -> dict:
         "target_locations": await get_target_locations(redis_client),
         "blocked_companies": await get_blocked_companies(redis_client),
         "title_filter_keywords": await get_title_filter_keywords(redis_client),
+        "custom_sources": await get_custom_sources(redis_client),
     }

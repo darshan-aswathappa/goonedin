@@ -10,6 +10,15 @@ export interface JobAnalysis {
   visa_status?: string | null;
 }
 
+export interface CustomSource {
+  id: string;
+  name: string;
+  icon: string;
+  url: string;
+  ttl_hours: number;
+  interval_minutes: number;
+}
+
 export interface Job {
   id?: number;
   external_id: string;
@@ -17,7 +26,7 @@ export interface Job {
   company: string;
   location: string;
   url: string;
-  source: "LinkedIn" | "Fidelity" | "StateStreet" | "MathWorks" | "GitHub";
+  source: "LinkedIn" | "Fidelity" | "StateStreet" | "MathWorks" | "GitHub" | string;
   posted_at?: string;
   salary?: string;
   visa?: string;
@@ -72,6 +81,10 @@ interface JobsState {
   addSavedJobId: (id: string) => void;
   removeSavedJobId: (id: string) => void;
   dismissedJobIds: Set<string>;
+  customSources: CustomSource[];
+  setCustomSources: (sources: CustomSource[]) => void;
+  addCustomSource: (source: CustomSource) => void;
+  removeCustomSource: (id: string) => void;
 }
 
 export const useJobsStore = create<JobsState>((set) => ({
@@ -86,6 +99,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   isLoading: true,
   savedJobIds: new Set<string>(),
   dismissedJobIds: new Set<string>(),
+  customSources: [],
 
   addJob: (job) =>
     set((state) => {
@@ -206,4 +220,16 @@ export const useJobsStore = create<JobsState>((set) => ({
       newSet.delete(id);
       return { savedJobIds: newSet };
     }),
+
+  setCustomSources: (sources) => set({ customSources: sources }),
+
+  addCustomSource: (source) =>
+    set((state) => ({
+      customSources: [...state.customSources, source],
+    })),
+
+  removeCustomSource: (id) =>
+    set((state) => ({
+      customSources: state.customSources.filter((s) => s.id !== id),
+    })),
 }));

@@ -6,7 +6,7 @@ import logging
 
 logger = logging.getLogger("VelocityAuth")
 settings = get_settings()
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def validate_token(token: str) -> dict | None:
@@ -43,9 +43,16 @@ def validate_token(token: str) -> dict | None:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> dict:
     """FastAPI dependency — extracts and validates the Bearer JWT."""
+    if not credentials or not credentials.credentials:
+        if settings.ENVIRONMENT == "development":
+            logger.warning("No auth token provided. Using local dev user fallback (Dev Mode).")
+            return {"user_id": "local-dev-user", "email": "dev@localhost"}
+        else:
+            raise HTTPException(status_code=401, detail="Authentication token missing (Production restriction)")
+        
     user = validate_token(credentials.credentials)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired token")

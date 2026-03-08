@@ -15,9 +15,11 @@ from app.core.redis_config import (
     get_target_keywords,
     get_blocked_companies,
     get_title_filter_keywords,
+    get_custom_sources,
     get_all_config,
     set_config_list,
 )
+from app.models.custom_source import CustomJobSource
 from app.core.user_manager import (
     UserContext,
     user_registry,
@@ -80,6 +82,8 @@ async def lifespan(app: FastAPI):
             ctx.analysis_worker_task.cancel()
         if ctx.pubsub_listener_task and not ctx.pubsub_listener_task.done():
             ctx.pubsub_listener_task.cancel()
+        if ctx.custom_sources_task and not ctx.custom_sources_task.done():
+            ctx.custom_sources_task.cancel()
         await ctx.redis_client.aclose()
 
 
@@ -476,6 +480,74 @@ async def run_low_frequency_loop(ctx: UserContext):
         await asyncio.sleep(1200 + random.uniform(-30, 30))
 
 
+async def run_custom_sources_loop(ctx: UserContext):
+    logger.info(f"[Custom] Scraper started (db={ctx.redis_db_index})")
+    last_scraped = {}
+    
+    while True:
+        try:
+            from app.core.redis_config import get_custom_sources
+            from app.models.custom_source import CustomJobSource
+            from app.services.scraper_custom import fetch_custom_jobs
+            
+            custom_sources = await get_custom_sources(ctx.redis_client)
+            if not custom_sources:
+                await asyncio.sleep(60)
+                continue
+                
+            now = datetime.now(timezone.utc)
+            tasks = []
+            
+            for dict_source in custom_sources:
+                source = CustomJobSource(**dict_source)
+                if source.id not in last_scraped:
+                    tasks.append(fetch_custom_jobs(source, ctx.redis_client))
+                    last_scraped[source.id] = now
+                else:
+                    last_time = last_scraped[source.id]
+                    if (now - last_time).total_seconds() >= source.interval_minutes * 60:
+                        tasks.append(fetch_custom_jobs(source, ctx.redis_client))
+                        last_scraped[source.id] = now
+                    
+            if tasks:
+                results = await asyncio.gather(*tasks)
+                total = len(results)
+                failed = sum(1 for r in results if r["failed"])
+                logger.info(
+                    f"[Custom] db={ctx.redis_db_index} | {total} calls | "
+                    f"{total - failed} passed | {failed} failed"
+                )
+                
+                for r in results:
+                    if r.get("failed") or not r.get("jobs"): continue
+                    
+                    source_config = r.get("source_config")
+                    ttl_seconds = source_config.ttl_hours * 3600 if source_config else 24 * 3600
+                    
+                    for job in r["jobs"]:
+                        job_key = f"seen_job:{job.source}:{job.external_id}"
+                        if await is_already_seen(ctx.redis_client, job_key):
+                            continue
+                            
+                        job_dict = job.model_dump(mode="json")
+                        job_dict["visible"] = True
+                        
+                        await mark_as_seen(ctx.redis_client, job_key, job_dict, ttl_seconds=ttl_seconds)
+                        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+                        await send_telegram_alert(job, ctx.telegram_bot_token, ctx.telegram_chat_id)
+                        
+                        job_dict["is_notified"] = True
+                        await mark_as_seen(ctx.redis_client, job_key, job_dict, ttl_seconds=ttl_seconds)
+                        logger.info(f"New Target (Custom {job.source}): {job.title} @ {job.company}")
+                        
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"[Custom] db={ctx.redis_db_index} Error: {e}")
+            
+        await asyncio.sleep(60)
+
+
 def start_user_scrapers(ctx: UserContext) -> None:
     """Start HF and LF scraper tasks for a user if they aren't already running."""
     # Ensure we don't start them multiple times due to race conditions
@@ -490,6 +562,8 @@ def start_user_scrapers(ctx: UserContext) -> None:
         ctx.analysis_worker_task = asyncio.create_task(run_analysis_worker(ctx))
     if ctx.pubsub_listener_task is None or ctx.pubsub_listener_task.done():
         ctx.pubsub_listener_task = asyncio.create_task(run_pubsub_listener(ctx))
+    if getattr(ctx, "custom_sources_task", None) is None or ctx.custom_sources_task.done():
+        ctx.custom_sources_task = asyncio.create_task(run_custom_sources_loop(ctx))
     
     ctx._scrapers_started = True
 
@@ -675,6 +749,53 @@ async def update_title_filter_keywords(
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     return {"message": "Updated", "title_filter_keywords": request.values}
+
+
+class CustomSourceRequest(BaseModel):
+    source: CustomJobSource
+
+
+@app.get("/config/custom-sources")
+async def get_custom_sources_endpoint(ctx: UserContext = Depends(_get_ctx)):
+    sources = await get_custom_sources(ctx.redis_client)
+    return {"custom_sources": sources, "count": len(sources)}
+
+
+@app.post("/config/custom-sources")
+async def add_custom_source(
+    request: CustomSourceRequest, ctx: UserContext = Depends(_get_ctx)
+):
+    sources = await get_custom_sources(ctx.redis_client)
+    
+    # Check if exists
+    if any(s.get("id") == request.source.id for s in sources):
+        raise HTTPException(status_code=400, detail="Custom source with this ID already exists")
+        
+    sources.append(request.source.model_dump(mode="json"))
+    success = await set_config_list(ctx.redis_client, "custom_sources", sources)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+        
+    return {"message": "Added custom source", "custom_sources": sources}
+
+
+@app.delete("/config/custom-sources/{source_id}")
+async def delete_custom_source(
+    source_id: str, ctx: UserContext = Depends(_get_ctx)
+):
+    sources = await get_custom_sources(ctx.redis_client)
+    
+    initial_len = len(sources)
+    sources = [s for s in sources if s.get("id") != source_id]
+    
+    if len(sources) == initial_len:
+        raise HTTPException(status_code=404, detail="Custom source not found")
+        
+    success = await set_config_list(ctx.redis_client, "custom_sources", sources)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to update config")
+        
+    return {"message": "Deleted custom source", "custom_sources": sources}
 
 
 @app.get("/logs")

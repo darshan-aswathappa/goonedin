@@ -7,6 +7,7 @@ import { JobList } from "./JobList";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { ThemeToggle } from "./ThemeToggle";
 import { CompanyTicker } from "./CompanyTicker";
+import { AddJobSourceModal } from "./AddJobSourceModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCATION_FILTER } from "@/config/filters";
@@ -25,7 +26,9 @@ import {
   BookmarkSimple,
   SignOut,
   Sparkle,
+  Plus,
 } from "@phosphor-icons/react";
+import * as PhosphorIcons from "@phosphor-icons/react";
 import Link from "next/link";
 import { useTheme } from "next-themes";
 
@@ -45,6 +48,12 @@ export function JobsDashboard() {
     (state) => state.locationFilteredJobs,
   );
   const isLoading = useJobsStore((state) => state.isLoading);
+  const customSources = useJobsStore((state) => state.customSources);
+
+  const getDynamicIcon = (iconName: string) => {
+    const IconComponent = (PhosphorIcons as any)[iconName] || PhosphorIcons.Buildings;
+    return <IconComponent weight="bold" className="h-5 w-5" />;
+  };
 
   if (loading) {
     return (
@@ -132,10 +141,10 @@ export function JobsDashboard() {
         
         <Tabs defaultValue="all" className={!user ? "w-full mt-8" : "w-full"}>
           {user && (
-            <TabsList className="flex flex-wrap h-auto gap-2 bg-transparent p-0 mb-10 items-start justify-start border-none">
+            <TabsList className="flex flex-nowrap h-auto gap-2 bg-transparent p-0 mb-10 items-start justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-2">
               <TabsTrigger
                 value="all"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
                 <div className="flex items-center gap-2">
                   <Globe weight="bold" className="h-5 w-5" />
@@ -146,7 +155,7 @@ export function JobsDashboard() {
               {LOCATION_FILTER.enabled && (
                 <TabsTrigger
                   value="location"
-                  className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                  className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
                 >
                   <div className="flex items-center gap-2">
                     <MapPin weight="bold" className="h-5 w-5" />
@@ -157,7 +166,7 @@ export function JobsDashboard() {
 
               <TabsTrigger
                 value="linkedin"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
                 <div className="flex items-center gap-2">
                   <LinkedinLogo weight="bold" className="h-5 w-5" />
@@ -167,7 +176,7 @@ export function JobsDashboard() {
 
               <TabsTrigger
                 value="fidelity"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#338800] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#338800] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
                 <div className="flex items-center gap-2">
                   <Buildings weight="bold" className="h-5 w-5" />
@@ -177,7 +186,7 @@ export function JobsDashboard() {
 
               <TabsTrigger
                 value="statestreet"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#005295] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#005295] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
                 <div className="flex items-center gap-2">
                   <Buildings weight="bold" className="h-5 w-5" />
@@ -187,7 +196,7 @@ export function JobsDashboard() {
 
               <TabsTrigger
                 value="mathworks"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
                 <div className="flex items-center gap-2">
                   <Buildings weight="bold" className="h-5 w-5" />
@@ -197,13 +206,31 @@ export function JobsDashboard() {
 
               <TabsTrigger
                 value="github"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#24292e] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#24292e] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
                 <div className="flex items-center gap-2">
                   <GithubLogo weight="bold" className="h-5 w-5" />
                   GitHub ({githubJobs.length})
                 </div>
               </TabsTrigger>
+
+              {customSources.map((source) => {
+                const sourceJobs = jobs.filter((j) => j.source === source.name);
+                return (
+                  <TabsTrigger
+                    key={source.id}
+                    value={source.id}
+                    className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-foreground data-[state=active]:text-background shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                  >
+                    <div className="flex items-center gap-2">
+                      {getDynamicIcon(source.icon)}
+                      {source.name} ({sourceJobs.length})
+                    </div>
+                  </TabsTrigger>
+                );
+              })}
+
+              <AddJobSourceModal />
             </TabsList>
           )}
 
@@ -264,6 +291,19 @@ export function JobsDashboard() {
               isLocked={!user}
             />
           </TabsContent>
+
+          {customSources.map((source) => {
+            const sourceJobs = jobs.filter((j) => j.source === source.name);
+            return (
+              <TabsContent key={source.id} value={source.id} className="mt-0">
+                <JobList
+                  jobs={sourceJobs}
+                  emptyMessage={`No jobs extracted from ${source.name} yet.`}
+                  isLocked={!user}
+                />
+              </TabsContent>
+            );
+          })}
         </Tabs>
       </main>
 

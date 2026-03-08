@@ -27,6 +27,7 @@ export function useJobsApi(enabled: boolean = true) {
       const savedData = savedRes.ok ? await savedRes.json() : { jobs: [] };
 
       const jobs: Job[] = data.jobs || [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const savedIds: string[] = (savedData.jobs || []).map((j: any) => j.external_id);
 
       setJobs(jobs);
@@ -36,7 +37,7 @@ export function useJobsApi(enabled: boolean = true) {
     } finally {
       setLoading(false);
     }
-  }, [setJobs, setLoading]);
+  }, [setJobs, setLoading, setSavedJobIds]);
 
   useEffect(() => {
     if (!enabled) return;
