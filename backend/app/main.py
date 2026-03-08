@@ -477,13 +477,15 @@ async def run_custom_sources_loop(ctx: UserContext):
                     supabase, source.id, ctx.user_id,
                     "fetching", "Fetching page content..."
                 )
-                await manager.broadcast(ctx.user_id, {
-                    "type": "CUSTOM_SOURCE_STATUS",
-                    "data": {"source_id": source.id, "status": "fetching",
-                             "message": "Fetching page content..."}
-                })
+                # Status callback for real-time updates inside fetcher
+                async def _status_cb(status, msg):
+                    await update_source_status(supabase, source.id, ctx.user_id, status, msg)
+                    await manager.broadcast(ctx.user_id, {
+                        "type": "CUSTOM_SOURCE_STATUS",
+                        "data": {"source_id": source.id, "status": status, "message": msg}
+                    })
 
-                result = await fetch_custom_jobs(source, supabase)
+                result = await fetch_custom_jobs(source, supabase, status_callback=_status_cb)
                 last_scraped[source.id] = now
 
                 if result.get("failed"):
@@ -498,17 +500,7 @@ async def run_custom_sources_loop(ctx: UserContext):
                     })
                     continue
 
-                # --- Status: parsing ---
-                await update_source_status(
-                    supabase, source.id, ctx.user_id,
-                    "parsing", "AI is extracting jobs..."
-                )
-                await manager.broadcast(ctx.user_id, {
-                    "type": "CUSTOM_SOURCE_STATUS",
-                    "data": {"source_id": source.id, "status": "parsing",
-                             "message": "AI is extracting jobs..."}
-                })
-
+                # --- Status: parsing already handled by callback inside fetcher ---
                 parsed_jobs = result.get("jobs", [])
                 job_dicts = [j.model_dump(mode="json") for j in parsed_jobs]
 

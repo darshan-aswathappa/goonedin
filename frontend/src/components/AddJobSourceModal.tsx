@@ -25,9 +25,10 @@ const ICONS = [
 interface AddJobSourceModalProps {
   editSource?: CustomSource;
   triggerNode?: React.ReactNode;
+  onSuccess?: (id: string) => void;
 }
 
-export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModalProps) {
+export function AddJobSourceModal({ editSource, triggerNode, onSuccess }: AddJobSourceModalProps) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -101,10 +102,14 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
             useJobsStore.getState().updateCustomSource(editingId, newSource);
           }
           toast.success(`${editingId ? 'Updated' : 'Tracking jobs from'} ${newSource.name}`);
+          if (onSuccess) onSuccess(newSource.id);
       } else {
           // Fallback if not found for some reason, just update the whole list
           useJobsStore.getState().setCustomSources(newSourceList);
           toast.success(`${editingId ? 'Updated' : 'Tracking jobs from'} ${name}`);
+          if (onSuccess && newSourceList.length > 0 && !editingId) {
+            onSuccess(newSourceList[newSourceList.length - 1].id);
+          }
       }
       
       setOpen(false);

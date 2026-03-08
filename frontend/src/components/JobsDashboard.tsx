@@ -261,7 +261,7 @@ export function JobsDashboard() {
               </TabsList>
               
               <div className="shrink-0 pb-2">
-                <AddJobSourceModal />
+                <AddJobSourceModal onSuccess={(id: string) => setActiveTab(id)} />
               </div>
             </div>
           )}

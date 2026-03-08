@@ -89,7 +89,7 @@ def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
         logger.error(f"DeepSeek extraction failed for {source_url}: {e}")
         return []
 
-async def fetch_custom_jobs(source: CustomJobSource, supabase) -> dict:
+async def fetch_custom_jobs(source: CustomJobSource, supabase, status_callback=None) -> dict:
     logger.info(f"Fetching custom job source: {source.name} from {source.url} (JS Disabled: {source.disable_javascript})")
 
     try:
@@ -131,9 +131,24 @@ async def fetch_custom_jobs(source: CustomJobSource, supabase) -> dict:
         soup = BeautifulSoup(html_content, "html.parser")
         for script in soup(["script", "style", "noscript", "svg"]):
             script.extract()
+            
+        # Inline hrefs next to anchor text to help DeepSeek extract complete URLs
+        for a_tag in soup.find_all("a", href=True):
+            href = a_tag["href"].strip()
+            if href and not href.startswith(("javascript:", "#", "mailto:", "tel:")):
+                link_text = a_tag.get_text(separator=" ", strip=True)
+                if link_text:
+                    a_tag.string = f"{link_text} (URL: {href})"
+                else:
+                    a_tag.string = f"(URL: {href})"
+                    
         text = soup.get_text(separator=" ", strip=True)
         logger.info(f"Extracted HTML text len: {len(text)}. Snippet: {text[:200]}")
         
+        
+        if status_callback:
+            await status_callback("parsing", "AI is extracting jobs...")
+
         raw_jobs = await asyncio.to_thread(
             extract_jobs_with_deepseek, text, str(source.url)
         )
