@@ -36,6 +36,7 @@ export function useWebSocket({ enabled = true } = {}) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const processedEventsRef = useRef<Map<string, number>>(new Map());
   const { addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus, setSourceStatus } = useJobsStore();
 
   const connect = useCallback(async () => {
@@ -62,6 +63,26 @@ export function useWebSocket({ enabled = true } = {}) {
       if (event.data === "pong") return;
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
+        const now = Date.now();
+
+        // Create unique key for this event
+        const eventKey = `${message.type}:${JSON.stringify(message.data)}`;
+        const lastProcessedTime = processedEventsRef.current.get(eventKey);
+
+        // Deduplicate events received within 500ms (prevents duplicate notifications from multiple connections)
+        if (lastProcessedTime && now - lastProcessedTime < 500) {
+          return; // Skip processing if same event received recently
+        }
+
+        processedEventsRef.current.set(eventKey, now);
+
+        // Clean up old entries (older than 1 second) to prevent memory bloat
+        for (const [key, timestamp] of processedEventsRef.current.entries()) {
+          if (now - timestamp > 1000) {
+            processedEventsRef.current.delete(key);
+          }
+        }
+
         if (message.type === "NEW_JOB" && message.data) {
           addJob(message.data);
           toast.info(`New ${message.data.source} job: ${message.data.title}`, {

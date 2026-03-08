@@ -55,7 +55,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const [analysisOpen, setAnalysisOpen] = useState(false);
   
   const removeJob = useJobsStore((state) => state.removeJob);
-  const removeJobsByCompany = useJobsStore((state) => state.removeJobsByCompany);
   const savedJobIds = useJobsStore((state) => state.savedJobIds);
   const addSavedJobId = useJobsStore((state) => state.addSavedJobId);
   const removeSavedJobId = useJobsStore((state) => state.removeSavedJobId);
@@ -102,7 +101,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ company: job.company }),
       });
-      if (response.ok) removeJobsByCompany(job.company);
+      // Don't update here - the WebSocket will broadcast the update and show the toast
     } catch (error) {
       console.error("Failed to block company:", error);
     } finally {

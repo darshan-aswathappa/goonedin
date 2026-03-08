@@ -888,63 +888,98 @@ class SaveJobRequest(BaseModel):
 @app.post("/jobs/save")
 async def save_job(request: SaveJobRequest, user: dict = Depends(get_current_user)):
     _supabase_client = get_supabase_client()
-    try:
-        def _insert_job(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("saved_jobs").insert({
-                "user_id": user["user_id"],
-                "external_id": request.external_id,
-                "title": request.title,
-                "company": request.company,
-                "location": request.location,
-                "url": request.url,
-                "source": request.source,
-                "posted_at": request.posted_at
-            }).execute()
 
-        await asyncio.to_thread(_insert_job)
-        return {"success": True, "message": "Job saved"}
-    except Exception as e:
-        logger.error(f"Error saving job: {e}")
-        # Ignore duplicate key error if trying to save an already saved job
-        if "duplicate key value violates unique constraint" in str(e).lower():
-            return {"success": True, "message": "Job already saved"}
-        raise HTTPException(status_code=500, detail=str(e))
+    async def _save_with_retry(max_retries: int = 3) -> dict:
+        """Save a job with exponential backoff retry logic."""
+        for attempt in range(max_retries):
+            try:
+                def _insert_job(*args: Any, **kwargs: Any) -> Any:
+                    return _supabase_client.table("saved_jobs").insert({
+                        "user_id": user["user_id"],
+                        "external_id": request.external_id,
+                        "title": request.title,
+                        "company": request.company,
+                        "location": request.location,
+                        "url": request.url,
+                        "source": request.source,
+                        "posted_at": request.posted_at
+                    }).execute()
+
+                await asyncio.to_thread(_insert_job)
+                return {"success": True, "message": "Job saved"}
+            except Exception as e:
+                # Don't retry on duplicate constraint error
+                if "duplicate key value violates unique constraint" in str(e).lower():
+                    return {"success": True, "message": "Job already saved"}
+
+                if attempt < max_retries - 1:
+                    wait_time = 0.5 * (2 ** attempt)
+                    logger.warning(f"Save attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Error saving job after {max_retries} attempts: {e}")
+                    raise HTTPException(status_code=500, detail="Failed to save job")
+
+    return await _save_with_retry()
 
 
 @app.get("/jobs/saved")
 async def get_saved_jobs(user: dict = Depends(get_current_user)):
     _supabase_client = get_supabase_client()
-    try:
-        def _fetch_saved_jobs(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("saved_jobs") \
-                .select("*") \
-                .eq("user_id", user["user_id"]) \
-                .order("saved_at", desc=True) \
-                .execute()
 
-        response = await asyncio.to_thread(_fetch_saved_jobs)
-        return {"jobs": response.data, "count": len(response.data)}
-    except Exception as e:
-        logger.error(f"Error fetching saved jobs: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch saved jobs")
+    async def _fetch_with_retry(max_retries: int = 3) -> dict:
+        """Fetch saved jobs with exponential backoff retry logic."""
+        for attempt in range(max_retries):
+            try:
+                def _fetch_saved_jobs(*args: Any, **kwargs: Any) -> Any:
+                    return _supabase_client.table("saved_jobs") \
+                        .select("*") \
+                        .eq("user_id", user["user_id"]) \
+                        .order("saved_at", desc=True) \
+                        .execute()
+
+                response = await asyncio.to_thread(_fetch_saved_jobs)
+                return {"jobs": response.data, "count": len(response.data)}
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    # Exponential backoff: 0.5s, 1s, 2s
+                    wait_time = 0.5 * (2 ** attempt)
+                    logger.warning(f"Attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Error fetching saved jobs after {max_retries} attempts: {e}")
+                    raise HTTPException(status_code=500, detail="Failed to fetch saved jobs")
+
+    return await _fetch_with_retry()
 
 
 @app.delete("/jobs/saved/{external_id}")
 async def unsave_job(external_id: str, user: dict = Depends(get_current_user)):
     _supabase_client = get_supabase_client()
-    try:
-        def _unsave_job(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("saved_jobs") \
-                .delete() \
-                .eq("user_id", user["user_id"]) \
-                .eq("external_id", external_id) \
-                .execute()
 
-        await asyncio.to_thread(_unsave_job)
-        return {"success": True, "message": "Job unsaved"}
-    except Exception as e:
-        logger.error(f"Error unsaving job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    async def _unsave_with_retry(max_retries: int = 3) -> dict:
+        """Unsave a job with exponential backoff retry logic."""
+        for attempt in range(max_retries):
+            try:
+                def _unsave_job(*args: Any, **kwargs: Any) -> Any:
+                    return _supabase_client.table("saved_jobs") \
+                        .delete() \
+                        .eq("user_id", user["user_id"]) \
+                        .eq("external_id", external_id) \
+                        .execute()
+
+                await asyncio.to_thread(_unsave_job)
+                return {"success": True, "message": "Job unsaved"}
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 0.5 * (2 ** attempt)
+                    logger.warning(f"Unsave attempt {attempt + 1} failed, retrying in {wait_time}s: {e}")
+                    await asyncio.sleep(wait_time)
+                else:
+                    logger.error(f"Error unsaving job after {max_retries} attempts: {e}")
+                    raise HTTPException(status_code=500, detail="Failed to unsave job")
+
+    return await _unsave_with_retry()
 
 
 @app.get("/jobs/{external_id}/analysis")

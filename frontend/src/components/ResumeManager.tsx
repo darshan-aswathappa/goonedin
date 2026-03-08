@@ -14,17 +14,14 @@ import {
   Code,
   Sparkles,
   X,
-  RefreshCw,
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -422,20 +419,20 @@ export function ResumeManager() {
 
       {/* Analysis Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground brutal-border rounded-none shadow-[12px_12px_0px_0px_var(--border)] sm:max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
-          <DialogHeader className="p-8 bg-foreground text-background space-y-2 relative border-b-2 border-background">
-            <DialogTitle className="flex items-center gap-3 text-3xl font-black italic uppercase tracking-tighter text-background leading-none">
-            <Brain className="h-8 w-8 text-primary shadow-[2px_2px_0px_0px_var(--border)]" />
-            AI Resume Analysis
-          </DialogTitle>
-            <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-background/70">
+        <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] sm:max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
+          <DialogHeader className="p-6 bg-foreground text-background space-y-1 relative">
+            <DialogTitle className="flex items-center gap-2 text-2xl font-black italic uppercase tracking-tighter">
+              <Brain className="h-6 w-6 text-primary" />
+              AI Resume Analysis
+            </DialogTitle>
+            <p className="text-background/70 font-bold text-sm">
               {selectedResume?.filename}
-            </DialogDescription>
+            </p>
             <button
               onClick={() => setDialogOpen(false)}
-              className="absolute top-8 right-8 p-2.5 bg-background text-foreground brutal-border shadow-[4px_4px_0px_0px_var(--border)] hover:bg-primary hover:text-white transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
+              className="absolute right-4 top-4 brutal-border bg-card p-2 text-foreground hover:bg-primary hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus:outline-none"
             >
-              <X className="h-6 w-6" />
+              <X className="h-5 w-5" />
             </button>
           </DialogHeader>
 
