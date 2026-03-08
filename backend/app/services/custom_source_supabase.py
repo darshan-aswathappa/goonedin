@@ -43,6 +43,7 @@ async def add_custom_source(supabase: Any, user_id: str, source_data: dict) -> d
         "url": str(source_data["url"]),
         "ttl_hours": source_data.get("ttl_hours", 24),
         "interval_minutes": source_data.get("interval_minutes", 60),
+        "disable_javascript": source_data.get("disable_javascript", True),
         "status": "pending",
         "status_message": "Waiting to start...",
     }
@@ -62,6 +63,7 @@ async def update_custom_source(
         "url": str(source_data["url"]),
         "ttl_hours": source_data.get("ttl_hours", 24),
         "interval_minutes": source_data.get("interval_minutes", 60),
+        "disable_javascript": source_data.get("disable_javascript", True),
     }
     resp = await asyncio.to_thread(
         lambda: supabase.table("custom_sources")

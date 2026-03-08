@@ -17,6 +17,7 @@ export interface CustomSource {
   url: string;
   ttl_hours: number;
   interval_minutes: number;
+  disable_javascript?: boolean;
   status?: string;
   status_message?: string;
 }

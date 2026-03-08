@@ -8,3 +8,4 @@ class CustomJobSource(BaseModel):
     url: HttpUrl = Field(..., description="The URL to scrape jobs from")
     ttl_hours: int = Field(24, description="How long to keep jobs from this source visible")
     interval_minutes: int = Field(60, description="How often to scrape the source")
+    disable_javascript: bool = Field(True, description="Whether to fetch without executing JS")

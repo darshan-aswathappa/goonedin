@@ -90,72 +90,96 @@ def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
         return []
 
 async def fetch_custom_jobs(source: CustomJobSource, supabase) -> dict:
-    logger.info(f"Fetching custom job source: {source.name} from {source.url}")
+    logger.info(f"Fetching custom job source: {source.name} from {source.url} (JS Disabled: {source.disable_javascript})")
 
     try:
-        async with httpx.AsyncClient(follow_redirects=True) as client:
-            response = await client.get(
-                str(source.url),
-                headers=HEADERS,
-                timeout=30.0,
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch {source.url}: HTTP {response.status_code}")
-                return {"jobs": [], "retries": 0, "failed": True, "recent_jobs": [], "source_config": source}
-                
-            soup = BeautifulSoup(response.text, "html.parser")
-            for script in soup(["script", "style", "noscript", "svg"]):
-                script.extract()
-            text = soup.get_text(separator=" ", strip=True)
-            logger.info(f"Extracted HTML text len: {len(text)}. Snippet: {text[:200]}")
-            
-            raw_jobs = await asyncio.to_thread(
-                extract_jobs_with_deepseek, text, str(source.url)
-            )
-            
-            parsed_jobs = []
-            
-            from urllib.parse import urljoin
-            
-            for index, rj in enumerate(raw_jobs):
-                title = rj.get("title")
-                if not title:
-                    continue
-                    
-                job_url = rj.get("url") or str(source.url)
-                # Ensure job_url is absolute
-                job_url = urljoin(str(source.url), job_url)
-                
-                # We want a very stable hash. DeepSeek might slightly alter title/company casing or add URL params.
-                # Let's normalize by stripping and uppercasing to unify them as best as possible.
-                import hashlib
-                normalized_title = title.strip().upper()
-                normalized_company = rj.get('company', '').strip().upper()
-                unique_str = f"{normalized_title}-{normalized_company}"
-                ext_id = hashlib.md5(unique_str.encode()).hexdigest()
-                
-                job_create = JobCreate(
-                    title=title,
-                    company=rj.get("company") or source.name,
-                    location=rj.get("location") or "Unknown",
-                    url=job_url,
-                    source=source.name, # Use custom tab name as source
-                    external_id=ext_id,
-                    posted_at=datetime.now(timezone.utc),
+        html_content = ""
+        
+        if source.disable_javascript:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                response = await client.get(
+                    str(source.url),
+                    headers=HEADERS,
+                    timeout=30.0,
                 )
-                parsed_jobs.append(job_create)
                 
-            logger.info(f"Custom Scraper ({source.name}): Extracted {len(parsed_jobs)} jobs")
+                if response.status_code != 200:
+                    logger.error(f"Failed to fetch {source.url}: HTTP {response.status_code}")
+                    return {"jobs": [], "retries": 0, "failed": True, "recent_jobs": [], "source_config": source}
+                html_content = response.text
+        else:
+            # Import playwright locally to avoid loading it if not needed
+            from playwright.async_api import async_playwright
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True)
+                # Ensure context doesn't timeout indefinitely
+                context = await browser.new_context(
+                    user_agent=HEADERS["User-Agent"]
+                )
+                page = await context.new_page()
+                try:
+                    await page.goto(str(source.url), wait_until="networkidle", timeout=30000)
+                    html_content = await page.content()
+                except Exception as page_e:
+                    logger.error(f"Playwright navigation failed: {page_e}")
+                    # Fallback to content if partially loaded
+                    html_content = await page.content()
+                finally:
+                    await browser.close()
+                
+
+        soup = BeautifulSoup(html_content, "html.parser")
+        for script in soup(["script", "style", "noscript", "svg"]):
+            script.extract()
+        text = soup.get_text(separator=" ", strip=True)
+        logger.info(f"Extracted HTML text len: {len(text)}. Snippet: {text[:200]}")
+        
+        raw_jobs = await asyncio.to_thread(
+            extract_jobs_with_deepseek, text, str(source.url)
+        )
+        
+        parsed_jobs = []
+        
+        from urllib.parse import urljoin
+        
+        for index, rj in enumerate(raw_jobs):
+            title = rj.get("title")
+            if not title:
+                continue
+                
+            job_url = rj.get("url") or str(source.url)
+            # Ensure job_url is absolute
+            job_url = urljoin(str(source.url), job_url)
             
-            # For custom scraper, all extracted jobs are treated as new/recent
-            return {
-                "jobs": parsed_jobs,
-                "retries": 0,
-                "failed": False,
-                "recent_jobs": parsed_jobs,
-                "source_config": source, # Pass config back to access TTL later
-            }
+            # We want a very stable hash. DeepSeek might slightly alter title/company casing or add URL params.
+            # Let's normalize by stripping and uppercasing to unify them as best as possible.
+            import hashlib
+            normalized_title = title.strip().upper()
+            normalized_company = rj.get('company', '').strip().upper()
+            unique_str = f"{normalized_title}-{normalized_company}"
+            ext_id = hashlib.md5(unique_str.encode()).hexdigest()
+            
+            job_create = JobCreate(
+                title=title,
+                company=rj.get("company") or source.name,
+                location=rj.get("location") or "Unknown",
+                url=job_url,
+                source=source.name, # Use custom tab name as source
+                external_id=ext_id,
+                posted_at=datetime.now(timezone.utc),
+            )
+            parsed_jobs.append(job_create)
+            
+        logger.info(f"Custom Scraper ({source.name}): Extracted {len(parsed_jobs)} jobs")
+        
+        # For custom scraper, all extracted jobs are treated as new/recent
+        return {
+            "jobs": parsed_jobs,
+            "retries": 0,
+            "failed": False,
+            "recent_jobs": parsed_jobs,
+            "source_config": source, # Pass config back to access TTL later
+        }
             
     except Exception as e:
         logger.error(f"Scraping failed for custom source {source.name}: {e}")

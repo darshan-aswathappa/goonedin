@@ -35,6 +35,7 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
   const [icon, setIcon] = useState("Buildings");
   const [ttlHours, setTtlHours] = useState("24");
   const [intervalMinutes, setIntervalMinutes] = useState("60");
+  const [disableJavascript, setDisableJavascript] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const addCustomSource = useJobsStore((state) => state.addCustomSource);
   const customSources = useJobsStore((state) => state.customSources);
@@ -47,6 +48,7 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
       setIcon(editSource.icon);
       setTtlHours(editSource.ttl_hours.toString());
       setIntervalMinutes(editSource.interval_minutes.toString());
+      setDisableJavascript(editSource.disable_javascript ?? true);
     } else if (!open) {
       resetForm();
     }
@@ -67,7 +69,8 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
             icon,
             url,
             ttl_hours: parseInt(ttlHours),
-            interval_minutes: parseInt(intervalMinutes)
+            interval_minutes: parseInt(intervalMinutes),
+            disable_javascript: disableJavascript
           }
       };
 
@@ -121,6 +124,7 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
     setIcon("Buildings");
     setTtlHours("24");
     setIntervalMinutes("60");
+    setDisableJavascript(true);
   };
 
   return (
@@ -219,6 +223,24 @@ export function AddJobSourceModal({ editSource, triggerNode }: AddJobSourceModal
             </div>
           </div>
           
+          <div className="grid gap-2">
+            <div className="flex items-center space-x-2 mt-2">
+              <input
+                type="checkbox"
+                id="disable_js"
+                checked={disableJavascript}
+                onChange={(e) => setDisableJavascript(e.target.checked)}
+                className="h-4 w-4 brutal-border accent-black"
+              />
+              <label htmlFor="disable_js" className="font-black uppercase tracking-tight text-xs cursor-pointer">
+                Disable JavaScript (Faster, default)
+              </label>
+            </div>
+            <p className="text-xs text-muted-foreground ml-6">
+              Enable this only if the job board is a Single Page App (SPA) that requires JavaScript to load listings.
+            </p>
+          </div>
+
           <DialogFooter className="sm:justify-between items-center sm:items-center mt-2 flex-row gap-2">
             {editingId && (
               <Button
