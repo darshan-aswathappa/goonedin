@@ -135,12 +135,30 @@ async def upsert_custom_jobs(
     Upsert scraped jobs into the custom_source_jobs table.
     Returns list of newly inserted jobs (not duplicates).
     """
+    if not jobs:
+        return []
+
+    # Get existing external_ids for this source
+    try:
+        existing_resp = await asyncio.to_thread(
+            lambda: supabase.table("custom_source_jobs")
+            .select("external_id")
+            .eq("user_id", user_id)
+            .eq("source_id", source_id)
+            .execute()
+        )
+        existing_ids = {row["external_id"] for row in (existing_resp.data or [])}
+    except Exception as e:
+        logger.warning(f"Failed to fetch existing external_ids for {source_id}: {e}")
+        existing_ids = set()
+
     new_jobs: list[dict] = []
     for job in jobs:
+        ext_id = job.get("external_id", "")
         row = {
             "user_id": user_id,
             "source_id": source_id,
-            "external_id": job.get("external_id", ""),
+            "external_id": ext_id,
             "title": job.get("title", ""),
             "company": job.get("company", ""),
             "location": job.get("location", ""),
@@ -155,10 +173,11 @@ async def upsert_custom_jobs(
                 .upsert(r, on_conflict="user_id,source_id,external_id")
                 .execute()
             )
-            if resp.data:
+            # Only add to new_jobs if it didn't previously exist
+            if resp.data and ext_id not in existing_ids:
                 new_jobs.append(resp.data[0])
         except Exception as e:
-            logger.warning(f"Failed to upsert job {row.get('external_id')}: {e}")
+            logger.warning(f"Failed to upsert job {ext_id}: {e}")
     return new_jobs
 
 

@@ -97,9 +97,9 @@ async def fetch_job_description(job_id: str) -> Optional[str]:
     and extract the description text.
     """
     url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-    proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    # proxy = settings.PROXY_URL if settings.PROXY_URL else None
 
-    async with httpx.AsyncClient(follow_redirects=True, proxy=proxy) as client:
+    async with httpx.AsyncClient(follow_redirects=True) as client:
         try:
             response = await client.get(url, headers=HEADERS, timeout=15.0)
 

@@ -457,6 +457,14 @@ async def run_custom_sources_loop(ctx: UserContext):
                     "interval_minutes": src_row.get("interval_minutes", 60),
                 })
 
+                # Inherit last_scraped_at from DB if memory dictionary is missing it (e.g. after reload)
+                if source.id not in last_scraped and src_row.get("last_scraped_at"):
+                    try:
+                        # Supabase isoformat parser
+                        last_scraped[source.id] = datetime.fromisoformat(src_row["last_scraped_at"].replace("Z", "+00:00"))
+                    except Exception as e:
+                        logger.warning(f"Failed to parse last_scraped_at for {source.id}: {e}")
+
                 # Determine if we should scrape this source now
                 should_scrape = False
                 if source.id not in last_scraped:
