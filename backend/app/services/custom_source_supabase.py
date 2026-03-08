@@ -155,6 +155,13 @@ async def upsert_custom_jobs(
     new_jobs: list[dict] = []
     for job in jobs:
         ext_id = job.get("external_id", "")
+
+        # Skip if job already exists for this source
+        if ext_id in existing_ids:
+            logger.debug(f"Job {ext_id} already exists for source {source_id}, skipping")
+            continue
+
+        # Only insert new jobs
         row = {
             "user_id": user_id,
             "source_id": source_id,
@@ -170,14 +177,13 @@ async def upsert_custom_jobs(
         try:
             resp = await asyncio.to_thread(
                 lambda r=row: supabase.table("custom_source_jobs")
-                .upsert(r, on_conflict="user_id,source_id,external_id")
+                .insert(r)
                 .execute()
             )
-            # Only add to new_jobs if it didn't previously exist
-            if resp.data and ext_id not in existing_ids:
+            if resp.data:
                 new_jobs.append(resp.data[0])
         except Exception as e:
-            logger.warning(f"Failed to upsert job {ext_id}: {e}")
+            logger.warning(f"Failed to insert job {ext_id}: {e}")
     return new_jobs
 
 
