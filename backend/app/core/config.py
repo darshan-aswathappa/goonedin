@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # --- AI / DEEPSEEK ---
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
 
+    # --- QUEUE WORKER ---
+    ANALYSIS_WORKER_CONCURRENCY: int = int(os.getenv("ANALYSIS_WORKER_CONCURRENCY", "3"))
+
     class Config:
         case_sensitive = True
         env_file = ".env"

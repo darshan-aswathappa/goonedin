@@ -57,7 +57,9 @@ from app.services.scraper_github import fetch_github_jobs
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 from app.services.resume_analyzer import enqueue_resume_analysis, process_resume_analysis_queue
-from app.services.job_analyzer import run_job_analysis, run_fast_salary_visa_analysis
+from app.services.job_analyzer import run_job_analysis
+from app.services.job_queue import get_cache_entry, create_cache_entry, enqueue_job
+from app.services.job_queue_worker import process_job_analysis_queue
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
@@ -98,6 +100,9 @@ async def lifespan(app: FastAPI):
     # Resume analysis queue processor task
     resume_queue_task = asyncio.create_task(process_resume_analysis_queue(supabase))
 
+    # Job analysis queue processor task (global, handles all users)
+    job_queue_task = asyncio.create_task(process_job_analysis_queue(supabase))
+
     try:
         contexts = await load_all_users()
         for ctx in contexts:
@@ -110,13 +115,12 @@ async def lifespan(app: FastAPI):
 
     cleanup_task.cancel()
     resume_queue_task.cancel()
+    job_queue_task.cancel()
     for ctx in user_registry.values():
         if ctx.hf_task and not ctx.hf_task.done():
             ctx.hf_task.cancel()
         if ctx.lf_task and not ctx.lf_task.done():
             ctx.lf_task.cancel()
-        if ctx.analysis_worker_task and not ctx.analysis_worker_task.done():
-            ctx.analysis_worker_task.cancel()
         if ctx.custom_sources_task and not ctx.custom_sources_task.done():
             ctx.custom_sources_task.cancel()
 
@@ -188,19 +192,30 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
             continue
 
         job_dict = job.model_dump(mode="json")
-        job_dict["visible"] = False
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         total_finds = total_finds + 1  # type: ignore
 
         if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
-            # Push to in-memory analysis queue
-            await ctx.analysis_queue.put({
-                "external_id": job_dict["external_id"],
-                "job_url": job_dict["url"],
-                "source": job_dict["source"],
-                "retry_count": 0,
-            })
-            logger.info(f"Queued job {job_dict['external_id']} for analysis")
+            # Check if analysis already cached
+            cache = await get_cache_entry(supabase, job_dict["external_id"])
+            if cache and cache["analysis_status"] == "completed":
+                # Reuse cached analysis — no API call needed
+                job_dict["analysis"] = cache["analysis"]
+                job_dict["analysis_status"] = "completed"
+                job_dict["salary"] = cache.get("salary")
+                job_dict["visa"] = cache.get("visa")
+                job_dict["visible"] = True
+                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+                job_dict["is_notified"] = True
+                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                logger.info(f"New Target (cached analysis): {job.title} @ {job.company} ({job.location})")
+            else:
+                # Queue for analysis
+                await create_cache_entry(supabase, job_dict["external_id"], job_dict["url"])
+                await enqueue_job(supabase, job_dict["external_id"], job_dict["url"])
+                job_dict["visible"] = False
+                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                logger.info(f"Queued job {job_dict['external_id']} for analysis")
         else:
             job_dict["visible"] = True
             await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
@@ -261,122 +276,6 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
 
     return total_finds
 
-
-# ---------------------------------------------------------------------------
-# Analysis Worker — asyncio.Queue loop with retries
-# ---------------------------------------------------------------------------
-ANALYSIS_MAX_RETRIES = 2
-
-async def run_analysis_worker(ctx: UserContext):
-    """
-    Continuously takes jobs from the in-memory analysis queue, runs DeepSeek analysis,
-    and broadcasts results directly via WebSocket. Retries up to ANALYSIS_MAX_RETRIES
-    times on failure before marking the job as analysis_unavailable.
-    """
-    supabase = get_supabase_client()
-    logger.info(f"[AnalysisWorker] Started for user {ctx.user_id}")
-
-    while True:
-        try:
-            # Await next item from the in-memory queue
-            try:
-                task = await asyncio.wait_for(ctx.analysis_queue.get(), timeout=5)
-            except asyncio.TimeoutError:
-                continue
-
-            external_id = task["external_id"]
-            job_url = task["job_url"]
-            source = task.get("source", "LinkedIn")
-            retry_count = task.get("retry_count", 0)
-
-            logger.info(
-                f"[AnalysisWorker] Processing {external_id} "
-                f"(attempt {retry_count + 1}/{ANALYSIS_MAX_RETRIES + 1})"
-            )
-
-            # Load the current job from Supabase
-            job_dict = await get_job(supabase, ctx.user_id, source, external_id)
-            if not job_dict:
-                logger.warning(f"[AnalysisWorker] Job {external_id} not found in Supabase, skipping.")
-                continue
-
-            try:
-                analysis_data = await run_job_analysis(
-                    external_id=external_id,
-                    job_url=job_url,
-                    api_key=settings.DEEPSEEK_API_KEY,
-                )
-
-                if analysis_data:
-                    if analysis_data.get("compensation"):
-                        job_dict["salary"] = analysis_data["compensation"]
-                    if analysis_data.get("visa_status"):
-                        job_dict["visa"] = analysis_data["visa_status"]
-                    job_dict["analysis"] = analysis_data
-                    job_dict["analysis_status"] = "completed"
-                else:
-                    raise ValueError("run_job_analysis returned None")
-
-            except Exception as e:
-                logger.warning(
-                    f"[AnalysisWorker] Analysis failed for {external_id} "
-                    f"(attempt {retry_count + 1}): {e}"
-                )
-                if retry_count < ANALYSIS_MAX_RETRIES:
-                    # Re-queue with incremented retry count
-                    task["retry_count"] = retry_count + 1
-                    await ctx.analysis_queue.put(task)
-                    logger.info(
-                        f"[AnalysisWorker] Re-queued {external_id} "
-                        f"for retry {retry_count + 2}/{ANALYSIS_MAX_RETRIES + 1}"
-                    )
-                    continue
-                else:
-                    # Hard fail — post without analysis
-                    logger.error(
-                        f"[AnalysisWorker] Hard fail for {external_id} after "
-                        f"{ANALYSIS_MAX_RETRIES + 1} attempts. Posting without analysis."
-                    )
-                    job_dict["analysis_status"] = "unavailable"
-
-            # Check blocked companies before making visible
-            blocked_companies = await get_blocked_companies(supabase, ctx.user_id)
-            job_company = (job_dict.get("company") or "").lower()
-            if any(b.lower() in job_company for b in blocked_companies):
-                logger.info(
-                    f"[AnalysisWorker] Skipping {external_id} — company "
-                    f"'{job_dict.get('company')}' is blocked."
-                )
-                continue
-
-            # Make visible and persist in Supabase
-            job_dict["visible"] = True
-            updates = {
-                "visible": True,
-                "analysis_status": job_dict.get("analysis_status"),
-                "analysis": job_dict.get("analysis"),
-                "salary": job_dict.get("salary"),
-                "visa": job_dict.get("visa"),
-            }
-            await update_job(supabase, ctx.user_id, source, external_id, updates)
-
-            # Broadcast directly via WebSocket (no Pub/Sub needed)
-            await manager.broadcast(ctx.user_id, {
-                "type": "NEW_JOB",
-                "data": job_dict,
-            })
-
-            await update_job(supabase, ctx.user_id, source, external_id, {"is_notified": True})
-
-            status = job_dict.get("analysis_status", "unknown")
-            logger.info(f"[AnalysisWorker] Done {external_id} — status={status}")
-
-        except asyncio.CancelledError:
-            logger.info(f"[AnalysisWorker] Cancelled for user {ctx.user_id}")
-            break
-        except Exception as e:
-            logger.error(f"[AnalysisWorker] Unexpected error: {e}")
-            await asyncio.sleep(2)
 
 async def run_high_frequency_loop(ctx: UserContext):
     supabase = get_supabase_client()
@@ -574,11 +473,9 @@ def start_user_scrapers(ctx: UserContext) -> None:
         ctx.hf_task = asyncio.create_task(run_high_frequency_loop(ctx))
     if ctx.lf_task is None or ctx.lf_task.done():
         ctx.lf_task = asyncio.create_task(run_low_frequency_loop(ctx))
-    if ctx.analysis_worker_task is None or ctx.analysis_worker_task.done():
-        ctx.analysis_worker_task = asyncio.create_task(run_analysis_worker(ctx))
     if getattr(ctx, "custom_sources_task", None) is None or ctx.custom_sources_task.done():
         ctx.custom_sources_task = asyncio.create_task(run_custom_sources_loop(ctx))
-    
+
     ctx._scrapers_started = True
 
 
@@ -664,6 +561,69 @@ async def get_jobs_endpoint(ctx: UserContext = Depends(_get_ctx)):
 
     jobs.sort(key=lambda x: x.get("posted_at") or "", reverse=True)
     return {"jobs": jobs, "count": len(jobs)}
+
+
+class AnalyzeJobRequest(BaseModel):
+    """Request to analyze a job and enqueue it for AI analysis."""
+    external_id: str
+    title: str
+    company: str
+    location: Optional[str] = None
+    url: str
+    source: str = "LinkedIn"
+    posted_at: Optional[str] = None
+    salary: Optional[str] = None
+    visa: Optional[str] = None
+
+
+@app.post("/jobs/analyze")
+async def analyze_job(request: AnalyzeJobRequest, ctx: UserContext = Depends(_get_ctx)):
+    """
+    Submit a job for analysis. Enqueues it for background processing with DeepSeek.
+    Returns the created job entry.
+
+    The job will be analyzed asynchronously by the job queue worker.
+    You can check the analysis status by polling /jobs/{external_id}/analysis.
+    """
+    supabase = get_supabase_client()
+
+    try:
+        # Create job entry with pending analysis status
+        job_data = {
+            "user_id": ctx.user_id,
+            "source": request.source,
+            "external_id": request.external_id,
+            "title": request.title,
+            "company": request.company,
+            "location": request.location,
+            "url": request.url,
+            "posted_at": request.posted_at or datetime.now(timezone.utc).isoformat(),
+            "visible": True,
+            "is_notified": False,
+            "salary": request.salary,
+            "visa": request.visa,
+            "analysis": None,
+            "analysis_status": "pending",
+        }
+
+        # Insert/update the job in scraped_jobs table
+        inserted_job = await upsert_job(supabase, ctx.user_id, job_data)
+
+        # Enqueue the job for analysis
+        from app.services.job_queue import enqueue_job
+        await enqueue_job(supabase, request.external_id, request.url)
+
+        logger.info(f"Job {request.external_id} enqueued for analysis")
+
+        return {
+            "message": "Job submitted for analysis",
+            "job": inserted_job,
+            "status": "queued"
+        }
+
+    except Exception as e:
+        logger.error(f"Error submitting job for analysis: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit job for analysis: {str(e)}")
 
 
 class ConfigUpdateRequest(BaseModel):

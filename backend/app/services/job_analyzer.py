@@ -188,13 +188,14 @@ async def run_job_analysis(
     external_id: str,
     job_url: str,
     api_key: str,
-) -> Optional[dict[str, Any]]:
+) -> tuple[Optional[dict[str, Any]], Optional[str]]:
     """
     Full analysis pipeline for a single job:
     1. Extract job ID from URL
     2. Fetch job description from LinkedIn API
     3. Analyze with DeepSeek
-    Returns the analysis dict, or None on failure.
+    Returns a tuple of (analysis dict, error message).
+    If successful, error is None. If failed, analysis is None and error contains the reason.
     (Caller is responsible for persisting the result.)
     """
     import asyncio
@@ -204,14 +205,16 @@ async def run_job_analysis(
 
         job_id = external_id
         if not job_id:
-            logger.warning(f"[JobAnalyzer] No job ID provided: {job_url}")
-            return None
+            error_msg = f"No job ID provided: {job_url}"
+            logger.warning(f"[JobAnalyzer] {error_msg}")
+            return None, error_msg
 
         # 2. Fetch job description
         description = await fetch_job_description(job_id)
         if not description:
-            logger.warning(f"[JobAnalyzer] No description found for job {job_id}")
-            return None
+            error_msg = f"No description found for job {job_id}"
+            logger.warning(f"[JobAnalyzer] {error_msg}")
+            return None, error_msg
 
         logger.info(
             f"[JobAnalyzer] Fetched {len(description)} chars of description for job {external_id}"
@@ -223,11 +226,12 @@ async def run_job_analysis(
         )
 
         logger.info(f"[JobAnalyzer] DeepSeek analysis complete for job {external_id}")
-        return analysis
+        return analysis, None
 
     except Exception as e:
-        logger.error(f"[JobAnalyzer] Analysis failed for job {external_id}: {e}")
-        return None
+        error_msg = f"Analysis failed for job {external_id}: {e}"
+        logger.error(f"[JobAnalyzer] {error_msg}")
+        return None, error_msg
 
 async def run_fast_salary_visa_analysis(
     external_id: str,

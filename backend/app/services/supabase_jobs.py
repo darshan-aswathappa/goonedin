@@ -221,3 +221,71 @@ async def cleanup_expired_jobs(supabase: Any) -> int:
     except Exception as e:
         logger.error(f"cleanup_expired_jobs failed: {e}")
         return 0
+
+
+async def get_users_with_pending_job(
+    supabase: Any, external_id: str
+) -> list[str]:
+    """Get all distinct user_ids that have a pending (visible=False) job with this external_id."""
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .select("DISTINCT user_id")
+            .eq("external_id", external_id)
+            .eq("visible", False)
+            .eq("source", "LinkedIn")
+            .execute()
+        )
+        return [row["user_id"] for row in (resp.data or [])]
+    except Exception as e:
+        logger.error(f"get_users_with_pending_job failed: {e}")
+        return []
+
+
+async def bulk_apply_analysis(
+    supabase: Any,
+    external_id: str,
+    analysis: dict,
+    salary: Optional[str],
+    visa: Optional[str],
+) -> bool:
+    """Update all LinkedIn jobs with this external_id to visible=True and attach analysis."""
+    try:
+        updates = {
+            "visible": True,
+            "analysis": json.dumps(analysis) if analysis else None,
+            "analysis_status": "completed",
+            "salary": salary,
+            "visa": visa,
+        }
+        await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .update(updates)
+            .eq("external_id", external_id)
+            .eq("source", "LinkedIn")
+            .execute()
+        )
+        return True
+    except Exception as e:
+        logger.error(f"bulk_apply_analysis failed: {e}")
+        return False
+
+
+async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
+    """Mark all LinkedIn jobs with this external_id as visible=True but analysis_status=unavailable."""
+    try:
+        updates = {
+            "visible": True,
+            "analysis_status": "unavailable",
+        }
+        await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .update(updates)
+            .eq("external_id", external_id)
+            .eq("source", "LinkedIn")
+            .execute()
+        )
+        return True
+    except Exception as e:
+        logger.error(f"bulk_mark_unavailable failed: {e}")
+        return False

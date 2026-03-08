@@ -12,10 +12,8 @@ settings = get_settings()
 class UserContext:
     user_id: str
     email: str
-    analysis_queue: asyncio.Queue = field(default_factory=asyncio.Queue)
     hf_task: Optional[asyncio.Task] = field(default=None)
     lf_task: Optional[asyncio.Task] = field(default=None)
-    analysis_worker_task: Optional[asyncio.Task] = field(default=None)
     custom_sources_task: Optional[asyncio.Task] = field(default=None)
 
 
