@@ -40,6 +40,7 @@ export interface Job {
   ttl?: number;
   analysis?: JobAnalysis;
   analysis_status?: "completed" | "unavailable" | null;
+  is_custom?: boolean;
 }
 
 const matchesLocationFilter = (job: Job): boolean => {

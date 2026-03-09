@@ -228,13 +228,25 @@ async def get_custom_jobs(supabase: Any, user_id: str) -> list[dict]:
         return []
 
 
+async def dismiss_custom_job(supabase: Any, user_id: str, external_id: str) -> bool:
+    """Soft-delete a custom source job when user dismisses it."""
+    try:
+        await asyncio.to_thread(
+            lambda: supabase.table("custom_source_jobs")
+            .update({"visible": False})
+            .eq("user_id", user_id)
+            .eq("external_id", external_id)
+            .execute()
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to dismiss custom job {external_id}: {e}")
+        return False
+
+
 async def delete_expired_jobs(supabase: Any) -> int:
-    """
-    Delete custom source jobs older than their source's TTL.
-    Called periodically from the custom sources loop.
-    Returns number of deleted jobs.
-    """
-    deleted = 0
+    """Soft-delete custom_source_jobs older than their source's TTL."""
+    soft_deleted = 0
     try:
         # Get all sources with their TTL
         sources_resp = await asyncio.to_thread(
@@ -248,16 +260,38 @@ async def delete_expired_jobs(supabase: Any) -> int:
             ).isoformat()
             resp = await asyncio.to_thread(
                 lambda c=cutoff, s=src: supabase.table("custom_source_jobs")
-                .delete()
+                .update({"visible": False})
                 .eq("user_id", s["user_id"])
                 .eq("source_id", s["id"])
+                .eq("visible", True)       # skip already-hidden
                 .lt("created_at", c)
                 .execute()
             )
             if resp.data:
-                deleted += len(resp.data)
-        if deleted:
-            logger.info(f"Cleaned up {deleted} expired custom source jobs")
+                soft_deleted += len(resp.data)
+        if soft_deleted:
+            logger.info(f"Soft-deleted {soft_deleted} expired custom source jobs")
     except Exception as e:
-        logger.error(f"Failed to delete expired custom jobs: {e}")
+        logger.error(f"Failed to soft-delete expired custom jobs: {e}")
+    return soft_deleted
+
+
+async def cleanup_old_invisible_custom_jobs(supabase: Any) -> int:
+    """Hard-delete custom_source_jobs rows where visible=False AND created_at older than 60 days."""
+    deleted = 0
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("custom_source_jobs")
+            .delete()
+            .eq("visible", False)
+            .lt("created_at", cutoff)
+            .execute()
+        )
+        if resp.data:
+            deleted = len(resp.data)
+        if deleted:
+            logger.info(f"Hard-deleted {deleted} old invisible custom source jobs (>60 days)")
+    except Exception as e:
+        logger.error(f"Failed to hard-delete old invisible custom jobs: {e}")
     return deleted

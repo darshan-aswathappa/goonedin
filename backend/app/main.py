@@ -27,6 +27,7 @@ from app.services.supabase_jobs import (
     dismiss_job as dismiss_job_sb,
     delete_jobs_by_company,
     cleanup_expired_jobs,
+    cleanup_old_invisible_jobs,
 )
 from app.models.custom_source import CustomJobSource
 from app.services.custom_source_supabase import (
@@ -38,6 +39,8 @@ from app.services.custom_source_supabase import (
     upsert_custom_jobs,
     get_custom_jobs,
     delete_expired_jobs,
+    dismiss_custom_job,
+    cleanup_old_invisible_custom_jobs,
 )
 from app.core.user_manager import (
     UserContext,
@@ -87,7 +90,9 @@ async def lifespan(app: FastAPI):
     async def _cleanup_loop():
         while True:
             try:
-                await cleanup_expired_jobs(supabase)
+                await cleanup_expired_jobs(supabase)               # soft-delete expired scraped_jobs
+                await cleanup_old_invisible_jobs(supabase)         # hard-delete 60d+ invisible scraped_jobs
+                await cleanup_old_invisible_custom_jobs(supabase)  # hard-delete 60d+ invisible custom jobs
             except Exception as e:
                 logger.warning(f"Expired job cleanup error: {e}")
             await asyncio.sleep(300)  # every 5 minutes
@@ -527,6 +532,7 @@ async def get_jobs_endpoint(ctx: UserContext = Depends(_get_ctx)):
                 "posted_at": cj.get("posted_at", ""),
                 "visible": True,
                 "ttl": -1,
+                "is_custom": True,
             })
     except Exception as e:
         logger.warning(f"Failed to fetch custom jobs from Supabase: {e}")
@@ -796,13 +802,17 @@ async def block_company_and_remove_jobs(
 class DismissJobRequest(BaseModel):
     source: str
     external_id: str
+    is_custom: bool = False
 
 
 @app.post("/jobs/dismiss")
 async def dismiss_job_endpoint(request: DismissJobRequest, ctx: UserContext = Depends(_get_ctx)):
     supabase = get_supabase_client()
     try:
-        await dismiss_job_sb(supabase, ctx.user_id, request.source, request.external_id)
+        if request.is_custom:
+            await dismiss_custom_job(supabase, ctx.user_id, request.external_id)
+        else:
+            await dismiss_job_sb(supabase, ctx.user_id, request.source, request.external_id)
 
         await manager.broadcast(
             ctx.user_id,

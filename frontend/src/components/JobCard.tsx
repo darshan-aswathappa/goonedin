@@ -118,6 +118,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         body: JSON.stringify({
           source: job.source,
           external_id: job.external_id,
+          is_custom: job.is_custom ?? false,
         }),
       });
       if (response.ok) removeJob(job.external_id);

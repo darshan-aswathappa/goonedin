@@ -218,23 +218,46 @@ async def delete_jobs_by_company(
 
 
 async def cleanup_expired_jobs(supabase: Any) -> int:
-    """Delete all jobs past their expires_at. Called periodically."""
+    """Soft-delete scraped_jobs where expires_at has passed."""
+    now_iso = datetime.now(timezone.utc).isoformat()
+    soft_deleted = 0
     try:
-        now_iso = datetime.now(timezone.utc).isoformat()
         resp = await asyncio.to_thread(
             lambda: supabase.table("scraped_jobs")
-            .delete()
+            .update({"visible": False})
+            .eq("visible", True)           # skip already-hidden
             .lt("expires_at", now_iso)
             .not_.is_("expires_at", "null")
             .execute()
         )
-        deleted = len(resp.data) if resp.data else 0
-        if deleted:
-            logger.info(f"Cleaned up {deleted} expired scraped jobs")
-        return deleted
+        if resp.data:
+            soft_deleted = len(resp.data)
+        if soft_deleted:
+            logger.info(f"Soft-deleted {soft_deleted} expired scraped jobs")
     except Exception as e:
-        logger.error(f"cleanup_expired_jobs failed: {e}")
-        return 0
+        logger.error(f"Failed to soft-delete expired scraped jobs: {e}")
+    return soft_deleted
+
+
+async def cleanup_old_invisible_jobs(supabase: Any) -> int:
+    """Hard-delete scraped_jobs rows where visible=False AND created_at older than 60 days."""
+    deleted = 0
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .delete()
+            .eq("visible", False)
+            .lt("created_at", cutoff)
+            .execute()
+        )
+        if resp.data:
+            deleted = len(resp.data)
+        if deleted:
+            logger.info(f"Hard-deleted {deleted} old invisible scraped jobs (>60 days)")
+    except Exception as e:
+        logger.error(f"Failed to hard-delete old invisible scraped jobs: {e}")
+    return deleted
 
 
 async def get_users_with_pending_job(
