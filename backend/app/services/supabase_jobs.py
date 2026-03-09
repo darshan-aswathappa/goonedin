@@ -9,7 +9,12 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
+from app.core.supabase_retry import retry_supabase
+
 logger = logging.getLogger("SupabaseJobs")
+
+# Last-known-good cache for job reads to prevent brief "empty" flashes on transient DB failures
+_jobs_cache: dict[str, list] = {}
 
 
 async def is_already_seen(
@@ -138,14 +143,16 @@ async def get_all_jobs(supabase: Any, user_id: str) -> list[dict]:
     """Fetch all visible, non-expired jobs for a user."""
     try:
         now_iso = datetime.now(timezone.utc).isoformat()
-        resp = await asyncio.to_thread(
-            lambda: supabase.table("scraped_jobs")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("visible", True)
-            .order("created_at", desc=True)
-            .execute()
-        )
+
+        def _fetch():
+            return supabase.table("scraped_jobs") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .eq("visible", True) \
+                .order("created_at", desc=True) \
+                .execute()
+
+        resp = await retry_supabase(_fetch)
         jobs = []
         for row in (resp.data or []):
             # Skip expired jobs
@@ -158,9 +165,16 @@ async def get_all_jobs(supabase: Any, user_id: str) -> list[dict]:
                 except (json.JSONDecodeError, TypeError):
                     pass
             jobs.append(row)
+        # Update cache on success
+        _jobs_cache[user_id] = jobs
         return jobs
     except Exception as e:
-        logger.error(f"get_all_jobs failed: {e}")
+        logger.error(f"get_all_jobs failed after retries: {e}")
+        # Fall back to last-known-good cache if available
+        cached = _jobs_cache.get(user_id)
+        if cached is not None:
+            logger.warning(f"Returning {len(cached)} cached jobs for user {user_id}")
+            return cached
         return []
 
 

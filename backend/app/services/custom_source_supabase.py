@@ -10,7 +10,13 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
+from app.core.supabase_retry import retry_supabase
+
 logger = logging.getLogger("CustomSourceSupabase")
+
+# Last-known-good cache for custom job reads to prevent brief "empty" flashes on transient DB failures
+_custom_jobs_cache: dict[str, list] = {}
+_custom_sources_cache: dict[str, list] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -20,16 +26,25 @@ logger = logging.getLogger("CustomSourceSupabase")
 async def get_custom_sources(supabase: Any, user_id: str) -> list[dict]:
     """Fetch all custom sources for a user."""
     try:
-        resp = await asyncio.to_thread(
-            lambda: supabase.table("custom_sources")
-            .select("*")
-            .eq("user_id", user_id)
-            .order("created_at")
-            .execute()
-        )
-        return resp.data or []
+        def _fetch():
+            return supabase.table("custom_sources") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .order("created_at") \
+                .execute()
+
+        resp = await retry_supabase(_fetch)
+        result = resp.data or []
+        # Update cache on success
+        _custom_sources_cache[user_id] = result
+        return result
     except Exception as e:
-        logger.error(f"Failed to fetch custom sources: {e}")
+        logger.error(f"Failed to fetch custom sources after retries: {e}")
+        # Fall back to cache if available
+        cached = _custom_sources_cache.get(user_id)
+        if cached is not None:
+            logger.warning(f"Returning {len(cached)} cached custom sources for user {user_id}")
+            return cached
         return []
 
 
@@ -190,17 +205,26 @@ async def upsert_custom_jobs(
 async def get_custom_jobs(supabase: Any, user_id: str) -> list[dict]:
     """Fetch all visible custom source jobs for a user."""
     try:
-        resp = await asyncio.to_thread(
-            lambda: supabase.table("custom_source_jobs")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("visible", True)
-            .order("created_at", desc=True)
-            .execute()
-        )
-        return resp.data or []
+        def _fetch():
+            return supabase.table("custom_source_jobs") \
+                .select("*") \
+                .eq("user_id", user_id) \
+                .eq("visible", True) \
+                .order("created_at", desc=True) \
+                .execute()
+
+        resp = await retry_supabase(_fetch)
+        result = resp.data or []
+        # Update cache on success
+        _custom_jobs_cache[user_id] = result
+        return result
     except Exception as e:
-        logger.error(f"Failed to fetch custom jobs: {e}")
+        logger.error(f"Failed to fetch custom jobs after retries: {e}")
+        # Fall back to cache if available
+        cached = _custom_jobs_cache.get(user_id)
+        if cached is not None:
+            logger.warning(f"Returning {len(cached)} cached custom jobs for user {user_id}")
+            return cached
         return []
 
 

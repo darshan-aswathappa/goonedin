@@ -35,10 +35,6 @@ function getSourceColor(source: string) {
   switch (source) {
     case "LinkedIn":
       return "bg-[#0A66C2] text-white";
-    case "Fidelity":
-      return "bg-[#338800] text-white";
-    case "StateStreet":
-      return "bg-[#005295] text-white";
     case "MathWorks":
       return "bg-[#ED1C24] text-white";
     case "GitHub":

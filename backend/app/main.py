@@ -49,8 +49,6 @@ from app.core.user_manager import (
 )
 from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
-from app.services.scraper_fidelity import fetch_fidelity_jobs
-from app.services.scraper_statestreet import fetch_statestreet_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.scraper_github import fetch_github_jobs
 
@@ -73,7 +71,6 @@ settings = get_settings()
 
 JOB_RECENCY_MINUTES = 600
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 2
-FIDELITY_TTL_SECONDS = 24 * 60 * 60
 GITHUB_TTL_SECONDS = 24 * 60 * 60
 
 @asynccontextmanager
@@ -160,19 +157,13 @@ async def matches_target_keywords(job, supabase, user_id: str) -> bool:
 async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     supabase = get_supabase_client()
     all_jobs: List[Any] = []
-    fidelity_jobs: List[Any] = []
-    statestreet_jobs: List[Any] = []
     mathworks_jobs: List[Any] = []
     github_jobs: List[Any] = []
 
     for r in results:
         if "recent_jobs" in r and r["recent_jobs"]:
             first_job = r["recent_jobs"][0]
-            if first_job.source == "Fidelity":
-                fidelity_jobs.extend(r["recent_jobs"])
-            elif first_job.source == "StateStreet":
-                statestreet_jobs.extend(r["recent_jobs"])
-            elif first_job.source == "MathWorks":
+            if first_job.source == "MathWorks":
                 mathworks_jobs.extend(r["recent_jobs"])
             elif first_job.source == "GitHub":
                 github_jobs.extend(r["recent_jobs"])
@@ -224,30 +215,6 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
             await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
             logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
 
-    for job in fidelity_jobs:
-        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
-            continue
-        job_dict = job.model_dump(mode="json")
-        job_dict["visible"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
-        total_finds = total_finds + 1
-        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        job_dict["is_notified"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=FIDELITY_TTL_SECONDS)
-        logger.info(f"New Target (Fidelity): {job.title} @ {job.company}")
-
-    for job in statestreet_jobs:
-        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
-            continue
-        job_dict = job.model_dump(mode="json")
-        job_dict["visible"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
-        total_finds = total_finds + 1
-        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-        job_dict["is_notified"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
-        logger.info(f"New Target (StateStreet): {job.title} @ {job.company}")
-
     for job in mathworks_jobs:
         if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
@@ -280,15 +247,21 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
 async def run_high_frequency_loop(ctx: UserContext):
     supabase = get_supabase_client()
     logger.info(f"[HF] Scraper started for {ctx.user_id}")
+    # Semaphore to limit concurrent LinkedIn keyword fetches to 4 (reduces connection pool spike from ~11 to ~7)
+    _linkedin_sem = asyncio.Semaphore(4)
+
+    async def _fetch_linkedin_with_limit(kw):
+        async with _linkedin_sem:
+            return await fetch_linkedin_jobs(supabase, ctx.user_id, keywords=kw, location="United States")
+
     while True:
         try:
             target_keywords = await get_target_keywords(supabase, ctx.user_id)
             results = await asyncio.gather(
                 *[
-                    fetch_linkedin_jobs(supabase, ctx.user_id, keywords=kw, location="United States")
+                    _fetch_linkedin_with_limit(kw)
                     for kw in target_keywords
                 ],
-                fetch_statestreet_jobs(supabase, ctx.user_id),
             )
             total = len(results)
             failed = sum(1 for r in results if r["failed"])
@@ -310,7 +283,6 @@ async def run_low_frequency_loop(ctx: UserContext):
     while True:
         try:
             results = await asyncio.gather(
-                fetch_fidelity_jobs(supabase, ctx.user_id),
                 fetch_mathworks_jobs(supabase, ctx.user_id),
                 fetch_github_jobs(supabase, ctx.user_id),
             )

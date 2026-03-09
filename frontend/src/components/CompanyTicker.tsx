@@ -1,18 +1,14 @@
 "use client";
 
-import { 
-  GithubLogo, 
-  LinkedinLogo, 
-  Buildings, 
-  Bank,
-  Calculator 
+import {
+  GithubLogo,
+  LinkedinLogo,
+  Calculator
 } from "@phosphor-icons/react";
 
 const COMPANIES = [
   { icon: GithubLogo, name: "GitHub" },
   { icon: LinkedinLogo, name: "LinkedIn" },
-  { icon: Bank, name: "Fidelity" },
-  { icon: Buildings, name: "State Street" },
   { icon: Calculator, name: "MathWorks" },
 ];
 

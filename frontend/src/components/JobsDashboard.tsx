@@ -45,8 +45,6 @@ export function JobsDashboard() {
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
-  const fidelityJobs = useJobsStore((state) => state.fidelityJobs);
-  const statestreetJobs = useJobsStore((state) => state.statestreetJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
   const githubJobs = useJobsStore((state) => state.githubJobs);
   const locationFilteredJobs = useJobsStore(
@@ -203,26 +201,6 @@ export function JobsDashboard() {
               </TabsTrigger>
 
               <TabsTrigger
-                value="fidelity"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#338800] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
-              >
-                <div className="flex items-center gap-2">
-                  <Buildings weight="bold" className="h-5 w-5" />
-                  Fidelity ({fidelityJobs.length})
-                </div>
-              </TabsTrigger>
-
-              <TabsTrigger
-                value="statestreet"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#005295] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
-              >
-                <div className="flex items-center gap-2">
-                  <Buildings weight="bold" className="h-5 w-5" />
-                  State Street ({statestreetJobs.length})
-                </div>
-              </TabsTrigger>
-
-              <TabsTrigger
                 value="mathworks"
                 className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
@@ -288,22 +266,6 @@ export function JobsDashboard() {
             <JobList
               jobs={linkedinJobs}
               emptyMessage="No LinkedIn jobs yet. They'll appear here when found."
-              isLocked={!user}
-            />
-          </TabsContent>
-
-          <TabsContent value="fidelity" className="mt-0">
-            <JobList
-              jobs={fidelityJobs}
-              emptyMessage="No Fidelity jobs yet. Jobs posted today will appear here."
-              isLocked={!user}
-            />
-          </TabsContent>
-
-          <TabsContent value="statestreet" className="mt-0">
-            <JobList
-              jobs={statestreetJobs}
-              emptyMessage="No State Street jobs yet. Fresh postings will appear here."
               isLocked={!user}
             />
           </TabsContent>
