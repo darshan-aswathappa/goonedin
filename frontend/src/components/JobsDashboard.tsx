@@ -154,7 +154,7 @@ export function JobsDashboard() {
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-8" : "w-full"}>
           {user && (
-            <div className="flex items-center gap-4 w-full mb-10 overflow-hidden">
+            <div className="relative flex items-center gap-4 w-full mb-10">
               <TabsList className="flex flex-nowrap h-auto gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-2">
                 <TabsTrigger
                 value="all"
@@ -229,6 +229,7 @@ export function JobsDashboard() {
               <div className="shrink-0 pb-2">
                 <AddJobSourceModal onSuccess={(id: string) => setActiveTab(id)} />
               </div>
+              <div className="pointer-events-none absolute right-10 top-0 h-full w-10 bg-gradient-to-l from-background to-transparent sm:hidden" aria-hidden="true" />
             </div>
           )}
 

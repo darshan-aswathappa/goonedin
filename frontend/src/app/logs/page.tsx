@@ -165,8 +165,8 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6 font-mono text-foreground">
-      <div className="max-w-5xl mx-auto">
+    <div className="h-screen bg-background p-4 sm:p-6 font-mono text-foreground flex flex-col">
+      <div className="max-w-5xl mx-auto flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
@@ -199,7 +199,7 @@ export default function LogsPage() {
 
         <div
           ref={scrollRef}
-          className="bg-card border-2 border-border shadow-[8px_8px_0px_0px_var(--border)] p-6 h-[calc(100vh-160px)] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+          className="bg-card border-2 border-border shadow-[8px_8px_0px_0px_var(--border)] p-6 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
         >
           {loading ? (
             <p className="text-gray-500">Loading logs...</p>

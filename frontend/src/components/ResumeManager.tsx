@@ -427,7 +427,7 @@ export function ResumeManager() {
       </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] sm:max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
+        <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
           <DialogHeader className="p-6 bg-foreground text-background space-y-1 relative">
             <DialogTitle className="flex items-center gap-2 text-2xl font-black italic uppercase tracking-tighter">
               <Brain className="h-6 w-6 text-primary" />
