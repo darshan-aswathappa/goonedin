@@ -52,7 +52,7 @@ export default function SavedJobsPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-3xl font-black italic uppercase tracking-tighter leading-none">
+              <h1 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter leading-none">
                 Saved Jobs
               </h1>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">

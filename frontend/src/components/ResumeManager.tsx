@@ -294,7 +294,7 @@ export function ResumeManager() {
         <CardContent className="space-y-8 pt-6">
           <div
             {...getRootProps()}
-            className={`relative flex flex-col items-center justify-center brutal-border border-dashed p-12 text-center transition-all duration-200 ${
+            className={`relative flex flex-col items-center justify-center brutal-border border-dashed p-6 sm:p-12 text-center transition-all duration-200 ${
               isDragActive
                 ? "bg-primary/10 border-primary"
                 : "bg-muted border-border hover:bg-muted/80"
@@ -343,7 +343,7 @@ export function ResumeManager() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setStagedFiles(prev => prev.filter(s => s.id !== staged.id))}
-                      className="brutal-border bg-card hover:bg-red-500 hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:shrink-0 h-11 w-11"
+                      className="brutal-border bg-card hover:bg-red-500 hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:shrink-0 h-11 w-11 w-full sm:w-auto"
                       disabled={isUploading}
                     >
                       <Trash className="h-5 w-5" />
@@ -389,7 +389,7 @@ export function ResumeManager() {
                   <div
                     key={resume.id}
                     onClick={() => handleViewAnalysis(resume)}
-                    className="group flex cursor-pointer flex-col justify-between brutal-border bg-card p-5 transition-all shadow-[4px_4px_0px_0px_var(--border)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)]"
+                    className="group flex cursor-pointer flex-col justify-between brutal-border bg-card p-5 min-h-[88px] transition-all shadow-[4px_4px_0px_0px_var(--border)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)]"
                   >
                     <div className="mb-4 flex items-start justify-between gap-4">
                       <div className="flex items-center gap-3 overflow-hidden">
@@ -438,13 +438,13 @@ export function ResumeManager() {
             </p>
             <button
               onClick={() => setDialogOpen(false)}
-              className="absolute right-4 top-4 brutal-border bg-card p-2 text-foreground hover:bg-primary hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus:outline-none"
+              className="absolute right-4 top-4 brutal-border bg-card p-3 text-foreground hover:bg-primary hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus:outline-none"
             >
               <X className="h-5 w-5" />
             </button>
           </DialogHeader>
 
-          <div className="p-10">
+          <div className="p-4 sm:p-10">
             {isLoadingAnalysis ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <CircleNotch className="mb-6 h-12 w-12 animate-spin text-primary" />
@@ -474,7 +474,7 @@ export function ResumeManager() {
                 </p>
               </div>
             ) : analysis ? (
-              <div className="space-y-12">
+              <div className="space-y-6 sm:space-y-12">
                 {analysis.summary && (
                   <div className="brutal-border bg-muted p-8 shadow-[8px_8px_0px_0px_var(--border)]">
                     <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-primary bg-card w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">

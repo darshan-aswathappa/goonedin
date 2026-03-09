@@ -84,11 +84,11 @@ export function JobList({
 
   if (displayJobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
+      <div className="flex flex-col items-center justify-center py-12 sm:py-24 text-center">
         <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] mb-6">
           <Briefcase weight="bold" className="h-12 w-12 text-muted-foreground" />
         </div>
-        <h3 className="text-2xl font-black uppercase italic tracking-tighter mb-2">
+        <h3 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter mb-2">
           {emptyMessage}
         </h3>
         <p className="font-bold text-muted-foreground">
@@ -101,7 +101,7 @@ export function JobList({
   return (
     <div className="relative">
       <div className={isLocked ? "pointer-events-none" : ""}>
-        <ScrollArea className={`${isLocked ? "h-[600px] overflow-hidden" : "h-[calc(100vh-220px)]"} pr-4 pb-8`}>
+        <ScrollArea className={`${isLocked ? "h-[600px] overflow-hidden" : "h-[calc(100dvh-220px)]"} pr-4 pb-8`}>
           <div className="job-card-grid">
             {displayJobs.map((job, index) => (
               <div 
@@ -117,7 +117,7 @@ export function JobList({
 
       {isLocked && (
         <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px]">
-          <div className="brutal-border bg-card p-10 shadow-[8px_8px_0px_0px_var(--border)] flex flex-col items-center gap-6 max-w-md text-center">
+          <div className="brutal-border bg-card p-6 sm:p-10 shadow-[8px_8px_0px_0px_var(--border)] flex flex-col items-center gap-6 max-w-md text-center">
             <div className="brutal-border bg-primary p-4 shadow-[4px_4px_0px_0px_var(--border)]">
               <Lock weight="fill" className="h-10 w-10 text-white" />
             </div>

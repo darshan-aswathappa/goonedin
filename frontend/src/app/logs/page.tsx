@@ -167,7 +167,7 @@ export default function LogsPage() {
   return (
     <div className="h-screen bg-background p-4 sm:p-6 font-mono text-foreground flex flex-col">
       <div className="max-w-5xl mx-auto flex flex-col flex-1 min-h-0">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-8">
           <div className="flex items-center gap-4">
             <Link
               href="/"
@@ -177,7 +177,7 @@ export default function LogsPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">
+              <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter leading-none">
                 System Logs
               </h1>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
@@ -211,7 +211,7 @@ export default function LogsPage() {
                 <span className="text-gray-500 shrink-0">
                   [{formatTime(log.timestamp)}]
                 </span>
-                <span className={getLogColor(log.level, log.message)}>
+                <span className={`${getLogColor(log.level, log.message)} break-words break-all`}>
                   {log.message}
                 </span>
               </div>

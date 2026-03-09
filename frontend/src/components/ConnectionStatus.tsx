@@ -12,7 +12,7 @@ export function ConnectionStatus() {
 
   return (
     <div
-      className={`flex items-center gap-2 brutal-border px-3 py-1 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] h-[42px] ${
+      className={`flex items-center gap-0 sm:gap-2 brutal-border px-3 py-1 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] h-[42px] ${
         connectionStatus === "connected"
           ? "bg-[#E6F4EA] text-[#009063] dark:bg-[#009063] dark:text-white"
           : connectionStatus === "connecting"

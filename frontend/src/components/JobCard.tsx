@@ -183,39 +183,39 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
 
         <div className="flex flex-col h-full space-y-4">
           <div className="space-y-1 pr-12">
-            <h3 className="text-xl font-black leading-tight line-clamp-2 italic uppercase tracking-tighter">
+            <h3 className="text-base sm:text-xl font-black leading-tight line-clamp-3 sm:line-clamp-2 italic uppercase tracking-tighter">
               {job.title}
             </h3>
-            <div className="flex items-center gap-2 font-bold text-sm">
-              <Buildings weight="bold" className="h-4 w-4" />
-              <span>{job.company}</span>
+            <div className="flex items-center gap-2 font-bold text-sm min-w-0">
+              <Buildings weight="bold" className="h-4 w-4 shrink-0" />
+              <span className="truncate">{job.company}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-2 border-t-2 border-border pt-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <MapPin weight="bold" className="h-4 w-4" />
-              <span>{job.location}</span>
+            <div className="flex items-center gap-2 text-sm font-medium min-w-0">
+              <MapPin weight="bold" className="h-4 w-4 shrink-0" />
+              <span className="truncate">{job.location}</span>
             </div>
 
             {postedAt && (
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Clock weight="bold" className="h-4 w-4" />
-                <span>{postedAt}</span>
+              <div className="flex items-center gap-2 text-sm font-medium min-w-0">
+                <Clock weight="bold" className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">{postedAt}</span>
               </div>
             )}
 
             {job.source === "LinkedIn" && job.salary && (
-              <div className="flex items-center gap-2 text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-2 py-1 brutal-border w-fit shadow-[1px_1px_0px_0px_var(--border)]">
-                <CurrencyDollar weight="bold" className="h-4 w-4" />
-                <span>{formatSalary(job.salary)}</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <CurrencyDollar weight="bold" className="h-4 w-4 shrink-0" />
+                <span className="truncate">{formatSalary(job.salary)}</span>
               </div>
             )}
 
             {job.source === "LinkedIn" && job.visa && (
-              <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit shadow-[1px_1px_0px_0px_var(--border)]">
-                <Globe weight="bold" className="h-4 w-4" />
-                <span>{formatVisa(job.visa)}</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <Globe weight="bold" className="h-4 w-4 shrink-0" />
+                <span className="truncate">{formatVisa(job.visa)}</span>
               </div>
             )}
           </div>
@@ -228,6 +228,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                     <button
                       onClick={handleToggleSave}
                       disabled={isSaving}
+                      aria-label={isSaved ? "Unsave job" : "Save job"}
                       className={`brutal-border p-2 hover:bg-muted transition-colors ${
                         isSaved ? "bg-primary text-white" : "bg-card text-foreground"
                       }`}
@@ -251,6 +252,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                     <button
                       onClick={handleDismissJob}
                       disabled={isDismissing}
+                      aria-label="Dismiss job"
                       className="brutal-border p-2 bg-card text-foreground hover:bg-[#FFEBEB] dark:hover:bg-[#4A1A1A] transition-colors"
                     >
                       {isDismissing ? (
@@ -272,6 +274,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                     <button
                       onClick={handleBlockCompany}
                       disabled={isBlocking}
+                      aria-label="Block company"
                       className="brutal-border p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors"
                     >
                       {isBlocking ? (

@@ -90,13 +90,13 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
             {job.title} — {job.company}
           </p>
           
-          <DialogPrimitive.Close className="absolute right-4 top-4 brutal-border bg-card p-2 text-foreground hover:bg-primary hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus:outline-none">
+          <DialogPrimitive.Close className="absolute right-4 top-4 brutal-border bg-card p-3 text-foreground hover:bg-primary hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus:outline-none">
             <X weight="bold" className="h-5 w-5" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         </DialogHeader>
 
-        <div className="p-6 space-y-8">
+        <div className="p-4 sm:p-6 space-y-8">
           {!analysis && fetchStatus === "loading" ? (
             <div className="flex flex-col items-center justify-center py-12">
               <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-[#F15152] mb-4" />
@@ -113,7 +113,7 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
           ) : analysis ? (
             <div className="space-y-8">
               {analysis.summary && (
-                <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+                <div className="brutal-border bg-card p-4 sm:p-6 shadow-[4px_4px_0px_0px_var(--border)]">
                   <div className="mb-2 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-muted-foreground">
                     <Sparkle weight="bold" className="h-4 w-4" />
                     Role Context

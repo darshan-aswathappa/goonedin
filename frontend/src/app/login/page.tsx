@@ -60,7 +60,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 transition-colors duration-300">
-      <div className="absolute top-8 right-8">
+      <div className="absolute top-3 right-3 sm:top-8 sm:right-8">
         <ThemeToggle />
       </div>
       <div className="w-full max-w-md">
@@ -78,14 +78,14 @@ export default function LoginPage() {
           Job Extraction Engine
         </p>
 
-        <div className="brutal-border bg-card p-8 shadow-[8px_8px_0px_0px_var(--border)]">
+        <div className="brutal-border bg-card p-5 sm:p-8 shadow-[8px_8px_0px_0px_var(--border)]">
           {sent ? (
             <div className="text-center space-y-6">
               <div className="brutal-border bg-[#E6F4EA] p-4 shadow-[4px_4px_0px_0px_#000000] inline-block mx-auto">
                 <Envelope weight="bold" className="h-8 w-8 text-[#009063]" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter">Check your email</h2>
+                <h2 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter">Check your email</h2>
                 <p className="font-bold text-[#606060] leading-tight">
                   We sent a magic link to <strong>{email}</strong>.
                 </p>
@@ -100,7 +100,7 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <h2 className="text-2xl font-black uppercase italic tracking-tighter mb-1">Sign In / Join</h2>
+                <h2 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter mb-1">Sign In / Join</h2>
                 <p className="font-bold text-[#606060] text-sm leading-tight">
                   Enter your email to receive a secure login link.
                 </p>
@@ -117,7 +117,7 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full brutal-border bg-card p-3 font-bold text-sm focus:outline-none focus:bg-muted transition-colors"
+                  className="w-full brutal-border bg-card p-3 min-h-[44px] font-bold text-sm focus:outline-none focus:bg-muted transition-colors"
                 />
               </div>
 

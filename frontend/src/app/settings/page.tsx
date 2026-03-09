@@ -115,13 +115,13 @@ function ConfigEditor({
   return (
     <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
       <CardHeader className="pb-4 border-b-2 border-border bg-card">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
               {section.icon}
             </div>
             <div>
-              <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">{section.title}</CardTitle>
+              <CardTitle className="text-lg sm:text-xl font-black italic uppercase tracking-tighter leading-none">{section.title}</CardTitle>
               <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1.5">{section.description}</CardDescription>
             </div>
           </div>
@@ -180,7 +180,7 @@ function ConfigEditor({
                     <span>{item}</span>
                     <button
                       onClick={() => handleRemove(originalIndex)}
-                      className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-primary hover:text-white transition-colors"
+                      className="ml-1 rounded p-2 text-muted-foreground hover:bg-primary hover:text-white transition-colors"
                     >
                       <Trash className="h-3.5 w-3.5" />
                     </button>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background p-3 sm:p-6">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -295,7 +295,7 @@ export default function SettingsPage() {
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">
+              <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter leading-none">
                 Settings
               </h1>
               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">

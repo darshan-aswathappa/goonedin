@@ -19,19 +19,19 @@ export function CompanyTicker() {
         Trusted by people who work at
       </p>
       <div className="relative flex w-full max-w-5xl overflow-hidden">
-        <div className="flex shrink-0 animate-marquee items-center justify-around gap-16 px-8">
+        <div className="flex shrink-0 animate-marquee items-center justify-around gap-6 sm:gap-16 px-8">
           {COMPANIES.map((company, index) => (
             <div
               key={index}
               className="flex items-center gap-3 text-foreground transition-transform hover:scale-110 active:scale-95 duration-200"
             >
               <company.icon weight="bold" className="h-8 w-8 text-primary" />
-              <span className="font-black italic uppercase tracking-tighter text-2xl">{company.name}</span>
+              <span className="font-black italic uppercase tracking-tighter text-lg sm:text-2xl">{company.name}</span>
             </div>
           ))}
         </div>
         <div
-          className="flex shrink-0 animate-marquee items-center justify-around gap-16 px-8"
+          className="flex shrink-0 animate-marquee items-center justify-around gap-6 sm:gap-16 px-8"
           aria-hidden="true"
         >
           {COMPANIES.map((company, index) => (
@@ -40,7 +40,7 @@ export function CompanyTicker() {
               className="flex items-center gap-3 text-foreground transition-transform hover:scale-110 active:scale-95 duration-200"
             >
               <company.icon weight="bold" className="h-8 w-8 text-primary" />
-              <span className="font-black italic uppercase tracking-tighter text-2xl">{company.name}</span>
+              <span className="font-black italic uppercase tracking-tighter text-lg sm:text-2xl">{company.name}</span>
             </div>
           ))}
         </div>

@@ -88,7 +88,7 @@ export function JobsDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-medium transition-colors duration-300">
-      <header className="brutal-border border-t-0 border-l-0 border-r-0 bg-card sticky top-0 z-50">
+      <header className="brutal-border border-t-0 border-l-0 border-r-0 bg-card sticky top-0 z-40">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -96,7 +96,7 @@ export function JobsDashboard() {
                 <Briefcase weight="fill" className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-black uppercase italic tracking-tighter leading-none">
+                <h1 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter leading-none">
                   GoonedIn
                 </h1>
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -107,12 +107,12 @@ export function JobsDashboard() {
 
             {user && (
               <div className="flex items-center gap-2">
-                <div className="brutal-border bg-card px-3 py-1.5 flex items-center gap-2 shadow-[2px_2px_0px_0px_var(--border)] h-[42px]">
+                <div className="brutal-border bg-card px-3 py-1.5 hidden sm:flex items-center gap-2 shadow-[2px_2px_0px_0px_var(--border)] h-[42px]">
                   <Sparkle weight="fill" className="h-4 w-4 text-primary" />
                   <span className="font-black text-sm">{jobs.length}</span>
                 </div>
 
-                <div className="flex items-center gap-1 h-[42px]">
+                <div className="flex items-center gap-0.5 sm:gap-1 h-[42px]">
                   <ThemeToggle />
 
                   <Link href="/saved">
@@ -285,7 +285,7 @@ export function JobsDashboard() {
             const progressPercent = status === "pending" ? 10 : status === "fetching" ? 40 : status === "parsing" ? 75 : 100;
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
-                <div className="flex items-center justify-between mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row flex-col gap-4 items-start sm:items-center">
+                <div className="flex flex-col gap-3 mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-col gap-1">
                      <span className="font-black uppercase tracking-tighter text-xl">{source.name}</span>
                      <span className="font-bold text-xs text-muted-foreground flex gap-2">

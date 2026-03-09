@@ -168,7 +168,7 @@ export function AddJobSourceModal({
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[425px] brutal-border brutal-shadow rounded-none sm:rounded-none bg-background">
+      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[425px] brutal-border brutal-shadow rounded-none sm:rounded-none bg-background">
         <DialogHeader>
           <DialogTitle className="font-black italic uppercase tracking-tighter text-2xl">
             {editingId ? "Edit Custom Job Board" : "Custom Job Board"}
@@ -242,7 +242,7 @@ export function AddJobSourceModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="grid gap-2">
               <label
                 htmlFor="ttl"
@@ -294,7 +294,7 @@ export function AddJobSourceModal({
               />
               <label
                 htmlFor="disable_js"
-                className="font-black uppercase tracking-tight text-xs cursor-pointer"
+                className="font-black uppercase tracking-tight text-xs cursor-pointer py-2 px-1"
               >
                 Disable JavaScript (Faster)
               </label>
