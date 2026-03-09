@@ -143,6 +143,10 @@ app.add_middleware(
 
 app.include_router(websocket.router)
 
+@app.get("/api/health")
+async def health():
+    return {"status": "ok"}
+
 def is_recent(posted_at: datetime | None) -> bool:
     if not posted_at:
         return False
