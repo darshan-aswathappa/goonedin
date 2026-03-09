@@ -4,10 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
 import random
-import json as json_module
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any
 
 from app.core.config import get_settings
 from app.core.auth import get_current_user

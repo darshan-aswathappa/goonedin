@@ -168,7 +168,6 @@ export const useJobsStore = create<JobsState>((set) => ({
 
   setJobs: (jobs) =>
     set((state) => {
-      // Filter out any jobs that were dismissed during this session
       const filtered = jobs.filter((j) => !state.dismissedJobIds.has(j.external_id));
       return {
         jobs: filtered,

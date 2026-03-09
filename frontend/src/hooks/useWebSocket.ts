@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
-const INITIAL_RECONNECT_INTERVAL = 1000;  // Start at 1s (was 3s)
-const MAX_RECONNECT_INTERVAL = 30000;     // Cap at 30s
+const INITIAL_RECONNECT_INTERVAL = 1000;
+const MAX_RECONNECT_INTERVAL = 30000;
 const PING_INTERVAL = 30000;
 
 interface NewJobMessage {
@@ -46,7 +46,6 @@ export function useWebSocket({ enabled = true } = {}) {
 
     setConnectionStatus("connecting");
 
-    // Get a fresh token on every (re)connect so we never use an expired one
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     const wsUrl = token ? `${WS_BASE_URL}?token=${token}` : WS_BASE_URL;
@@ -56,7 +55,7 @@ export function useWebSocket({ enabled = true } = {}) {
 
     ws.onopen = () => {
       setConnectionStatus("connected");
-      reconnectAttemptsRef.current = 0;  // Reset backoff on successful connection
+      reconnectAttemptsRef.current = 0;
       pingIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send("ping");
       }, PING_INTERVAL);
@@ -68,13 +67,12 @@ export function useWebSocket({ enabled = true } = {}) {
         const message: WebSocketMessage = JSON.parse(event.data);
         const now = Date.now();
 
-        // Create unique key for this event
         const eventKey = `${message.type}:${JSON.stringify(message.data)}`;
         const lastProcessedTime = processedEventsRef.current.get(eventKey);
 
-        // Deduplicate events received within 500ms (prevents duplicate notifications from multiple connections)
+        // Deduplicate events within 500ms to prevent duplicate notifications from multiple connections
         if (lastProcessedTime && now - lastProcessedTime < 500) {
-          return; // Skip processing if same event received recently
+          return;
         }
 
         processedEventsRef.current.set(eventKey, now);
@@ -117,7 +115,6 @@ export function useWebSocket({ enabled = true } = {}) {
       setConnectionStatus("disconnected");
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
 
-      // Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s
       const delayMs = Math.min(
         INITIAL_RECONNECT_INTERVAL * Math.pow(2, reconnectAttemptsRef.current),
         MAX_RECONNECT_INTERVAL

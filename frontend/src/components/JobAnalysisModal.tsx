@@ -97,7 +97,6 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
         </DialogHeader>
 
         <div className="p-6 space-y-8">
-          {/* Loading state */}
           {!analysis && fetchStatus === "loading" ? (
             <div className="flex flex-col items-center justify-center py-12">
               <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-[#F15152] mb-4" />
@@ -113,7 +112,6 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
             </div>
           ) : analysis ? (
             <div className="space-y-8">
-              {/* Summary */}
               {analysis.summary && (
                 <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)]">
                   <div className="mb-2 flex items-center gap-2 text-sm font-black uppercase tracking-widest text-muted-foreground">
@@ -126,7 +124,6 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                 </div>
               )}
 
-              {/* Must Have Keywords */}
               {analysis.must_have_keywords.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-lg font-black uppercase italic tracking-tighter">
@@ -149,7 +146,6 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                 </div>
               )}
 
-              {/* Good to Have Keywords */}
               {analysis.good_to_have_keywords.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-lg font-black uppercase italic tracking-tighter">
@@ -172,7 +168,6 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                 </div>
               )}
 
-              {/* Minimum Qualifications */}
               {analysis.minimum_qualifications.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-lg font-black uppercase italic tracking-tighter text-foreground">

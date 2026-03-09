@@ -17,7 +17,6 @@ import { toast } from "sonner";
 import {
   Briefcase,
   Globe,
-  ArrowsClockwise,
   CircleNotch,
   Buildings,
   LinkedinLogo,
@@ -41,7 +40,7 @@ export function JobsDashboard() {
   const [activeTab, setActiveTab] = useState("all");
   
   useWebSocket({ enabled: !!user });
-  const { refetch } = useJobsApi(!!user);
+  useJobsApi(!!user);
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
@@ -50,7 +49,6 @@ export function JobsDashboard() {
   const locationFilteredJobs = useJobsStore(
     (state) => state.locationFilteredJobs,
   );
-  const isLoading = useJobsStore((state) => state.isLoading);
   const customSources = useJobsStore((state) => state.customSources);
   const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
   const sourceStatuses = useJobsStore((state) => state.sourceStatuses);
@@ -90,7 +88,6 @@ export function JobsDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-medium transition-colors duration-300">
-      {/* Header / Navbar */}
       <header className="brutal-border border-t-0 border-l-0 border-r-0 bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -117,15 +114,6 @@ export function JobsDashboard() {
 
                 <div className="flex items-center gap-1 h-[42px]">
                   <ThemeToggle />
-
-                  {/* <button 
-                    onClick={refetch}
-                    disabled={isLoading}
-                    className="brutal-border h-[42px] px-4 bg-primary text-white font-black uppercase italic tracking-tighter text-xs shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all flex items-center gap-2"
-                  >
-                    <ArrowsClockwise weight="bold" className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </button> */}
 
                   <Link href="/saved">
                     <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center text-[#009063]">
@@ -322,7 +310,6 @@ export function JobsDashboard() {
                   </div>
                 </div>
 
-                {/* Processing status bar */}
                 {(isProcessing || isError) && (
                   <div className="brutal-border mb-6 p-4 bg-card shadow-[4px_4px_0px_0px_var(--border)]">
                     <div className="flex items-center gap-3 mb-3">

@@ -5,15 +5,14 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Plus,
-  Trash2,
-  Save,
-  Loader2,
-  Search,
+  Trash,
+  FloppyDisk,
+  CircleNotch,
+  MagnifyingGlass,
   MapPin,
-  Ban,
-  Filter,
-  RefreshCw,
-} from "lucide-react";
+  Prohibit,
+  Funnel,
+} from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -44,7 +43,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "target_keywords",
     title: "Target Keywords",
     description: "Keywords to search for in job titles (e.g., 'Software Engineer', 'Python')",
-    icon: <Search className="h-5 w-5" />,
+    icon: <MagnifyingGlass className="h-5 w-5" />,
     endpoint: "/config/target-keywords",
     dataKey: "target_keywords",
   },
@@ -60,7 +59,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "blocked_companies",
     title: "Blocked Companies",
     description: "Companies to filter out from results (e.g., staffing agencies)",
-    icon: <Ban className="h-5 w-5" />,
+    icon: <Prohibit className="h-5 w-5" />,
     endpoint: "/config/blocked-companies",
     dataKey: "blocked_companies",
   },
@@ -68,7 +67,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "title_filter_keywords",
     title: "Title Filter Keywords",
     description: "Keywords to exclude from job titles (e.g., 'senior', 'lead', 'manager')",
-    icon: <Filter className="h-5 w-5" />,
+    icon: <Funnel className="h-5 w-5" />,
     endpoint: "/config/title-filter-keywords",
     dataKey: "title_filter_keywords",
   },
@@ -153,7 +152,7 @@ function ConfigEditor({
 
         {values.length > 5 && (
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
               value={searchTerm}
@@ -183,7 +182,7 @@ function ConfigEditor({
                       onClick={() => handleRemove(originalIndex)}
                       className="ml-1 rounded p-0.5 text-muted-foreground hover:bg-primary hover:text-white transition-colors"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 );
@@ -200,12 +199,12 @@ function ConfigEditor({
           >
             {isSaving ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
+                <FloppyDisk className="mr-2 h-4 w-4" />
                 Save Changes
               </>
             )}
@@ -308,14 +307,12 @@ export default function SettingsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+            <CircleNotch className="h-8 w-8 animate-spin text-cyan-400" />
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Resume Upload / Manager */}
             <ResumeManager />
 
-            {/* Job Search Filters */}
             {CONFIG_SECTIONS.map((section) => (
               <div key={section.key} className="relative">
                 {hasUnsavedChanges(section.key) && (

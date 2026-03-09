@@ -2,20 +2,19 @@
 
 import { useState, useCallback, useEffect } from "react";
 import {
-  UploadCloud,
+  CloudArrowUp,
   FileText,
-  Trash2,
-  Loader2,
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
+  Trash,
+  CircleNotch,
+  Warning,
+  CheckCircle,
   Brain,
   GraduationCap,
-  Award,
+  Medal,
   Code,
-  Sparkles,
+  Sparkle,
   X,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,6 @@ export function ResumeManager() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Modal state
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null);
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
@@ -86,7 +84,6 @@ export function ResumeManager() {
     fetchResumes();
   }, [fetchResumes]);
 
-  // Poll for analysis status updates on resumes that are "processing"
   useEffect(() => {
     const processingResumes = resumes.filter(r => r.analysis_status === "processing");
     if (processingResumes.length === 0) return;
@@ -250,7 +247,7 @@ export function ResumeManager() {
       case "processing":
         return (
           <div className="flex items-center gap-1.5 brutal-border bg-amber-100 text-amber-700 px-2 py-0.5 shadow-[1px_1px_0px_0px_var(--border)]">
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <CircleNotch className="h-3 w-3 animate-spin" />
             <span className="text-[10px] font-black uppercase tracking-widest">Analyzing…</span>
           </div>
         );
@@ -264,14 +261,14 @@ export function ResumeManager() {
       case "failed":
         return (
           <div className="flex items-center gap-1.5 brutal-badge bg-red-100 text-red-700">
-            <AlertCircle className="h-3 w-3" />
+            <Warning className="h-3 w-3" />
             <span>Failed</span>
           </div>
         );
       default:
         return (
           <div className="flex items-center gap-1.5 brutal-badge bg-green-100 text-green-700">
-            <CheckCircle2 className="h-3 w-3" />
+            <CheckCircle className="h-3 w-3" />
             <span>Ready</span>
           </div>
         );
@@ -295,7 +292,6 @@ export function ResumeManager() {
           </div>
         </CardHeader>
         <CardContent className="space-y-8 pt-6">
-          {/* Upload Zone */}
           <div
             {...getRootProps()}
             className={`relative flex flex-col items-center justify-center brutal-border border-dashed p-12 text-center transition-all duration-200 ${
@@ -307,7 +303,7 @@ export function ResumeManager() {
             <input {...getInputProps()} />
             
             <div className="mb-4 brutal-border bg-primary p-4 shadow-[4px_4px_0px_0px_var(--border)]">
-              <UploadCloud className="h-8 w-8 text-white" />
+              <CloudArrowUp className="h-8 w-8 text-white" />
             </div>
             <h3 className="mb-2 text-lg font-black italic uppercase tracking-tighter leading-none">
               {isDragActive ? "Drop resumes here" : "Click or drag resumes here"}
@@ -322,7 +318,6 @@ export function ResumeManager() {
             )}
           </div>
 
-          {/* Staged Resumes */}
           {stagedFiles.length > 0 && (
             <div className="brutal-border bg-muted/30 p-6 space-y-6">
               <h4 className="text-sm font-black italic uppercase tracking-tight">Ready to Upload</h4>
@@ -351,7 +346,7 @@ export function ResumeManager() {
                       className="brutal-border bg-card hover:bg-red-500 hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:shrink-0 h-11 w-11"
                       disabled={isUploading}
                     >
-                      <Trash2 className="h-5 w-5" />
+                      <Trash className="h-5 w-5" />
                     </Button>
                   </div>
                 ))}
@@ -364,9 +359,9 @@ export function ResumeManager() {
                   className="w-full brutal-border bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-black uppercase tracking-widest px-8 py-6 h-auto sm:w-auto"
                 >
                   {isUploading ? (
-                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                    <CircleNotch className="mr-3 h-5 w-5 animate-spin" />
                   ) : (
-                    <UploadCloud className="mr-3 h-5 w-5" />
+                    <CloudArrowUp className="mr-3 h-5 w-5" />
                   )}
                   Upload {stagedFiles.length} Resume{stagedFiles.length !== 1 ? 's' : ''}
                 </Button>
@@ -374,7 +369,6 @@ export function ResumeManager() {
             </div>
           )}
 
-          {/* Resumes List */}
           <div>
             <h4 className="mb-4 text-sm font-black italic uppercase tracking-tight pl-1">
               Uploaded Resumes ({resumes.length})
@@ -382,11 +376,11 @@ export function ResumeManager() {
             
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <CircleNotch className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : resumes.length === 0 ? (
               <div className="flex flex-col items-center justify-center brutal-border bg-muted/30 py-12 text-muted-foreground border-dashed">
-                <AlertCircle className="mb-3 h-8 w-8 opacity-40" />
+                <Warning className="mb-3 h-8 w-8 opacity-40" />
                 <p className="text-sm font-bold uppercase tracking-widest">No resumes uploaded yet</p>
               </div>
             ) : (
@@ -414,7 +408,7 @@ export function ResumeManager() {
                         className="rounded p-1.5 text-muted-foreground hover:bg-primary hover:text-white transition-all brutal-border shadow-[1px_1px_0px_0px_var(--border)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
                         title="Delete resume"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash className="h-4 w-4" />
                       </button>
                     </div>
                     
@@ -432,7 +426,6 @@ export function ResumeManager() {
         </CardContent>
       </Card>
 
-      {/* Analysis Modal */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] sm:max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
           <DialogHeader className="p-6 bg-foreground text-background space-y-1 relative">
@@ -454,13 +447,13 @@ export function ResumeManager() {
           <div className="p-10">
             {isLoadingAnalysis ? (
               <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="mb-6 h-12 w-12 animate-spin text-primary" />
+                <CircleNotch className="mb-6 h-12 w-12 animate-spin text-primary" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Synthesizing insights...</p>
               </div>
             ) : analysisStatus === "processing" ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-8 brutal-border bg-muted p-6 shadow-[8px_8px_0px_0px_var(--border)]">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                  <CircleNotch className="h-12 w-12 animate-spin text-primary" />
                 </div>
                 <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Analysis in Progress</h3>
                 <p className="text-sm font-bold text-muted-foreground leading-tight max-w-sm">
@@ -472,7 +465,7 @@ export function ResumeManager() {
             ) : analysisStatus === "failed" ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-8 brutal-border bg-destructive/12 dark:bg-destructive/22 p-6 shadow-[8px_8px_0px_0px_var(--border)]">
-                  <AlertCircle className="h-12 w-12 text-[#D72638]" />
+                  <Warning className="h-12 w-12 text-[#D72638]" />
                 </div>
                 <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Analysis Failed</h3>
                 <p className="text-sm font-bold text-muted-foreground leading-tight">
@@ -482,18 +475,16 @@ export function ResumeManager() {
               </div>
             ) : analysis ? (
               <div className="space-y-12">
-                {/* Summary */}
                 {analysis.summary && (
                   <div className="brutal-border bg-muted p-8 shadow-[8px_8px_0px_0px_var(--border)]">
                     <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-primary bg-card w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Sparkles className="h-6 w-6" />
+                      <Sparkle className="h-6 w-6" />
                       Professional Summary
                     </div>
                     <p className="text-base font-bold leading-relaxed">{analysis.summary}</p>
                   </div>
                 )}
 
-                {/* Education */}
                 {analysis.education && analysis.education.length > 0 && (
                   <div>
                     <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
@@ -513,11 +504,10 @@ export function ResumeManager() {
                   </div>
                 )}
 
-                {/* Certifications */}
                 {analysis.certifications && analysis.certifications.length > 0 && (
                   <div>
                     <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Award className="h-6 w-6 text-primary" />
+                      <Medal className="h-6 w-6 text-primary" />
                       Certifications
                     </div>
                     <div className="flex flex-wrap gap-4">
@@ -533,7 +523,6 @@ export function ResumeManager() {
                   </div>
                 )}
 
-                {/* Skills */}
                 {analysis.skills && analysis.skills.length > 0 && (
                   <div>
                     <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
@@ -553,11 +542,10 @@ export function ResumeManager() {
                   </div>
                 )}
 
-                {/* Project Keywords */}
                 {analysis.project_keywords && analysis.project_keywords.length > 0 && (
                   <div>
                     <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Sparkles className="h-6 w-6 text-primary" />
+                      <Sparkle className="h-6 w-6 text-primary" />
                       Experience Keywords
                     </div>
                     <div className="flex flex-wrap gap-4">
@@ -575,7 +563,7 @@ export function ResumeManager() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 border-dashed brutal-border bg-muted/30">
-                <AlertCircle className="mb-4 h-12 w-12 text-muted-foreground opacity-40" />
+                <Warning className="mb-4 h-12 w-12 text-muted-foreground opacity-40" />
                 <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">No analysis data available.</p>
               </div>
             )}
@@ -583,7 +571,6 @@ export function ResumeManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
       <Dialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -599,7 +586,7 @@ export function ResumeManager() {
         >
           <DialogHeader className="p-6 border-b-2 border-border bg-destructive/12 dark:bg-destructive/22 space-y-2 text-left">
             <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <Warning className="h-5 w-5 text-destructive" />
               Delete Resume
             </DialogTitle>
             <DialogDescription className="text-sm font-bold text-foreground leading-tight">
@@ -628,7 +615,7 @@ export function ResumeManager() {
             >
               {isDeletingResume ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (

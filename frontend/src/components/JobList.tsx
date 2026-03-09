@@ -3,12 +3,7 @@
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobCard } from "./JobCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Briefcase, 
-  Lock, 
-  CircleNotch,
-  WarningCircle 
-} from "@phosphor-icons/react";
+import { Briefcase, Lock } from "@phosphor-icons/react";
 import Link from "next/link";
 
 interface JobListProps {

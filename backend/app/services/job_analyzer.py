@@ -52,20 +52,6 @@ Rules:
 - Return ONLY the JSON object, nothing else."""
 
 
-FAST_ANALYSIS_PROMPT = """
-You are a fast, precise AI job description parser. Your ONLY job is to extract two pieces of information:
-1. Salary/Compensation range ONLY (e.g., "$90,000 - $120,000 USD"). Do NOT include location or extra text.
-2. Visa status/Sponsorship simplified. If the company does NOT sponsor or requires existing work eligibility, return exactly "Not eligible for sponsorship". 
-
-If either is absent in the text, return null for that field. Do NOT guess or infer. Only extract IF explicitly mentioned.
-
-Return ONLY a valid JSON object matching this schema exactly (no markdown formatting, no code blocks):
-{
-  "compensation": string | null,
-  "visa_status": string | null
-}
-"""
-
 def extract_job_id_from_url(url: str) -> Optional[str]:
     """
     Extract the numeric LinkedIn job ID from a job URL.
@@ -232,73 +218,3 @@ async def run_job_analysis(
         error_msg = f"Analysis failed for job {external_id}: {e}"
         logger.error(f"[JobAnalyzer] {error_msg}")
         return None, error_msg
-
-async def run_fast_salary_visa_analysis(
-    external_id: str,
-    job_url: str,
-    api_key: str,
-) -> dict | None:
-    """
-    Fast extraction pipeline that only grabs compensation & visa info.
-    We don't cache this separately because it gets merged directly into the `Job` object in Redis.
-    """
-    logger.info(f"[JobAnalyzer] Starting fast salary/visa analysis for job {external_id}")
-
-    job_id = external_id
-    if not job_id:
-        logger.warning(f"[JobAnalyzer] No job ID provided for fast analysis: {job_url}")
-        return None
-
-    description = await fetch_job_description(job_id)
-    if not description:
-        logger.warning(f"[JobAnalyzer] No description found for fast analysis of {external_id}")
-        return None
-
-    # Retry loop for deepseek extraction
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            import asyncio
-            result_str = await asyncio.to_thread(
-                _call_deepseek_fast,
-                description,
-                api_key
-            )
-            
-            cleaned_str = result_str.strip()
-            if cleaned_str.startswith("```json"):
-                cleaned_str = cleaned_str[7:]
-            if cleaned_str.startswith("```"):
-                cleaned_str = cleaned_str[3:]
-            if cleaned_str.endswith("```"):
-                cleaned_str = cleaned_str[:-3]
-            
-            fast_data = json.loads(cleaned_str.strip())
-            return fast_data
-            
-        except json.JSONDecodeError as e:
-            logger.warning(f"[JobAnalyzer] Fast JSON decode error on attempt {attempt + 1}: {e}. Output was: {result_str}")
-        except Exception as e:
-            logger.error(f"[JobAnalyzer] Error during fast DeepSeek API call on attempt {attempt + 1}: {e}")
-            
-    logger.error(f"[JobAnalyzer] Failed to get fast analysis for {external_id} despite retries.")
-    return None
-
-def _call_deepseek_fast(description: str, api_key: str) -> str:
-    """Synchronous function to make the DeepSeek API call for fast analysis."""
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com"
-    )
-
-    response = client.chat.completions.create(
-        model="deepseek-chat", # use normal chat here for speed
-        messages=[
-            {"role": "system", "content": FAST_ANALYSIS_PROMPT},
-            {"role": "user", "content": f"Here is the job description:\n\n{description}"}
-        ],
-        stream=False,
-        temperature=0.0
-    )
-    
-    return response.choices[0].message.content or "{}"

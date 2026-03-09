@@ -17,10 +17,6 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
     SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
 
-    # --- JOBRIGHT.AI CREDENTIALS ---
-    JOBRIGHT_EMAIL: str = os.getenv("JOBRIGHT_EMAIL", "")
-    JOBRIGHT_PASSWORD: str = os.getenv("JOBRIGHT_PASSWORD", "")
-
     # --- AI / DEEPSEEK ---
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
 

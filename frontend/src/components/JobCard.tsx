@@ -92,12 +92,12 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     setIsBlocking(true);
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/jobs/block`, {
+      // WebSocket will broadcast the block and show the toast
+      await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ company: job.company }),
       });
-      // Don't update here - the WebSocket will broadcast the update and show the toast
     } catch (error) {
       console.error("Failed to block company:", error);
     } finally {
@@ -173,7 +173,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
         }`}
       >
-        {/* Source Badge */}
         <div
           className={`absolute top-0 right-0 brutal-border border-t-0 border-r-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getSourceColor(
             job.source
@@ -183,7 +182,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         </div>
 
         <div className="flex flex-col h-full space-y-4">
-          {/* Header */}
           <div className="space-y-1 pr-12">
             <h3 className="text-xl font-black leading-tight line-clamp-2 italic uppercase tracking-tighter">
               {job.title}
@@ -194,7 +192,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             </div>
           </div>
 
-          {/* Details Grid */}
           <div className="grid grid-cols-1 gap-2 border-t-2 border-border pt-4">
             <div className="flex items-center gap-2 text-sm font-medium">
               <MapPin weight="bold" className="h-4 w-4" />
@@ -223,7 +220,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             )}
           </div>
 
-          {/* Action Footer */}
           <div className="flex items-center justify-between pt-4 mt-auto">
             <div className="flex gap-2">
               <TooltipProvider>
