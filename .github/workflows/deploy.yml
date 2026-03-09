@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'backend/**'
+      - "backend/**"
 
 jobs:
   deploy:
@@ -19,7 +19,7 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            cd /opt/goonedin/backend
+            cd /opt/goonedin/goonedin/backend
             git pull origin main
             docker compose up -d --build
             docker image prune -f
