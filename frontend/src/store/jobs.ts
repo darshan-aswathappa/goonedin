@@ -67,6 +67,7 @@ interface JobsState {
   linkedinJobs: Job[];
   mathworksJobs: Job[];
   githubJobs: Job[];
+  jobrightJobs: Job[];
   locationFilteredJobs: Job[];
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
@@ -97,6 +98,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   linkedinJobs: [],
   mathworksJobs: [],
   githubJobs: [],
+  jobrightJobs: [],
   locationFilteredJobs: [],
   connectionStatus: "disconnected",
   isLoading: true,
@@ -123,6 +125,9 @@ export const useJobsStore = create<JobsState>((set) => ({
         githubJobs: job.source === "GitHub"
           ? [job, ...state.githubJobs]
           : state.githubJobs,
+        jobrightJobs: job.source === "Jobright"
+          ? [job, ...state.jobrightJobs]
+          : state.jobrightJobs,
         locationFilteredJobs: matchesLocationFilter(job)
           ? [job, ...state.locationFilteredJobs]
           : state.locationFilteredJobs,
@@ -138,6 +143,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         linkedinJobs: state.linkedinJobs.filter((j) => j.external_id !== externalId),
         mathworksJobs: state.mathworksJobs.filter((j) => j.external_id !== externalId),
         githubJobs: state.githubJobs.filter((j) => j.external_id !== externalId),
+        jobrightJobs: state.jobrightJobs.filter((j) => j.external_id !== externalId),
         locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
         dismissedJobIds: newDismissed,
       };
@@ -149,6 +155,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       linkedinJobs: state.linkedinJobs.filter((j) => j.company !== company),
       mathworksJobs: state.mathworksJobs.filter((j) => j.company !== company),
       githubJobs: state.githubJobs.filter((j) => j.company !== company),
+      jobrightJobs: state.jobrightJobs.filter((j) => j.company !== company),
       locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.company !== company),
     })),
 
@@ -162,6 +169,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         linkedinJobs: updateList(state.linkedinJobs),
         mathworksJobs: updateList(state.mathworksJobs),
         githubJobs: updateList(state.githubJobs),
+        jobrightJobs: updateList(state.jobrightJobs),
         locationFilteredJobs: updateList(state.locationFilteredJobs),
       };
     }),
@@ -175,6 +183,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         linkedinJobs: filtered.filter((j) => j.source === "LinkedIn"),
         mathworksJobs: filtered.filter((j) => j.source === "MathWorks"),
         githubJobs: filtered.filter((j) => j.source === "GitHub"),
+        jobrightJobs: filtered.filter((j) => j.source === "Jobright"),
         locationFilteredJobs: filtered.filter(matchesLocationFilter),
       };
     }),
@@ -189,6 +198,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       linkedinJobs: [],
       mathworksJobs: [],
       githubJobs: [],
+      jobrightJobs: [],
       locationFilteredJobs: [],
       dismissedJobIds: new Set<string>(),
     }),

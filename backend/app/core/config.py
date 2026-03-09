@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # --- JOBRIGHT.AI CREDENTIALS ---
     JOBRIGHT_EMAIL: str = os.getenv("JOBRIGHT_EMAIL", "")
     JOBRIGHT_PASSWORD: str = os.getenv("JOBRIGHT_PASSWORD", "")
+    JOBRIGHT_COOKIE: str = os.getenv("JOBRIGHT_COOKIE", "")
 
     # --- AI / DEEPSEEK ---
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")

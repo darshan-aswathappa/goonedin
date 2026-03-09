@@ -47,6 +47,7 @@ export function JobsDashboard() {
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
   const githubJobs = useJobsStore((state) => state.githubJobs);
+  const jobrightJobs = useJobsStore((state) => state.jobrightJobs);
   const locationFilteredJobs = useJobsStore(
     (state) => state.locationFilteredJobs,
   );
@@ -220,6 +221,16 @@ export function JobsDashboard() {
                 </div>
               </TabsTrigger>
 
+              <TabsTrigger
+                value="jobright"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#A100FF] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkle weight="bold" className="h-5 w-5" />
+                  Jobright ({jobrightJobs.length})
+                </div>
+              </TabsTrigger>
+
               {customSources.map((source) => {
                 const sourceJobs = jobs.filter((j) => j.source === source.name);
                 return (
@@ -282,6 +293,14 @@ export function JobsDashboard() {
             <JobList
               jobs={githubJobs}
               emptyMessage="No GitHub jobs yet. New grad postings from SimplifyJobs will appear here."
+              isLocked={!user}
+            />
+          </TabsContent>
+
+          <TabsContent value="jobright" className="mt-0">
+            <JobList
+              jobs={jobrightJobs}
+              emptyMessage="No Jobright jobs yet. Your personalized recommendations will appear here."
               isLocked={!user}
             />
           </TabsContent>

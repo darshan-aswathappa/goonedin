@@ -54,6 +54,7 @@ from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.scraper_github import fetch_github_jobs
+from app.services.scraper_jobright import fetch_jobright_jobs
 
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
@@ -166,16 +167,19 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     github_jobs: List[Any] = []
 
     for r in results:
-        if "recent_jobs" in r and r["recent_jobs"]:
-            first_job = r["recent_jobs"][0]
-            if first_job.source == "MathWorks":
-                mathworks_jobs.extend(r["recent_jobs"])
-            elif first_job.source == "GitHub":
-                github_jobs.extend(r["recent_jobs"])
+        if isinstance(r, dict) and "jobs" in r:
+            # Check if this payload has 'recent_jobs' specific structure
+            if "recent_jobs" in r and r["recent_jobs"]:
+                first_job = r["recent_jobs"][0]
+                if first_job.source == "MathWorks":
+                    mathworks_jobs.extend(r["recent_jobs"])
+                elif first_job.source == "GitHub":
+                    github_jobs.extend(r["recent_jobs"])
+                else:
+                    all_jobs.extend(r["jobs"])
             else:
+                # Direct job list appends (e.g. Jobright / LinkedIn)
                 all_jobs.extend(r["jobs"])
-        else:
-            all_jobs.extend(r["jobs"])
 
     total_finds: int = 0
 
@@ -190,7 +194,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         job_dict = job.model_dump(mode="json")
         total_finds = total_finds + 1  # type: ignore
 
-        if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
+        if job.source in ["LinkedIn", "Jobright"] and settings.DEEPSEEK_API_KEY:
             # Check if analysis already cached
             cache = await get_cache_entry(supabase, job_dict["external_id"])
             if cache and cache["analysis_status"] == "completed":
@@ -262,19 +266,31 @@ async def run_high_frequency_loop(ctx: UserContext):
     while True:
         try:
             target_keywords = await get_target_keywords(supabase, ctx.user_id)
-            results = await asyncio.gather(
-                *[
-                    _fetch_linkedin_with_limit(kw)
-                    for kw in target_keywords
-                ],
-            )
-            total = len(results)
-            failed = sum(1 for r in results if r["failed"])
+            
+            tasks = [
+                _fetch_linkedin_with_limit(kw)
+                for kw in target_keywords
+            ]
+            for kw in target_keywords:
+                tasks.append(fetch_jobright_jobs(keywords=kw, location="United States", limit=15))
+                
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Filter out true exceptions vs valid dict returns
+            valid_results = []
+            for r in results:
+                if isinstance(r, dict):
+                    valid_results.append(r)
+                elif isinstance(r, Exception):
+                    logger.error(f"Task exception in HF loop: {r}")
+
+            total = len(valid_results)
+            failed = sum(1 for r in valid_results if r.get("failed", True))
             logger.info(
                 f"[HF] {ctx.user_id} | {total} calls | "
                 f"{total - failed} passed | {failed} failed"
             )
-            new_finds = await process_and_alert_jobs(results, ctx)
+            new_finds = await process_and_alert_jobs(valid_results, ctx)
             if new_finds == 0:
                 logger.debug(f"[HF] {ctx.user_id} No new targets.")
         except Exception as e:
