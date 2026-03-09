@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
-const RECONNECT_INTERVAL = 3000;
+const INITIAL_RECONNECT_INTERVAL = 1000;  // Start at 1s (was 3s)
+const MAX_RECONNECT_INTERVAL = 30000;     // Cap at 30s
 const PING_INTERVAL = 30000;
 
 interface NewJobMessage {
@@ -37,6 +38,7 @@ export function useWebSocket({ enabled = true } = {}) {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const processedEventsRef = useRef<Map<string, number>>(new Map());
+  const reconnectAttemptsRef = useRef(0);
   const { addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus, setSourceStatus } = useJobsStore();
 
   const connect = useCallback(async () => {
@@ -54,6 +56,7 @@ export function useWebSocket({ enabled = true } = {}) {
 
     ws.onopen = () => {
       setConnectionStatus("connected");
+      reconnectAttemptsRef.current = 0;  // Reset backoff on successful connection
       pingIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) ws.send("ping");
       }, PING_INTERVAL);
@@ -113,7 +116,14 @@ export function useWebSocket({ enabled = true } = {}) {
     ws.onclose = () => {
       setConnectionStatus("disconnected");
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-      reconnectTimeoutRef.current = setTimeout(() => connect(), RECONNECT_INTERVAL);
+
+      // Exponential backoff: 1s, 2s, 4s, 8s... capped at 30s
+      const delayMs = Math.min(
+        INITIAL_RECONNECT_INTERVAL * Math.pow(2, reconnectAttemptsRef.current),
+        MAX_RECONNECT_INTERVAL
+      );
+      reconnectAttemptsRef.current += 1;
+      reconnectTimeoutRef.current = setTimeout(() => connect(), delayMs);
     };
 
     ws.onerror = () => ws.close();

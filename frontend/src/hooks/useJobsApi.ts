@@ -64,12 +64,15 @@ export function useJobsApi(enabled: boolean = true) {
     };
   }, [fetchJobs, enabled]);
 
-  // Refetch immediately when WebSocket reconnects after a disconnect
+  // Refetch when WebSocket reconnects, but use a small delay to avoid rapid refetches
+  // This ensures jobs stay visible during brief disconnects
   useEffect(() => {
     if (!enabled) return;
-    
+
     if (connectionStatus === "connected" && prevStatusRef.current === "disconnected") {
-      fetchJobs();
+      // Small delay (100ms) to debounce rapid reconnects
+      const timer = setTimeout(fetchJobs, 100);
+      return () => clearTimeout(timer);
     }
     prevStatusRef.current = connectionStatus;
   }, [connectionStatus, fetchJobs, enabled]);
