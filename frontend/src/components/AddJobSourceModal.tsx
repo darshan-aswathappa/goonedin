@@ -305,13 +305,13 @@ export function AddJobSourceModal({
             </p>
           </div>
 
-          <DialogFooter className="sm:justify-between items-center sm:items-center mt-2 flex-row gap-2">
+          <DialogFooter className="mt-2 items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
             {editingId && (
               <Button
                 type="button"
                 onClick={() => setOpen(false)}
                 variant="outline"
-                className="brutal-border font-black italic uppercase w-full sm:w-auto shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+                className="w-full brutal-border font-black italic uppercase sm:w-auto sm:flex-none shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
               >
                 Cancel Edit
               </Button>
@@ -319,7 +319,7 @@ export function AddJobSourceModal({
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="brutal-border rounded-none font-black italic uppercase w-full bg-primary hover:bg-primary/90 text-white disabled:opacity-50 shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+              className="w-full brutal-border rounded-none font-black italic uppercase bg-primary text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:bg-primary/90 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 sm:flex-1 sm:min-w-0"
             >
               {isSubmitting
                 ? "Saving..."

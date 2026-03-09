@@ -23,7 +23,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { ResumeManager } from "@/components/ResumeManager";
 
@@ -336,7 +337,8 @@ export default function SettingsPage() {
       <Toaster
         position="bottom-right"
         toastOptions={{
-          className: "brutal-border bg-card text-foreground",
+          className:
+            "rounded-none border-2 border-border bg-card text-foreground font-black tracking-tight shadow-[6px_6px_0px_0px_var(--border)]",
         }}
       />
     </div>

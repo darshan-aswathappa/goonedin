@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timezone
 from bs4 import BeautifulSoup
 from openai import OpenAI
+from random_user_agent.user_agent import UserAgent
 
 from app.core.config import get_settings
 from app.models.job import JobCreate
@@ -12,15 +13,21 @@ from app.models.custom_source import CustomJobSource
 
 settings = get_settings()
 logger = logging.getLogger("CustomScraper")
+ua = UserAgent()
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.5",
+    "User-Agent": ua.get_random_user_agent(),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Language": "en-US,en-IN;q=0.9,en-UM;q=0.8,en;q=0.7",
+    "Cache-Control": "max-age=0",
+    "sec-ch-ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Google Chrome";v="144"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "sec-fetch-dest": "document",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-site": "same-origin",
+    "sec-fetch-user": "?1",
+    "upgrade-insecure-requests": "1",
 }
 
 CUSTOM_SCRAPE_PROMPT = """
@@ -91,12 +98,13 @@ def extract_jobs_with_deepseek(text: str, source_url: str) -> list[dict]:
 
 async def fetch_custom_jobs(source: CustomJobSource, supabase, status_callback=None) -> dict:
     logger.info(f"Fetching custom job source: {source.name} from {source.url} (JS Disabled: {source.disable_javascript})")
-
+    proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    
     try:
         html_content = ""
         
         if source.disable_javascript:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(follow_redirects=True, proxy=proxy) as client:
                 response = await client.get(
                     str(source.url),
                     headers=HEADERS,
@@ -203,3 +211,4 @@ async def fetch_custom_jobs(source: CustomJobSource, supabase, status_callback=N
     except Exception as e:
         logger.error(f"Scraping failed for custom source {source.name}: {e}")
         return {"jobs": [], "retries": 0, "failed": True, "recent_jobs": [], "source_config": source}
+

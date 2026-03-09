@@ -7,6 +7,7 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Brain,
   GraduationCap,
@@ -22,6 +23,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -60,6 +62,9 @@ export function ResumeManager() {
   const [analysisStatus, setAnalysisStatus] = useState<string | null>(null);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
+  const [isDeletingResume, setIsDeletingResume] = useState(false);
 
   const fetchResumes = useCallback(async () => {
     try {
@@ -172,25 +177,35 @@ export function ResumeManager() {
     disabled: isUploading,
   });
 
-  const handleDelete = async (id: string, filename: string) => {
-    if (!confirm(`Are you sure you want to delete ${filename}?`)) return;
+  const openDeleteDialog = (resume: Resume) => {
+    setResumeToDelete(resume);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!resumeToDelete) return;
+    setIsDeletingResume(true);
 
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/resumes/${id}`, {
+      const response = await fetch(`${API_URL}/resumes/${resumeToDelete.id}`, {
         method: "DELETE",
         headers,
       });
 
       if (response.ok) {
         toast.success("Resume deleted");
-        setResumes(prev => prev.filter(r => r.id !== id));
+        setResumes(prev => prev.filter(r => r.id !== resumeToDelete.id));
+        setDeleteDialogOpen(false);
+        setResumeToDelete(null);
       } else {
         throw new Error("Delete failed");
       }
     } catch (error) {
       console.error("Failed to delete resume:", error);
       toast.error("Failed to delete resume");
+    } finally {
+      setIsDeletingResume(false);
     }
   };
 
@@ -394,7 +409,7 @@ export function ResumeManager() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(resume.id, resume.filename);
+                          openDeleteDialog(resume);
                         }}
                         className="rounded p-1.5 text-muted-foreground hover:bg-primary hover:text-white transition-all brutal-border shadow-[1px_1px_0px_0px_var(--border)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
                         title="Delete resume"
@@ -456,7 +471,7 @@ export function ResumeManager() {
               </div>
             ) : analysisStatus === "failed" ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-8 brutal-border bg-[#FFEBEB] p-6 shadow-[8px_8px_0px_0px_var(--border)]">
+                <div className="mb-8 brutal-border bg-destructive/12 dark:bg-destructive/22 p-6 shadow-[8px_8px_0px_0px_var(--border)]">
                   <AlertCircle className="h-12 w-12 text-[#D72638]" />
                 </div>
                 <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Analysis Failed</h3>
@@ -564,6 +579,62 @@ export function ResumeManager() {
                 <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">No analysis data available.</p>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!isDeletingResume) {
+            setDeleteDialogOpen(open);
+            if (!open) setResumeToDelete(null);
+          }
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-md bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] p-0 gap-0"
+        >
+          <DialogHeader className="p-6 border-b-2 border-border bg-destructive/12 dark:bg-destructive/22 space-y-2 text-left">
+            <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Resume
+            </DialogTitle>
+            <DialogDescription className="text-sm font-bold text-foreground leading-tight">
+              This will permanently remove <span className="font-black">{resumeToDelete?.filename}</span> and its AI analysis.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center justify-end gap-3 p-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setResumeToDelete(null);
+              }}
+              disabled={isDeletingResume}
+              className="brutal-border rounded-none bg-card font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDeleteConfirm}
+              disabled={!resumeToDelete || isDeletingResume}
+              className="brutal-border rounded-none bg-destructive text-white font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-black dark:hover:bg-white dark:hover:text-black active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+            >
+              {isDeletingResume ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
