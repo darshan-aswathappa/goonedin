@@ -6,7 +6,7 @@ import logging
 import random
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Optional, Any, List
 
 from app.core.config import get_settings
 from app.core.auth import get_current_user
