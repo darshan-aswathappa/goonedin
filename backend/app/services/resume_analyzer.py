@@ -179,13 +179,17 @@ async def process_resume_analysis_queue(
             logger.info(f"[ResumeAI] Processing queue task {task_id} for resume {resume_id}")
 
             try:
-                # Mark as processing
+                # Optimistic claim: only succeeds if status is still 'pending'
                 def _mark_processing(*args: Any, **kwargs: Any) -> Any:
                     return supabase_client.table(QUEUE_TABLE).update({
                         "status": "processing"
-                    }).eq("id", task_id).execute()
+                    }).eq("id", task_id).eq("status", "pending").execute()
 
-                await asyncio.to_thread(_mark_processing)
+                claimed = await asyncio.to_thread(_mark_processing)
+                if not claimed.data:
+                    # Another worker already claimed this task
+                    logger.info(f"[ResumeAI] Task {task_id} already claimed by another worker, skipping")
+                    continue
 
                 # Run the analysis via microservice
                 await _run_resume_analysis_with_retry(

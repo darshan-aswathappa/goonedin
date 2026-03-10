@@ -6,6 +6,7 @@ Exposes:
   GET  /health   — liveness probe
 """
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -46,7 +47,7 @@ async def analyze(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Empty file")
 
     try:
-        resume_text = extract_text_from_pdf(pdf_bytes)
+        resume_text = await asyncio.to_thread(extract_text_from_pdf, pdf_bytes)
     except Exception as e:
         logger.error(f"PDF extraction failed: {e}")
         raise HTTPException(status_code=400, detail=f"PDF extraction failed: {e}")
@@ -59,7 +60,7 @@ async def analyze(file: UploadFile = File(...)):
         raise HTTPException(status_code=502, detail="DEEPSEEK_API_KEY not configured")
 
     try:
-        analysis = analyze_resume_with_deepseek(resume_text, api_key)
+        analysis = await asyncio.to_thread(analyze_resume_with_deepseek, resume_text, api_key)
     except Exception as e:
         logger.error(f"DeepSeek call failed: {e}")
         raise HTTPException(status_code=502, detail=f"DeepSeek analysis failed: {e}")

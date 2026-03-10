@@ -1080,6 +1080,25 @@ async def delete_resume(resume_id: str, user: dict = Depends(get_current_user)):
 
         await asyncio.to_thread(_delete_from_storage)
 
+        # Clean up dependent analysis data first
+        def _delete_queue_items(*args: Any, **kwargs: Any) -> Any:
+            return _supabase_client.table("resume_analysis_queue") \
+                .delete() \
+                .eq("resume_id", resume_id) \
+                .eq("user_id", user["user_id"]) \
+                .execute()
+
+        await asyncio.to_thread(_delete_queue_items)
+
+        def _delete_analysis(*args: Any, **kwargs: Any) -> Any:
+            return _supabase_client.table("resume_analysis") \
+                .delete() \
+                .eq("resume_id", resume_id) \
+                .eq("user_id", user["user_id"]) \
+                .execute()
+
+        await asyncio.to_thread(_delete_analysis)
+
         # Delete from DB
         def _delete_resume_db(*args: Any, **kwargs: Any) -> Any:
             return _supabase_client.table("user_resumes") \

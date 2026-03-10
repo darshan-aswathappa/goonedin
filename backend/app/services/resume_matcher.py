@@ -1,6 +1,6 @@
 """
 Resume-to-job matching — backend orchestration only.
-Scoring is delegated to the resume microservice.
+Scoring is performed locally via compute_match() — no HTTP round-trips.
 """
 
 import asyncio
@@ -8,9 +8,7 @@ import json
 import logging
 from typing import Any, Optional
 
-import httpx
-
-from app.core.config import get_settings
+from app.services.resume_matcher_core import compute_match
 
 logger = logging.getLogger("ResumeMatcher")
 
@@ -19,11 +17,9 @@ async def get_best_resume_match(
     supabase: Any, user_id: str, job_analysis: dict
 ) -> Optional[dict]:
     """
-    Query user's completed resumes, score each against job_analysis via microservice,
+    Query user's completed resumes, score each against job_analysis directly,
     return the best match as a dict or None.
     """
-    settings = get_settings()
-
     try:
         # Step 1: get user's completed resumes
         resumes_resp = await asyncio.to_thread(
@@ -85,19 +81,10 @@ async def get_best_resume_match(
             skills: list[str] = skills_raw if isinstance(skills_raw, list) else []
             keywords: list[str] = keywords_raw if isinstance(keywords_raw, list) else []
 
-            # Call resume microservice for matching
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                resp = await client.post(
-                    f"{settings.RESUME_SERVICE_URL}/match",
-                    json={
-                        "resume_skills": skills,
-                        "resume_project_keywords": keywords,
-                        "must_have_keywords": must_have,
-                        "good_to_have_keywords": good_to_have,
-                    },
-                )
-                resp.raise_for_status()
-                result = resp.json().get("match")
+            # Call compute_match directly — no HTTP round-trip needed.
+            # NOTE: compute_match() is a local copy of resume_service/matcher.py.
+            # See backend/app/services/resume_matcher_core.py for sync obligations.
+            result = compute_match(skills, keywords, must_have, good_to_have)
 
             if result is None:
                 continue

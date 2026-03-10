@@ -1,9 +1,12 @@
 """
-Pure-Python resume-to-job matching.
-Zero external API calls — keyword overlap scoring only.
+Pure-Python resume-to-job matching — local copy for the backend service.
 
-IMPORTANT: A copy of this file lives at backend/app/services/resume_matcher_core.py.
-Algorithm changes MUST be applied to BOTH files simultaneously.
+IMPORTANT: This file is a copy of resume_service/matcher.py.
+Algorithm changes MUST be applied to BOTH files simultaneously:
+  - backend/app/services/resume_matcher_core.py  (this file)
+  - resume_service/matcher.py                    (canonical source)
+
+Zero external API calls — keyword overlap scoring only.
 """
 
 import re
