@@ -54,6 +54,7 @@ from app.api import websocket
 from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.scraper_github import fetch_github_jobs
+from app.services.scraper_jobright import fetch_jobright_jobs
 
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
@@ -166,20 +167,29 @@ async def matches_target_keywords(job, supabase, user_id: str) -> bool:
 async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     supabase = get_supabase_client()
     all_jobs: List[Any] = []
+    jobright_jobs: List[Any] = []
     mathworks_jobs: List[Any] = []
     github_jobs: List[Any] = []
 
     for r in results:
-        if "recent_jobs" in r and r["recent_jobs"]:
-            first_job = r["recent_jobs"][0]
-            if first_job.source == "MathWorks":
-                mathworks_jobs.extend(r["recent_jobs"])
-            elif first_job.source == "GitHub":
-                github_jobs.extend(r["recent_jobs"])
-            else:
-                all_jobs.extend(r["jobs"])
-        else:
-            all_jobs.extend(r["jobs"])
+        if isinstance(r, dict) and "jobs" in r:
+            # Check if this payload has 'recent_jobs' specific structure
+            if "recent_jobs" in r and r["recent_jobs"]:
+                first_job = r["recent_jobs"][0]
+                if first_job.source == "MathWorks":
+                    mathworks_jobs.extend(r["recent_jobs"])
+                elif first_job.source == "GitHub":
+                    github_jobs.extend(r["recent_jobs"])
+                else:
+                    all_jobs.extend(r["jobs"])
+            elif "jobs" in r and r["jobs"]:
+                first_job = r["jobs"][0]
+                if hasattr(first_job, "source") and first_job.source == "Jobright":
+                    jobright_jobs.extend(r["jobs"])
+                else:
+                    all_jobs.extend(r["jobs"])
+        elif isinstance(r, Exception):
+            logger.error(f"Task exception in HF loop: {r}")
 
     total_finds: int = 0
 
@@ -256,6 +266,20 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
         logger.info(f"New Target (GitHub): {job.title} @ {job.company}")
 
+    for job in jobright_jobs:
+        if not await matches_target_keywords(job, supabase, ctx.user_id):
+            continue
+        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
+            continue
+        job_dict = job.model_dump(mode="json")
+        job_dict["visible"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+        total_finds = total_finds + 1
+        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+        job_dict["is_notified"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+        logger.info(f"New Target (Jobright): {job.title} @ {job.company}")
+
     return total_finds
 
 
@@ -272,19 +296,29 @@ async def run_high_frequency_loop(ctx: UserContext):
     while True:
         try:
             target_keywords = await get_target_keywords(supabase, ctx.user_id)
-            results = await asyncio.gather(
-                *[
-                    _fetch_linkedin_with_limit(kw)
-                    for kw in target_keywords
-                ],
-            )
-            total = len(results)
-            failed = sum(1 for r in results if r["failed"])
+            tasks = [
+                _fetch_linkedin_with_limit(kw)
+                for kw in target_keywords
+            ]
+            tasks.append(fetch_jobright_jobs(limit=15, max_age_hours=2.0))
+
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Filter out true exceptions vs valid dict returns
+            valid_results = []
+            for r in results:
+                if isinstance(r, dict):
+                    valid_results.append(r)
+                elif isinstance(r, Exception):
+                    logger.error(f"Task exception in HF loop: {r}")
+
+            total = len(valid_results)
+            failed = sum(1 for r in valid_results if r.get("failed", True))
             logger.info(
                 f"[HF] {ctx.user_id} | {total} calls | "
                 f"{total - failed} passed | {failed} failed"
             )
-            new_finds = await process_and_alert_jobs(results, ctx)
+            new_finds = await process_and_alert_jobs(valid_results, ctx)
             if new_finds == 0:
                 logger.debug(f"[HF] {ctx.user_id} No new targets.")
         except Exception as e:

@@ -195,6 +195,18 @@ async def run_job_analysis(
             logger.warning(f"[JobAnalyzer] {error_msg}")
             return None, error_msg
 
+        # 1.5 Bypass for Jobright
+        if "jobright.ai" in job_url:
+            logger.info(f"[JobAnalyzer] Bypassing fetch & deepseek for Jobright {job_id}")
+            return {
+                "must_have_keywords": [],
+                "good_to_have_keywords": [],
+                "minimum_qualifications": [],
+                "summary": "Source: Jobright. View on Jobright directly for description details.",
+                "compensation": None,
+                "visa_status": None,
+            }, None
+
         # 2. Fetch job description
         description = await fetch_job_description(job_id)
         if not description:
