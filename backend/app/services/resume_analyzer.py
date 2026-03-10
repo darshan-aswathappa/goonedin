@@ -5,7 +5,6 @@ PDF extraction and AI analysis are delegated to the resume microservice.
 Uses a Supabase table-based queue for processing resume analysis tasks.
 """
 
-import json
 import logging
 from typing import Any
 import asyncio
@@ -60,16 +59,12 @@ async def _run_resume_analysis_with_retry(
                     {
                         "resume_id": resume_id,
                         "user_id": user_id,
-                        "education": json.dumps(analysis.get("education", [])),
-                        "certifications": json.dumps(
-                            analysis.get("certifications", [])
-                        ),
-                        "skills": json.dumps(analysis.get("skills", [])),
-                        "project_keywords": json.dumps(
-                            analysis.get("project_keywords", [])
-                        ),
+                        "education": analysis.get("education", []),
+                        "certifications": analysis.get("certifications", []),
+                        "skills": analysis.get("skills", []),
+                        "project_keywords": analysis.get("project_keywords", []),
                         "summary": analysis.get("summary", ""),
-                        "raw_response": json.dumps(analysis),
+                        "raw_response": analysis,
                     }
                 ).execute()
 

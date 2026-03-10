@@ -4,7 +4,6 @@ Scoring is performed locally via compute_match() — no HTTP round-trips.
 """
 
 import asyncio
-import json
 import logging
 from typing import Any, Optional
 
@@ -63,23 +62,8 @@ async def get_best_resume_match(
         for row in analyses:
             resume_id = row["resume_id"]
 
-            # Skills and keywords may be stored as JSON strings
-            skills_raw = row.get("skills", [])
-            keywords_raw = row.get("project_keywords", [])
-
-            if isinstance(skills_raw, str):
-                try:
-                    skills_raw = json.loads(skills_raw)
-                except (json.JSONDecodeError, TypeError):
-                    skills_raw = []
-            if isinstance(keywords_raw, str):
-                try:
-                    keywords_raw = json.loads(keywords_raw)
-                except (json.JSONDecodeError, TypeError):
-                    keywords_raw = []
-
-            skills: list[str] = skills_raw if isinstance(skills_raw, list) else []
-            keywords: list[str] = keywords_raw if isinstance(keywords_raw, list) else []
+            skills: list[str] = row.get("skills") or []
+            keywords: list[str] = row.get("project_keywords") or []
 
             # Call compute_match directly — no HTTP round-trip needed.
             # NOTE: compute_match() is a local copy of resume_service/matcher.py.

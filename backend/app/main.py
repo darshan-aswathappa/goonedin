@@ -1146,15 +1146,6 @@ async def get_resume_analysis(resume_id: str, user: dict = Depends(get_current_u
             return {"status": status, "analysis": None}
 
         analysis = response.data[0]
-        # Parse JSON strings back to lists if needed
-        import json
-        for field in ["education", "certifications", "skills", "project_keywords"]:
-            val = analysis.get(field)
-            if isinstance(val, str):
-                try:
-                    analysis[field] = json.loads(val)
-                except (json.JSONDecodeError, TypeError):
-                    analysis[field] = []
 
         return {"status": "completed", "analysis": analysis}
     except HTTPException:
