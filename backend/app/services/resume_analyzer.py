@@ -1,8 +1,6 @@
 """
-Resume analysis service using DeepSeek AI (OpenAI-compatible API).
-
-Extracts education, certifications, skills, and project keywords from
-uploaded PDF resumes using the deepseek-reasoner model.
+Resume analysis service — backend orchestration only.
+PDF extraction and AI analysis are delegated to the resume microservice.
 
 Uses a Supabase table-based queue for processing resume analysis tasks.
 """
@@ -12,86 +10,13 @@ import logging
 from typing import Any
 import asyncio
 
-import PyPDF2
-import io
-from openai import OpenAI
+import httpx
+
+from app.core.config import get_settings
 
 logger = logging.getLogger("VelocityMain")
 
 QUEUE_TABLE = "resume_analysis_queue"
-
-DEEPSEEK_SYSTEM_PROMPT = """You are an expert resume analyzer. Given the raw text of a resume, extract the following information and return it as valid JSON only (no markdown, no explanation):
-
-{
-  "education": ["degree — institution (year if available)", ...],
-  "certifications": ["certification name (issuer if available)", ...],
-  "skills": ["skill1", "skill2", ...],
-  "project_keywords": ["keyword1", "keyword2", ...],
-  "summary": "A 1-2 sentence professional summary of the candidate."
-}
-
-Rules:
-- "education" should list degrees, institutions, and years.
-- "certifications" should only include professional certifications, not degrees.
-- "skills" should include both technical skills (languages, frameworks, tools) and relevant soft skills.
-- "project_keywords" should extract domain-specific keywords and technologies mentioned in the experience/projects sections. Focus on action verbs, technologies, methodologies, and domain terms.
-- If a section has no data, return an empty list [].
-- Return ONLY the JSON object, nothing else."""
-
-
-def extract_text_from_pdf(pdf_bytes: bytes) -> str:
-    """Extract text content from PDF bytes using PyPDF2."""
-    reader = PyPDF2.PdfReader(io.BytesIO(pdf_bytes))
-    text_parts: list[str] = []
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text_parts.append(page_text)
-    return "\n".join(text_parts)
-
-
-def analyze_resume_with_deepseek(resume_text: str, api_key: str) -> dict[str, Any]:
-    """Call the DeepSeek API to analyze resume text and return structured data."""
-    client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com",
-    )
-
-    response = client.chat.completions.create(
-        model="deepseek-reasoner",
-        messages=[
-            {"role": "system", "content": DEEPSEEK_SYSTEM_PROMPT},
-            {"role": "user", "content": f"Analyze this resume:\n\n{resume_text}"},
-        ],
-        max_tokens=4096,
-    )
-
-    content = response.choices[0].message.content or ""
-
-    # Strip potential markdown fences
-    content = content.strip()
-    if content.startswith("```"):
-        # Remove opening fence (```json or ```)
-        first_newline = content.index("\n")
-        content = content[first_newline + 1 :]
-    if content.endswith("```"):
-        content = content[: -3]
-    content = content.strip()
-
-    try:
-        result = json.loads(content)
-    except json.JSONDecodeError:
-        logger.warning(f"DeepSeek returned non-JSON. Raw content: {content[:500]}")
-        result = {
-            "education": [],
-            "certifications": [],
-            "skills": [],
-            "project_keywords": [],
-            "summary": "Analysis could not be parsed. Raw output saved.",
-            "_raw": content,
-        }
-
-    return result
 
 
 async def _run_resume_analysis_with_retry(
@@ -99,12 +24,12 @@ async def _run_resume_analysis_with_retry(
     user_id: str,
     file_path: str,
     supabase_client: Any,
-    api_key: str,
 ) -> None:
     """
     Internal resume analysis with retry logic.
-    Wrapped by run_resume_analysis() with semaphore control.
+    Delegates PDF extraction + AI analysis to the resume microservice.
     """
+    settings = get_settings()
     max_retries = 2
     base_delay = 1  # seconds
 
@@ -118,24 +43,18 @@ async def _run_resume_analysis_with_retry(
 
             pdf_bytes: bytes = await asyncio.to_thread(_download_pdf)
 
-            # 2. Extract text
-            resume_text = await asyncio.to_thread(extract_text_from_pdf, pdf_bytes)
+            # 2. Call resume microservice for extraction + DeepSeek analysis
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                resp = await client.post(
+                    f"{settings.RESUME_SERVICE_URL}/analyze",
+                    files={"file": ("resume.pdf", pdf_bytes, "application/pdf")},
+                )
+                resp.raise_for_status()
+                analysis = resp.json()
 
-            if not resume_text.strip():
-                raise ValueError("Could not extract any text from the PDF")
+            logger.info(f"[ResumeAI] Microservice analysis complete for resume {resume_id}")
 
-            logger.info(
-                f"[ResumeAI] Extracted {len(resume_text)} chars from resume {resume_id}"
-            )
-
-            # 3. Call DeepSeek (blocking HTTP call, run in thread)
-            analysis = await asyncio.to_thread(
-                analyze_resume_with_deepseek, resume_text, api_key
-            )
-
-            logger.info(f"[ResumeAI] DeepSeek analysis complete for resume {resume_id}")
-
-            # 4. Store results in resume_analysis table
+            # 3. Store results in resume_analysis table
             def _store_analysis(*args: Any, **kwargs: Any) -> Any:
                 return supabase_client.table("resume_analysis").insert(
                     {
@@ -156,7 +75,7 @@ async def _run_resume_analysis_with_retry(
 
             await asyncio.to_thread(_store_analysis)
 
-            # 5. Update status to completed
+            # 4. Update status to completed
             def _update_status_completed(*args: Any, **kwargs: Any) -> Any:
                 return (
                     supabase_client.table("user_resumes")
@@ -207,11 +126,9 @@ async def enqueue_resume_analysis(
     """
     Enqueue a resume analysis task via Supabase table queue.
     Stores task in resume_analysis_queue table for background processing.
-    API key is retrieved from environment at processing time, never stored.
     """
     try:
         def _send_message(*args: Any, **kwargs: Any) -> Any:
-            # Insert task into queue table (no API key stored)
             return supabase_client.table(QUEUE_TABLE).insert({
                 "resume_id": resume_id,
                 "user_id": user_id,
@@ -233,15 +150,7 @@ async def process_resume_analysis_queue(
     Worker that continuously processes resume analysis tasks from table queue.
     Runs one task at a time to prevent resource exhaustion.
     Designed to run as a background service.
-    API key is retrieved from environment variables, never from database.
     """
-    import os
-
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key:
-        logger.error("[ResumeAI] DEEPSEEK_API_KEY environment variable not set")
-        return
-
     logger.info(f"[ResumeAI] Starting queue processor for {QUEUE_TABLE}")
 
     while True:
@@ -278,9 +187,9 @@ async def process_resume_analysis_queue(
 
                 await asyncio.to_thread(_mark_processing)
 
-                # Run the analysis with API key from environment
+                # Run the analysis via microservice
                 await _run_resume_analysis_with_retry(
-                    resume_id, user_id, file_path, supabase_client, api_key
+                    resume_id, user_id, file_path, supabase_client
                 )
 
                 # Mark as completed and delete

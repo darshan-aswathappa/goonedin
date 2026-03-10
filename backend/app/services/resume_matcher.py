@@ -1,142 +1,29 @@
 """
-Pure-Python resume-to-job matching service.
-Zero external API calls — keyword overlap scoring only.
+Resume-to-job matching — backend orchestration only.
+Scoring is delegated to the resume microservice.
 """
 
 import asyncio
 import json
 import logging
-import re
 from typing import Any, Optional
 
+import httpx
+
+from app.core.config import get_settings
+
 logger = logging.getLogger("ResumeMatcher")
-
-# Canonical aliases: normalise variant spellings to a single token
-_ALIASES: dict[str, str] = {
-    "python3": "python",
-    "node.js": "nodejs",
-    "node js": "nodejs",
-    "c++": "cpp",
-    "c#": "csharp",
-    "typescript": "ts",
-    "javascript": "js",
-    "react.js": "react",
-    "vue.js": "vue",
-    "next.js": "nextjs",
-    "nuxt.js": "nuxtjs",
-    "express.js": "express",
-    "tensorflow": "tf",
-    "pytorch": "torch",
-    "scikit-learn": "sklearn",
-    "scikit learn": "sklearn",
-    "machine learning": "ml",
-    "deep learning": "dl",
-    "natural language processing": "nlp",
-    "large language model": "llm",
-    "large language models": "llm",
-    "kubernetes": "k8s",
-    "amazon web services": "aws",
-    "google cloud platform": "gcp",
-    "google cloud": "gcp",
-    "microsoft azure": "azure",
-    "ci/cd": "cicd",
-    "restful": "rest",
-    "rest api": "rest",
-    "graphql": "gql",
-    "postgresql": "postgres",
-    "mongodb": "mongo",
-    "docker": "docker",
-}
-
-
-def _normalize(token: str) -> str:
-    """Lowercase, strip punctuation, apply canonical aliases."""
-    t = token.lower().strip()
-    # Strip trailing/leading punctuation but keep internal hyphens
-    t = re.sub(r"[^\w\s\-\+\#]", "", t).strip()
-    t = re.sub(r"\s+", " ", t)
-    return _ALIASES.get(t, t)
-
-
-def _fuzzy_match(resume_tokens: list[str], job_token: str) -> bool:
-    """
-    Returns True if job_token appears in any resume_token via containment.
-    Handles 'Python 3' (resume) vs 'Python' (job) and vice versa.
-    """
-    jt = _normalize(job_token)
-    if not jt:
-        return False
-    for rt in resume_tokens:
-        if jt in rt or rt in jt:
-            return True
-    return False
-
-
-def compute_match(
-    resume_skills: list[str],
-    resume_keywords: list[str],
-    must_have: list[str],
-    good_to_have: list[str],
-) -> Optional[dict]:
-    """
-    Score a single resume against job requirements.
-
-    Score = (matched_must + matched_nice * 0.5) / (total_must + total_nice * 0.5)
-    Zero-must penalty: if matched_must == 0, multiply by 0.3.
-
-    Returns None if there are no job requirements to match against.
-    """
-    if not must_have and not good_to_have:
-        return None
-
-    # Build normalised resume token set
-    all_resume_tokens = [
-        _normalize(s) for s in (resume_skills + resume_keywords) if s
-    ]
-    all_resume_tokens = [t for t in all_resume_tokens if t]
-
-    # Must-have matching
-    matched_must: list[str] = []
-    missing_must: list[str] = []
-    for kw in must_have:
-        if _fuzzy_match(all_resume_tokens, kw):
-            matched_must.append(kw)
-        else:
-            missing_must.append(kw)
-
-    # Good-to-have matching
-    matched_nice: list[str] = []
-    for kw in good_to_have:
-        if _fuzzy_match(all_resume_tokens, kw):
-            matched_nice.append(kw)
-
-    total_must = len(must_have)
-    total_nice = len(good_to_have)
-    denominator = total_must + total_nice * 0.5
-    if denominator == 0:
-        return None
-
-    raw_score = (len(matched_must) + len(matched_nice) * 0.5) / denominator
-
-    # Zero-must penalty
-    if len(matched_must) == 0:
-        raw_score *= 0.3
-
-    return {
-        "score": round(raw_score, 4),
-        "matched_must_have": matched_must,
-        "missing_must_have": missing_must,
-        "matched_good_to_have": matched_nice,
-    }
 
 
 async def get_best_resume_match(
     supabase: Any, user_id: str, job_analysis: dict
 ) -> Optional[dict]:
     """
-    Query user's completed resumes, score each against job_analysis,
+    Query user's completed resumes, score each against job_analysis via microservice,
     return the best match as a dict or None.
     """
+    settings = get_settings()
+
     try:
         # Step 1: get user's completed resumes
         resumes_resp = await asyncio.to_thread(
@@ -198,7 +85,20 @@ async def get_best_resume_match(
             skills: list[str] = skills_raw if isinstance(skills_raw, list) else []
             keywords: list[str] = keywords_raw if isinstance(keywords_raw, list) else []
 
-            result = compute_match(skills, keywords, must_have, good_to_have)
+            # Call resume microservice for matching
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.post(
+                    f"{settings.RESUME_SERVICE_URL}/match",
+                    json={
+                        "resume_skills": skills,
+                        "resume_project_keywords": keywords,
+                        "must_have_keywords": must_have,
+                        "good_to_have_keywords": good_to_have,
+                    },
+                )
+                resp.raise_for_status()
+                result = resp.json().get("match")
+
             if result is None:
                 continue
 

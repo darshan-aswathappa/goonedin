@@ -1,4 +1,17 @@
 services:
+  resume-service:
+    build:
+      context: ../resume_service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   app:
     build: .
     restart: unless-stopped
@@ -8,3 +21,7 @@ services:
       - .env
     environment:
       - PORT=8000
+      - RESUME_SERVICE_URL=http://resume-service:8001
+    depends_on:
+      resume-service:
+        condition: service_healthy

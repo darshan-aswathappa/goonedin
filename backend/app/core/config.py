@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # --- AI / DEEPSEEK ---
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
 
+    # --- MICROSERVICES ---
+    RESUME_SERVICE_URL: str = os.getenv("RESUME_SERVICE_URL", "http://resume-service:8001")
+
     # --- QUEUE WORKER ---
     ANALYSIS_WORKER_CONCURRENCY: int = int(os.getenv("ANALYSIS_WORKER_CONCURRENCY", "3"))
 
