@@ -84,6 +84,54 @@ async def upsert_job(
         return row
 
 
+async def insert_job_if_new(
+    supabase: Any,
+    user_id: str,
+    job_data: dict,
+    ttl_seconds: Optional[int] = None,
+) -> Optional[dict]:
+    """
+    Insert a scraped job only if it doesn't already exist (ignore duplicates).
+    Never overwrites an existing row — dismissed jobs stay dismissed.
+    Returns the inserted row, or None if the row already existed.
+    """
+    expires_at = None
+    if ttl_seconds and ttl_seconds > 0:
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+        ).isoformat()
+
+    row = {
+        "user_id": user_id,
+        "source": job_data.get("source", ""),
+        "external_id": job_data.get("external_id", ""),
+        "title": job_data.get("title", ""),
+        "company": job_data.get("company", ""),
+        "location": job_data.get("location", ""),
+        "url": job_data.get("url", ""),
+        "posted_at": job_data.get("posted_at"),
+        "visible": job_data.get("visible", False),
+        "is_notified": job_data.get("is_notified", False),
+        "salary": job_data.get("salary"),
+        "visa": job_data.get("visa"),
+        "analysis": json.dumps(job_data["analysis"]) if job_data.get("analysis") else None,
+        "analysis_status": job_data.get("analysis_status"),
+    }
+    if expires_at:
+        row["expires_at"] = expires_at
+
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .upsert(row, on_conflict="user_id,source,external_id", ignore_duplicates=True)
+            .execute()
+        )
+        return resp.data[0] if resp.data else None
+    except Exception as e:
+        logger.error(f"insert_job_if_new failed: {e}")
+        return None
+
+
 async def update_job(
     supabase: Any,
     user_id: str,

@@ -41,3 +41,8 @@ npm-debug.log*
 .env.production.local
 
 /frontend/UI_BUGS.md
+/backend/CLAUDE.md
+/frontend/CLAUDE.md
+/backend/.mcp.json
+/frontend/.mcp.json
+CLAUDE.md

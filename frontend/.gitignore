@@ -40,3 +40,4 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /frontend/UI_BUGS.md
+.playwright-mcp

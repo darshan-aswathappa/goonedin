@@ -20,6 +20,7 @@ from app.core.supabase_config import (
 from app.services.supabase_jobs import (
     is_already_seen as is_already_seen_sb,
     upsert_job,
+    insert_job_if_new,
     update_job,
     get_all_jobs,
     get_job,
@@ -187,11 +188,8 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
             continue
         if not await matches_target_keywords(job, supabase, ctx.user_id):
             continue
-        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
-            continue
 
         job_dict = job.model_dump(mode="json")
-        total_finds = total_finds + 1  # type: ignore
 
         if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
             # Check if analysis already cached
@@ -203,7 +201,10 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 job_dict["salary"] = cache.get("salary")
                 job_dict["visa"] = cache.get("visa")
                 job_dict["visible"] = True
-                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                if inserted is None:
+                    continue  # already exists (possibly dismissed)
+                total_finds = total_finds + 1  # type: ignore
                 await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
                 job_dict["is_notified"] = True
                 await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
@@ -213,22 +214,28 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 await create_cache_entry(supabase, job_dict["external_id"], job_dict["url"])
                 await enqueue_job(supabase, job_dict["external_id"], job_dict["url"])
                 job_dict["visible"] = False
-                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                if inserted is None:
+                    continue  # already exists
+                total_finds = total_finds + 1  # type: ignore
                 logger.info(f"Queued job {job_dict['external_id']} for analysis")
         else:
             job_dict["visible"] = True
-            await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+            inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+            if inserted is None:
+                continue  # already exists (possibly dismissed)
+            total_finds = total_finds + 1  # type: ignore
             await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
             job_dict["is_notified"] = True
             await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
             logger.info(f"New Target: {job.title} @ {job.company} ({job.location})")
 
     for job in mathworks_jobs:
-        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
-            continue
         job_dict = job.model_dump(mode="json")
         job_dict["visible"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict)  # permanent — no TTL
+        inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict)  # permanent — no TTL
+        if inserted is None:
+            continue  # already exists (possibly dismissed)
         total_finds = total_finds + 1
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
         job_dict["is_notified"] = True
@@ -238,11 +245,11 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     for job in github_jobs:
         if not await matches_target_keywords(job, supabase, ctx.user_id):
             continue
-        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
-            continue
         job_dict = job.model_dump(mode="json")
         job_dict["visible"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
+        inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
+        if inserted is None:
+            continue  # already exists (possibly dismissed)
         total_finds = total_finds + 1  # type: ignore
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
         job_dict["is_notified"] = True
@@ -815,7 +822,9 @@ async def dismiss_job_endpoint(request: DismissJobRequest, ctx: UserContext = De
         if request.is_custom:
             await dismiss_custom_job(supabase, ctx.user_id, request.external_id)
         else:
-            await dismiss_job_sb(supabase, ctx.user_id, request.source, request.external_id)
+            ok = await dismiss_job_sb(supabase, ctx.user_id, request.source, request.external_id)
+            if not ok:
+                raise HTTPException(status_code=500, detail="Failed to dismiss job in database")
 
         await manager.broadcast(
             ctx.user_id,
