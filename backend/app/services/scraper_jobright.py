@@ -195,9 +195,9 @@ async def fetch_jobright_jobs(
     global _last_jobright_fetch
     now_ts = time.time()
 
-    # 30 minute cooldown
-    if now_ts - _last_jobright_fetch < 1800:
-        logger.debug("[Jobright] Skipping fetch, on 30m cooldown.")
+    # 10 minute cooldown
+    if now_ts - _last_jobright_fetch < 600:
+        logger.debug("[Jobright] Skipping fetch, on 10m cooldown.")
         return {"failed": False, "jobs": []}
 
     _last_jobright_fetch = now_ts
