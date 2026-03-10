@@ -1016,31 +1016,6 @@ async def upload_resume(
     try:
         content = await file.read()
         
-        # Check if it's a valid text-based PDF
-        try:
-            import PyPDF2
-            import io
-            reader = PyPDF2.PdfReader(io.BytesIO(content))
-            text_parts = []
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text_parts.append(page_text)
-            extracted_text = "\n".join(text_parts).strip()
-            if not extracted_text:
-                raise HTTPException(
-                    status_code=400, 
-                    detail="Please upload a proper text-based PDF. Scanned images are not supported."
-                )
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error parsing PDF: {e}")
-            raise HTTPException(
-                status_code=400, 
-                detail="Invalid PDF file. Please upload a proper PDF, not an image."
-            )
-        
         # Upload to Storage
         def _upload_to_storage(*args: Any, **kwargs: Any) -> Any:
             return _supabase_client.storage.from_("resumes").upload(
