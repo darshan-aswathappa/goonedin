@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Job, JobAnalysis } from "@/store/jobs";
+import { Job, JobAnalysis, ResumeMatch } from "@/store/jobs";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,9 @@ import {
   WarningCircle,
   CircleNotch,
   X,
+  CheckCircle,
+  XCircle,
+  FileText,
 } from "@phosphor-icons/react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { getAuthHeaders } from "@/hooks/useAuth";
@@ -30,13 +33,15 @@ interface JobAnalysisModalProps {
 
 export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalProps) {
   const [fetchedAnalysis, setFetchedAnalysis] = useState<JobAnalysis | null>(null);
+  const [fetchedResumeMatch, setFetchedResumeMatch] = useState<ResumeMatch | null>(null);
   const [fetchStatus, setFetchStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
 
   const analysis: JobAnalysis | null = job.analysis || fetchedAnalysis;
+  const resumeMatch: ResumeMatch | null = job.resume_match || fetchedResumeMatch;
 
   useEffect(() => {
     if (!open) return;
-    if (job.analysis) return;
+    if (job.analysis && job.resume_match !== undefined) return;
     if (fetchStatus !== "idle") return;
 
     const doFetch = async () => {
@@ -56,6 +61,9 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
               minimum_qualifications: data.analysis.minimum_qualifications || [],
               summary: data.analysis.summary || "",
             });
+            if (data.resume_match) {
+              setFetchedResumeMatch(data.resume_match);
+            }
             setFetchStatus("done");
           } else {
             setFetchStatus("failed");
@@ -68,13 +76,14 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
       }
     };
     doFetch();
-  }, [open, job.analysis, job.external_id, fetchStatus]);
+  }, [open, job.analysis, job.resume_match, job.external_id, fetchStatus]);
 
   const handleOpenChange = (isOpen: boolean) => {
     onOpenChange(isOpen);
     if (!isOpen && fetchStatus === "failed") {
       setFetchStatus("idle");
       setFetchedAnalysis(null);
+      setFetchedResumeMatch(null);
     }
   };
 
@@ -183,6 +192,68 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                         {qual}
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {resumeMatch && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-lg font-black uppercase italic tracking-tighter">
+                    <FileText weight="fill" className="h-6 w-6 text-[#7C3AED]" />
+                    Resume Match
+                    <span className="brutal-border bg-[#7C3AED] text-white px-2 py-0.5 text-xs not-italic">
+                      {Math.round(resumeMatch.score * 100)}%
+                    </span>
+                  </div>
+                  <div className="brutal-border bg-card p-4 shadow-[4px_4px_0px_0px_var(--border)] space-y-3">
+                    <p className="text-xs font-black uppercase text-muted-foreground truncate">
+                      {resumeMatch.best_resume_filename}
+                    </p>
+                    <div className="w-full bg-muted h-3 brutal-border overflow-hidden">
+                      <div
+                        className="h-full bg-[#7C3AED] transition-all"
+                        style={{ width: `${Math.round(resumeMatch.score * 100)}%` }}
+                      />
+                    </div>
+                    {resumeMatch.matched_skills.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-black uppercase text-muted-foreground">Matched</p>
+                        <div className="flex flex-wrap gap-2">
+                          {resumeMatch.matched_skills.map((skill, i) => (
+                            <div key={i} className="flex items-center gap-1 brutal-border bg-card px-2 py-0.5 text-xs font-black uppercase text-[#009063]">
+                              <CheckCircle weight="fill" className="h-3 w-3" />
+                              {skill}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {resumeMatch.missing_skills.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-black uppercase text-muted-foreground">Missing</p>
+                        <div className="flex flex-wrap gap-2">
+                          {resumeMatch.missing_skills.map((skill, i) => (
+                            <div key={i} className="flex items-center gap-1 brutal-border bg-card px-2 py-0.5 text-xs font-black uppercase text-[#F15152]">
+                              <XCircle weight="fill" className="h-3 w-3" />
+                              {skill}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {resumeMatch.matched_nice_to_have.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-black uppercase text-muted-foreground">Bonus Skills</p>
+                        <div className="flex flex-wrap gap-2">
+                          {resumeMatch.matched_nice_to_have.map((skill, i) => (
+                            <div key={i} className="flex items-center gap-1 brutal-border bg-card px-2 py-0.5 text-xs font-black uppercase text-muted-foreground">
+                              <CheckCircle weight="fill" className="h-3 w-3" />
+                              {skill}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

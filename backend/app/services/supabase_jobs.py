@@ -374,3 +374,27 @@ async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
     except Exception as e:
         logger.error(f"bulk_mark_unavailable failed: {e}")
         return False
+
+
+async def update_job_resume_match(
+    supabase: Any,
+    user_id: str,
+    external_id: str,
+    resume_match: dict,
+) -> bool:
+    """Store the best-matching resume result on a user's scraped_jobs row.
+    resume_match is passed as a dict — PostgREST handles JSONB natively.
+    """
+    try:
+        await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .update({"resume_match": resume_match})
+            .eq("user_id", user_id)
+            .eq("external_id", external_id)
+            .eq("source", "LinkedIn")
+            .execute()
+        )
+        return True
+    except Exception as e:
+        logger.error(f"update_job_resume_match failed for {user_id}/{external_id}: {e}")
+        return False

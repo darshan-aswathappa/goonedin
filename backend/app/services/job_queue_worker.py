@@ -23,7 +23,9 @@ from app.services.supabase_jobs import (
     get_users_with_pending_job,
     bulk_apply_analysis,
     bulk_mark_unavailable,
+    update_job_resume_match,
 )
+from app.services.resume_matcher import get_best_resume_match
 
 logger = logging.getLogger("JobQueueWorker")
 settings = get_settings()
@@ -116,6 +118,19 @@ async def _process_one(supabase: Any, row: dict):
 
                 # Bulk update all user rows for this job
                 await bulk_apply_analysis(supabase, external_id, analysis, salary, visa)
+
+                # NEW: Resume matching (per-user, non-fatal)
+                logger.info(f"[JobQueue] Running resume match for {len(user_ids)} user(s) on job {external_id}")
+                for user_id in user_ids:
+                    try:
+                        match = await get_best_resume_match(supabase, user_id, analysis)
+                        if match:
+                            logger.info(f"[JobQueue] Resume match found for {user_id}/{external_id}: score={match['score']}, resume={match['best_resume_filename']}")
+                            await update_job_resume_match(supabase, user_id, external_id, match)
+                        else:
+                            logger.info(f"[JobQueue] No resume match for {user_id}/{external_id} (no completed resumes or empty requirements)")
+                    except Exception as e:
+                        logger.warning(f"[JobQueue] Resume match failed for {user_id}/{external_id}: {e}")
 
                 # Notify all affected users
                 for user_id in user_ids:

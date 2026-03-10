@@ -46,3 +46,4 @@ npm-debug.log*
 /backend/.mcp.json
 /frontend/.mcp.json
 CLAUDE.md
+resume_comparison.md

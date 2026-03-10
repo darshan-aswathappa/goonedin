@@ -1,6 +1,15 @@
 import { create } from "zustand";
 import { LOCATION_FILTER } from "@/config/filters";
 
+export interface ResumeMatch {
+  best_resume_id: string;
+  best_resume_filename: string;
+  score: number;
+  matched_skills: string[];
+  missing_skills: string[];
+  matched_nice_to_have: string[];
+}
+
 export interface JobAnalysis {
   must_have_keywords: string[];
   good_to_have_keywords: string[];
@@ -40,6 +49,7 @@ export interface Job {
   ttl?: number;
   analysis?: JobAnalysis;
   analysis_status?: "completed" | "unavailable" | null;
+  resume_match?: ResumeMatch | null;
   is_custom?: boolean;
 }
 
