@@ -24,6 +24,7 @@ from app.services.supabase_jobs import (
     bulk_apply_analysis,
     bulk_mark_unavailable,
     update_job_resume_match,
+    get_users_without_resume_match,
 )
 from app.services.resume_matcher import get_best_resume_match
 
@@ -119,9 +120,11 @@ async def _process_one(supabase: Any, row: dict):
                 # Bulk update all user rows for this job
                 await bulk_apply_analysis(supabase, external_id, analysis, salary, visa)
 
-                # NEW: Resume matching (per-user, non-fatal)
-                logger.info(f"[JobQueue] Running resume match for {len(user_ids)} user(s) on job {external_id}")
-                for user_id in user_ids:
+                # NEW: Resume matching — use all users with this job that lack a match,
+                # not just visible=False users (handles jobs already visible before deploy)
+                resume_match_user_ids = await get_users_without_resume_match(supabase, external_id)
+                logger.info(f"[JobQueue] Running resume match for {len(resume_match_user_ids)} user(s) on job {external_id}")
+                for user_id in resume_match_user_ids:
                     try:
                         match = await get_best_resume_match(supabase, user_id, analysis)
                         if match:

@@ -376,6 +376,25 @@ async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
         return False
 
 
+async def get_users_without_resume_match(
+    supabase: Any, external_id: str
+) -> list[str]:
+    """Get all user_ids that have this LinkedIn job but no resume_match yet."""
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("scraped_jobs")
+            .select("user_id")
+            .eq("external_id", external_id)
+            .eq("source", "LinkedIn")
+            .is_("resume_match", "null")
+            .execute()
+        )
+        return [row["user_id"] for row in (resp.data or [])]
+    except Exception as e:
+        logger.error(f"get_users_without_resume_match failed: {e}")
+        return []
+
+
 async def update_job_resume_match(
     supabase: Any,
     user_id: str,
