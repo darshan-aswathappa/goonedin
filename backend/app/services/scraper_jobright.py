@@ -23,7 +23,7 @@ _last_jobright_fetch = 0
 
 JOBS_URL = (
     "https://jobright.ai/swan/recommend/list/jobs"
-    "?refresh=true&sortCondition=0&position=0&count={limit}&syncRerank=false"
+    "?refresh=true&sortCondition=1&position=0&count={limit}&syncRerank=false"
 )
 
 HEADERS = {
