@@ -11,6 +11,7 @@ directly from the Jobright API response — no DeepSeek needed.
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 import time
+import asyncio
 from datetime import datetime, timezone
 
 from curl_cffi.requests import AsyncSession
@@ -179,57 +180,74 @@ def _parse_job(item: dict, now: datetime, max_age_hours: Optional[float]) -> Opt
 async def _fetch_with_session(
     session_id: str, limit: int, max_age_hours: Optional[float]
 ) -> Dict[str, Any]:
-    """Make the actual API call using a given session ID."""
+    """Make the actual API call using a given session ID (with retries for timeouts)."""
     proxy = settings.PROXY_URL
     proxies = {"http": proxy, "https": proxy} if proxy else None
 
     headers = {**HEADERS, "cookie": f"SESSION_ID={session_id}"}
     url = JOBS_URL.format(limit=limit)
 
-    async with AsyncSession(impersonate="chrome", proxies=proxies, verify=False) as s:
-        resp = await s.get(url, headers=headers, timeout=15)
+    for attempt in range(3):
+        try:
+            async with AsyncSession(impersonate="chrome", proxies=proxies, verify=False) as s:
+                # Increased timeout to 45s to accommodate slow proxies
+                resp = await s.get(url, headers=headers, timeout=45)
 
-        if resp.status_code == 401:
-            return {"failed": True, "jobs": [], "auth_error": True}
+                if resp.status_code == 401:
+                    return {"failed": True, "jobs": [], "auth_error": True}
 
-        if resp.status_code != 200:
-            logger.error(f"[Jobright] Fetch failed: HTTP {resp.status_code}")
-            return {"failed": True, "jobs": []}
+                if resp.status_code != 200:
+                    logger.error(f"[Jobright] Fetch failed: HTTP {resp.status_code}")
+                    return {"failed": True, "jobs": []}
 
-        data = resp.json()
+                data = resp.json()
 
-        # New format: {"success": bool, "errorCode": int, "result": {...}}
-        # Old format: {"code": 20000, "data": {"list": [...]}}
-        is_success = data.get("success") is True or data.get("code") == 20000
+                # New format: {"success": bool, "errorCode": int, "result": {...}}
+                # Old format: {"code": 20000, "data": {"list": [...]}}
+                is_success = data.get("success") is True or data.get("code") == 20000
 
-        if not is_success:
-            error_code = data.get("errorCode") or data.get("code")
-            msg = data.get("errorMsg") or data.get("message", "unknown")
-            # Auth-related error codes → trigger session refresh
-            if error_code in (40100, 40101, 41001):
-                logger.warning(f"[Jobright] Auth error from API: {msg}")
-                return {"failed": True, "jobs": [], "auth_error": True}
-            logger.error(f"[Jobright] API logic error (code={error_code}): {msg}")
-            return {"failed": True, "jobs": []}
+                if not is_success:
+                    error_code = data.get("errorCode") or data.get("code")
+                    msg = data.get("errorMsg") or data.get("message", "unknown")
+                    # Auth-related error codes → trigger session refresh
+                    if error_code in (40100, 40101, 41001):
+                        logger.warning(f"[Jobright] Auth error from API: {msg}")
+                        return {"failed": True, "jobs": [], "auth_error": True}
+                    logger.error(f"[Jobright] API logic error (code={error_code}): {msg}")
+                    return {"failed": True, "jobs": []}
 
-        # Extract job list — handle both response formats
-        job_items = (
-            data.get("result", {}).get("jobList", [])  # new format
-            or data.get("data", {}).get("list", [])      # old format fallback
-        )
-        logger.info(f"[Jobright] Found {len(job_items)} items in payload.")
+                # Extract job list — handle both response formats
+                job_items = (
+                    data.get("result", {}).get("jobList", [])  # new format
+                    or data.get("data", {}).get("list", [])      # old format fallback
+                )
+                logger.info(f"[Jobright] Found {len(job_items)} items in payload.")
 
-        now = datetime.now(timezone.utc)
-        new_jobs: List[JobCreate] = []
-        analyses: Dict[str, dict] = {}  # external_id -> analysis dict
-        for item in job_items:
-            result = _parse_job(item, now, max_age_hours)
-            if result:
-                job, analysis = result
-                new_jobs.append(job)
-                analyses[job.external_id] = analysis
+                now = datetime.now(timezone.utc)
+                new_jobs: List[JobCreate] = []
+                analyses: Dict[str, dict] = {}  # external_id -> analysis dict
+                for item in job_items:
+                    result = _parse_job(item, now, max_age_hours)
+                    if result:
+                        job, analysis = result
+                        new_jobs.append(job)
+                        analyses[job.external_id] = analysis
 
-        return {"failed": False, "jobs": new_jobs, "analyses": analyses}
+                return {"failed": False, "jobs": new_jobs, "analyses": analyses}
+        except (TimeoutError, Exception) as e:
+            # specifically check for timeout strings if it's a generic Exception from curl_cffi
+            err_msg = str(e).lower()
+            if "timeout" in err_msg or "timed out" in err_msg:
+                logger.warning(f"[Jobright] Timeout on attempt {attempt+1}/3. Retrying...")
+                if attempt < 2:
+                    await asyncio.sleep(2)  # small pause before retry
+                    continue
+            logger.error(f"[Jobright] Attempt {attempt+1}/3 failed: {e}")
+            if attempt >= 2:
+                # All retries failed
+                return {"failed": True, "jobs": []}
+
+    return {"failed": True, "jobs": []}
 
 
 async def fetch_jobright_jobs(
