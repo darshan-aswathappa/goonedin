@@ -195,6 +195,12 @@ async def run_job_analysis(
             logger.warning(f"[JobAnalyzer] {error_msg}")
             return None, error_msg
 
+        # Jobright jobs arrive with pre-built analysis from the API,
+        # but if one somehow reaches here, skip the LinkedIn-specific fetch
+        if "jobright.ai" in job_url:
+            logger.info(f"[JobAnalyzer] Skipping DeepSeek for Jobright {job_id} — analysis is pre-built by scraper")
+            return None, "Jobright jobs should have pre-built analysis from scraper"
+
         # 2. Fetch job description
         description = await fetch_job_description(job_id)
         if not description:

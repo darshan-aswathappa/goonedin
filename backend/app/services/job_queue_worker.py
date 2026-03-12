@@ -100,9 +100,9 @@ async def _process_one(supabase: Any, row: dict):
 
             logger.info(f"[JobQueue] Processing analysis for job {external_id}")
 
-            # IMPORTANT: Capture user_ids BEFORE bulk update
+            # IMPORTANT: Capture pending targets BEFORE bulk update
             # (they're visible=FALSE now; after bulk update they'll be TRUE)
-            user_ids = await get_users_with_pending_job(supabase, external_id)
+            pending_targets = await get_users_with_pending_job(supabase, external_id)
 
             # Run analysis
             analysis, error_reason = await run_job_analysis(external_id, job_url, settings.DEEPSEEK_API_KEY)
@@ -136,8 +136,10 @@ async def _process_one(supabase: Any, row: dict):
                         logger.warning(f"[JobQueue] Resume match failed for {user_id}/{external_id}: {e}")
 
                 # Notify all affected users
-                for user_id in user_ids:
-                    job_dict = await get_job(supabase, user_id, "LinkedIn", external_id)
+                for t in pending_targets:
+                    user_id = t["user_id"]
+                    source = t["source"]
+                    job_dict = await get_job(supabase, user_id, source, external_id)
                     if job_dict:
                         logger.info(f"[JobQueue] Broadcasting NEW_JOB for {external_id} to user {user_id}")
                         await manager.broadcast(user_id, {"type": "NEW_JOB", "data": job_dict})
@@ -186,8 +188,10 @@ async def _process_one(supabase: Any, row: dict):
                     await bulk_mark_unavailable(supabase, external_id)
 
                     # Notify all affected users
-                    for user_id in user_ids:
-                        job_dict = await get_job(supabase, user_id, "LinkedIn", external_id)
+                    for t in pending_targets:
+                        user_id = t["user_id"]
+                        source = t["source"]
+                        job_dict = await get_job(supabase, user_id, source, external_id)
                         if job_dict:
                             logger.info(f"[JobQueue] Broadcasting unavailable job {external_id} to user {user_id}")
                             await manager.broadcast(user_id, {"type": "NEW_JOB", "data": job_dict})

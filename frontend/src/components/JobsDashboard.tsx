@@ -44,6 +44,7 @@ export function JobsDashboard() {
 
   const jobs = useJobsStore((state) => state.jobs);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
+  const jobrightJobs = useJobsStore((state) => state.jobrightJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
   const githubJobs = useJobsStore((state) => state.githubJobs);
   const locationFilteredJobs = useJobsStore(
@@ -189,6 +190,16 @@ export function JobsDashboard() {
               </TabsTrigger>
 
               <TabsTrigger
+                value="jobright"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#5465FF] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+              >
+                <div className="flex items-center gap-2">
+                  <Briefcase weight="bold" className="h-5 w-5" />
+                  Jobright ({jobrightJobs.length})
+                </div>
+              </TabsTrigger>
+
+              <TabsTrigger
                 value="mathworks"
                 className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
               >
@@ -255,6 +266,14 @@ export function JobsDashboard() {
             <JobList
               jobs={linkedinJobs}
               emptyMessage="No LinkedIn jobs yet. They'll appear here when found."
+              isLocked={!user}
+            />
+          </TabsContent>
+
+          <TabsContent value="jobright" className="mt-0">
+            <JobList
+              jobs={jobrightJobs}
+              emptyMessage="No Jobright jobs yet. They'll appear here when found."
               isLocked={!user}
             />
           </TabsContent>

@@ -315,13 +315,19 @@ async def get_users_with_pending_job(
     try:
         resp = await asyncio.to_thread(
             lambda: supabase.table("scraped_jobs")
-            .select("DISTINCT user_id")
+            .select("user_id, source")
             .eq("external_id", external_id)
             .eq("visible", False)
-            .eq("source", "LinkedIn")
             .execute()
         )
-        return [row["user_id"] for row in (resp.data or [])]
+        seen = set()
+        res = []
+        for row in (resp.data or []):
+            k = (row["user_id"], row["source"])
+            if k not in seen:
+                seen.add(k)
+                res.append({"user_id": row["user_id"], "source": row["source"]})
+        return res
     except Exception as e:
         logger.error(f"get_users_with_pending_job failed: {e}")
         return []
@@ -347,7 +353,6 @@ async def bulk_apply_analysis(
             lambda: supabase.table("scraped_jobs")
             .update(updates)
             .eq("external_id", external_id)
-            .eq("source", "LinkedIn")
             .execute()
         )
         return True
@@ -367,7 +372,6 @@ async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
             lambda: supabase.table("scraped_jobs")
             .update(updates)
             .eq("external_id", external_id)
-            .eq("source", "LinkedIn")
             .execute()
         )
         return True
