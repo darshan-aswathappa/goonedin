@@ -171,7 +171,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   return (
     <>
       <div
-        onClick={!isLocked && job.source === "LinkedIn" ? () => setAnalysisOpen(true) : undefined}
+        onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
         className={`group relative brutal-border brutal-shadow bg-card p-6 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
           isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
         }`}
@@ -208,19 +208,24 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
               </div>
             )}
 
-            {job.source === "LinkedIn" && job.salary && (
+            {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
               <div className="flex items-center gap-2 text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
                 <CurrencyDollar weight="bold" className="h-4 w-4 shrink-0" />
                 <span className="truncate">{formatSalary(job.salary)}</span>
               </div>
             )}
 
-            {job.source === "LinkedIn" && job.visa && (
-              <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                <Globe weight="bold" className="h-4 w-4 shrink-0" />
-                <span className="truncate">{formatVisa(job.visa)}</span>
-              </div>
-            )}
+            {(job.source === "LinkedIn" || job.source === "Jobright") && job.visa && (() => {
+              const formatted = formatVisa(job.visa);
+              const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
+              if (isPositive) return null;
+              return (
+                <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                  <Globe weight="bold" className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{formatted}</span>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex items-center justify-between pt-4 mt-auto">
@@ -327,7 +332,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         </div>
       </div>
 
-      {job.source === "LinkedIn" && (
+      {(job.source === "LinkedIn" || job.source === "Jobright") && (
         <JobAnalysisModal
           job={job}
           open={analysisOpen}

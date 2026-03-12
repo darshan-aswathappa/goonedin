@@ -3,10 +3,13 @@ Scraper for Jobright.ai personalized job listings via curl_cffi.
 
 Uses JobrightSessionManager for automatic authentication — no more
 manually pasting session cookies.
+
+Also extracts pre-built analysis (qualifications, skills, summary)
+directly from the Jobright API response — no DeepSeek needed.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import time
 from datetime import datetime, timezone
 
@@ -45,12 +48,16 @@ HEADERS = {
 }
 
 
-def _parse_job(item: dict, now: datetime, max_age_hours: Optional[float]) -> Optional[JobCreate]:
+def _parse_job(item: dict, now: datetime, max_age_hours: Optional[float]) -> Optional[Tuple[JobCreate, dict]]:
     """
-    Parse a single Jobright API item into a JobCreate, or None if filtered out.
+    Parse a single Jobright API item into a (JobCreate, analysis_dict) tuple,
+    or None if filtered out.
 
     The API wraps each job in {"jobResult": {...}, "displayScore": ..., ...}.
     The actual job fields live inside `jobResult`.
+
+    The analysis dict matches the DeepSeek schema so the frontend can
+    display the same Hard Requirements / Secondary Skills / Credentials modal.
     """
     jr = item.get("jobResult", item)  # unwrap, or use item directly as fallback
 
@@ -113,7 +120,45 @@ def _parse_job(item: dict, now: datetime, max_age_hours: Optional[float]) -> Opt
         elif jr.get("workplaceType") == 3:
             work_model = "Hybrid"
 
-    return JobCreate(
+    # --- Build analysis from API data (same schema as DeepSeek) ---
+    quals = jr.get("qualifications", {})
+    must_have = quals.get("mustHave", []) or []
+    preferred = quals.get("preferredHave", []) or []
+
+    # Build minimum_qualifications from detailQualifications
+    detail_quals = jr.get("detailQualifications", {})
+    min_quals: List[str] = []
+    must_detail = detail_quals.get("mustHave", {})
+    for yoe in must_detail.get("yoe", []):
+        if isinstance(yoe, dict) and yoe.get("skill"):
+            min_quals.append(yoe["skill"])
+        elif isinstance(yoe, str) and yoe:
+            min_quals.append(yoe)
+    for edu in must_detail.get("education", []):
+        if isinstance(edu, dict) and edu.get("skill"):
+            min_quals.append(edu["skill"])
+        elif isinstance(edu, str) and edu:
+            min_quals.append(edu)
+    # If no structured detail, extract education-like items from mustHave
+    if not min_quals:
+        for item_text in must_have:
+            lower = item_text.lower()
+            if any(kw in lower for kw in ["degree", "bachelor", "master", "phd",
+                                           "b.s", "m.s", "b.sc", "m.sc",
+                                           "years of experience", "year experience",
+                                           "certification", "clearance"]):
+                min_quals.append(item_text)
+
+    summary = jr.get("jobSummary") or ""
+
+    analysis = {
+        "must_have_keywords": must_have,
+        "good_to_have_keywords": preferred,
+        "minimum_qualifications": min_quals,
+        "summary": summary,
+    }
+
+    job = JobCreate(
         external_id=str(job_id),
         title=title,
         company=company,
@@ -127,6 +172,8 @@ def _parse_job(item: dict, now: datetime, max_age_hours: Optional[float]) -> Opt
         visible=False,
         is_notified=False,
     )
+
+    return job, analysis
 
 
 async def _fetch_with_session(
@@ -174,12 +221,15 @@ async def _fetch_with_session(
 
         now = datetime.now(timezone.utc)
         new_jobs: List[JobCreate] = []
+        analyses: Dict[str, dict] = {}  # external_id -> analysis dict
         for item in job_items:
-            job = _parse_job(item, now, max_age_hours)
-            if job:
+            result = _parse_job(item, now, max_age_hours)
+            if result:
+                job, analysis = result
                 new_jobs.append(job)
+                analyses[job.external_id] = analysis
 
-        return {"failed": False, "jobs": new_jobs}
+        return {"failed": False, "jobs": new_jobs, "analyses": analyses}
 
 
 async def fetch_jobright_jobs(

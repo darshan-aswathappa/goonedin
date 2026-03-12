@@ -266,12 +266,25 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GITHUB_TTL_SECONDS)
         logger.info(f"New Target (GitHub): {job.title} @ {job.company}")
 
+    # Build a lookup of analyses from Jobright results
+    jobright_analyses: dict = {}
+    for r in results:
+        if isinstance(r, dict) and r.get("analyses"):
+            jobright_analyses.update(r["analyses"])
+
     for job in jobright_jobs:
         if not await matches_target_keywords(job, supabase, ctx.user_id):
             continue
         if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
             continue
         job_dict = job.model_dump(mode="json")
+
+        # Attach pre-built analysis from Jobright API data
+        analysis = jobright_analyses.get(job.external_id)
+        if analysis:
+            job_dict["analysis"] = analysis
+            job_dict["analysis_status"] = "completed"
+
         job_dict["visible"] = True
         await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         total_finds = total_finds + 1
