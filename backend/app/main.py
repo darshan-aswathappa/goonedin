@@ -275,8 +275,6 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     for job in jobright_jobs:
         if not await matches_target_keywords(job, supabase, ctx.user_id):
             continue
-        if await is_already_seen_sb(supabase, ctx.user_id, job.source, job.external_id):
-            continue
         job_dict = job.model_dump(mode="json")
 
         # Attach pre-built analysis from Jobright API data
@@ -286,7 +284,11 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
             job_dict["analysis_status"] = "completed"
 
         job_dict["visible"] = True
-        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+        # Use insert_job_if_new so duplicate external_ids are silently skipped —
+        # they won't overwrite dismissed rows and won't re-appear on the UI.
+        inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+        if inserted is None:
+            continue  # duplicate — already in DB, do not show on UI
         total_finds = total_finds + 1
         await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
         job_dict["is_notified"] = True
