@@ -1223,14 +1223,30 @@ async def extract_keywords(
 
     KEYWORD_PROMPT = """You are an ATS (Applicant Tracking System) expert.
 Given a job description, extract ALL keywords and phrases that an ATS system
-would scan for in a resume. Include: technical skills, tools, frameworks,
-programming languages, methodologies, certifications, domain terms, and
-any other terms critical for ATS matching.
+would scan for in a resume and classify them into two categories:
 
-Return ONLY a JSON object with a single key "keywords" containing a flat list of strings.
-No duplicates. No categories. No explanations.
+HARD SKILLS — Technical requirements and specific tools a candidate should list in their
+"Skills" section or weave into "Professional Experience" bullets. This includes:
+programming languages, frameworks, platforms, tools, methodologies, certifications,
+domain-specific technical terms, core technical competencies, documentation standards,
+security & ops practices, data & analytics, industry platforms.
 
-Example: {"keywords": ["Python", "REST APIs", "AWS", "Agile", "SQL", "CI/CD"]}"""
+SOFT SKILLS — Transferable behavioural competencies that are best demonstrated through
+bullet-point achievements rather than just being listed as single words. Examples:
+Analytical Problem-Solving, Technical Translation, Cross-functional Collaboration,
+Stakeholder Management, Strategic Communication, Leadership, Adaptability, etc.
+
+Rules:
+- No duplicates within each list (case-insensitive).
+- A keyword must appear in only one category.
+- Return ONLY a JSON object with exactly two keys: "hard_skills" and "soft_skills",
+  each containing a flat list of strings. No explanations, no extra keys.
+
+Example:
+{
+  "hard_skills": ["Python", "AWS", "REST APIs", "SQL", "CI/CD", "Agile"],
+  "soft_skills": ["Cross-functional Collaboration", "Analytical Problem-Solving", "Technical Communication"]
+}"""
 
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
     response = await asyncio.to_thread(
@@ -1246,4 +1262,7 @@ Example: {"keywords": ["Python", "REST APIs", "AWS", "Agile", "SQL", "CI/CD"]}""
     )
     raw = response.choices[0].message.content
     data = json.loads(raw)
-    return {"keywords": data.get("keywords", [])}
+    return {
+        "hard_skills": data.get("hard_skills", []),
+        "soft_skills": data.get("soft_skills", []),
+    }
