@@ -272,9 +272,8 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         if isinstance(r, dict) and r.get("analyses"):
             jobright_analyses.update(r["analyses"])
 
+    logger.info(f"[Jobright] Processing {len(jobright_jobs)} jobs (no keyword filter — personalized feed)")
     for job in jobright_jobs:
-        if not await matches_target_keywords(job, supabase, ctx.user_id):
-            continue
         job_dict = job.model_dump(mode="json")
 
         # Attach pre-built analysis from Jobright API data
