@@ -30,3 +30,5 @@ supabase>=2.0.0
 
 # --- AI & PDF ---
 openai>=1.0.0
+
+curl_cffi
