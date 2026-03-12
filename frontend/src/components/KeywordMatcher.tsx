@@ -50,6 +50,7 @@ export function KeywordMatcher() {
 
   const addedCount = checked.size;
   const totalCount = keywords.length;
+  const pct = totalCount > 0 ? Math.round((addedCount / totalCount) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground font-medium transition-colors duration-300">
@@ -122,9 +123,9 @@ export function KeywordMatcher() {
               </h2>
               <div className="flex items-center gap-2">
                 {totalCount > 0 && (
-                  <div className="brutal-border bg-card px-3 py-1 text-sm font-black shadow-[2px_2px_0px_0px_var(--border)]">
-                    <span className="text-primary">{addedCount}</span>
-                    <span className="text-muted-foreground"> / {totalCount} added</span>
+                  <div className={`brutal-border px-3 py-1 text-sm font-black shadow-[2px_2px_0px_0px_var(--border)] ${pct >= 75 ? "bg-green-100 dark:bg-green-950" : "bg-card"}`}>
+                    <span className={pct >= 75 ? "text-green-600 dark:text-green-400" : "text-primary"}>{pct}%</span>
+                    <span className="text-muted-foreground"> matched</span>
                   </div>
                 )}
                 {checked.size > 0 && (
