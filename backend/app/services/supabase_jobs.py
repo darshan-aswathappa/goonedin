@@ -236,7 +236,7 @@ async def dismiss_job(
 async def delete_jobs_by_company(
     supabase: Any, user_id: str, company: str
 ) -> list[str]:
-    """Delete all jobs from a specific company. Returns list of deleted external_ids."""
+    """Soft-delete all jobs from a specific company by setting visible=False. Returns list of affected external_ids."""
     try:
         # Find matching jobs first
         resp = await asyncio.to_thread(
@@ -245,21 +245,21 @@ async def delete_jobs_by_company(
             .eq("user_id", user_id)
             .execute()
         )
-        to_delete = []
+        to_hide = []
         for row in (resp.data or []):
             job_company = (row.get("company") or "").lower()
             if company.lower() in job_company or job_company == company.lower():
-                to_delete.append(row["external_id"])
+                to_hide.append(row["external_id"])
 
-        if to_delete:
+        if to_hide:
             await asyncio.to_thread(
                 lambda: supabase.table("scraped_jobs")
-                .delete()
+                .update({"visible": False})
                 .eq("user_id", user_id)
-                .in_("external_id", to_delete)
+                .in_("external_id", to_hide)
                 .execute()
             )
-        return to_delete
+        return to_hide
     except Exception as e:
         logger.error(f"delete_jobs_by_company failed: {e}")
         return []
