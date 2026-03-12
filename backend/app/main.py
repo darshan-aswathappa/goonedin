@@ -1201,3 +1201,49 @@ async def get_resume_analysis(resume_id: str, user: dict = Depends(get_current_u
     except Exception as e:
         logger.error(f"Error fetching resume analysis: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch analysis")
+
+
+class KeywordExtractRequest(BaseModel):
+    job_description: str
+
+
+@app.post("/keywords/extract")
+async def extract_keywords(
+    request: KeywordExtractRequest,
+    ctx: UserContext = Depends(_get_ctx),
+):
+    """Extract ATS keywords from a job description using DeepSeek."""
+    import json
+    from openai import OpenAI
+
+    settings = get_settings()
+    api_key = settings.DEEPSEEK_API_KEY
+    if not api_key:
+        raise HTTPException(status_code=400, detail="DeepSeek API key not configured")
+
+    KEYWORD_PROMPT = """You are an ATS (Applicant Tracking System) expert.
+Given a job description, extract ALL keywords and phrases that an ATS system
+would scan for in a resume. Include: technical skills, tools, frameworks,
+programming languages, methodologies, certifications, domain terms, and
+any other terms critical for ATS matching.
+
+Return ONLY a JSON object with a single key "keywords" containing a flat list of strings.
+No duplicates. No categories. No explanations.
+
+Example: {"keywords": ["Python", "REST APIs", "AWS", "Agile", "SQL", "CI/CD"]}"""
+
+    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+    response = await asyncio.to_thread(
+        lambda: client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": KEYWORD_PROMPT},
+                {"role": "user", "content": request.job_description},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=2048,
+        )
+    )
+    raw = response.choices[0].message.content
+    data = json.loads(raw)
+    return {"keywords": data.get("keywords", [])}

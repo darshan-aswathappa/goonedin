@@ -30,6 +30,7 @@ import {
   Plus,
   PencilSimple,
   Trash,
+  Tag,
 } from "@phosphor-icons/react";
 import * as PhosphorIcons from "@phosphor-icons/react";
 import Link from "next/link";
@@ -125,6 +126,12 @@ export function JobsDashboard() {
                   <Link href="/settings">
                     <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
                       <Gear weight="bold" className="h-5 w-5" />
+                    </div>
+                  </Link>
+
+                  <Link href="/keyword-matcher">
+                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
+                      <Tag weight="bold" className="h-5 w-5" />
                     </div>
                   </Link>
 
