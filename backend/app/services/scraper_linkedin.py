@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
 from app.core.supabase_config import get_target_keywords, get_blocked_companies, get_title_filter_keywords
+
 from app.models.job import JobCreate
 from random_user_agent.user_agent import UserAgent
 
@@ -120,7 +121,8 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
     # Rotate User-Agent per pagination session to avoid fingerprinting
     headers = {**HEADERS, "User-Agent": ua.get_random_user_agent()}
 
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    proxy = settings.PROXY_URL or None
+    async with httpx.AsyncClient(follow_redirects=True, proxy=proxy) as client:
         for page in range(MAX_PAGES):
             url = f"{base_url}&start={start}"
 

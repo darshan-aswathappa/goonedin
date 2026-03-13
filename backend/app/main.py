@@ -337,32 +337,28 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
 async def run_high_frequency_loop(ctx: UserContext):
     supabase = get_supabase_client()
     logger.info(f"[HF] Scraper started for {ctx.user_id}")
-    # Semaphore to limit concurrent LinkedIn keyword fetches to 4 (reduces connection pool spike from ~11 to ~7)
-    _linkedin_sem = asyncio.Semaphore(4)
-
-    async def _fetch_linkedin_with_limit(kw):
-        async with _linkedin_sem:
-            return await fetch_linkedin_jobs(supabase, ctx.user_id, keywords=kw, location="United States")
-
     while True:
         try:
             target_keywords = await get_target_keywords(supabase, ctx.user_id)
-            tasks = [
-                _fetch_linkedin_with_limit(kw)
-                for kw in target_keywords
-            ]
-            tasks.append(fetch_jobright_jobs(limit=15, max_age_hours=2.0))
 
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-            
-            # Filter out true exceptions vs valid dict returns
-            valid_results = []
-            for r in results:
-                if isinstance(r, dict):
-                    valid_results.append(r)
-                elif isinstance(r, Exception):
-                    logger.error(f"Task exception in HF loop: {r}")
+            # Fetch LinkedIn keywords sequentially with delay to avoid proxy/rate-limit issues
+            linkedin_results = []
+            for kw in target_keywords:
+                try:
+                    result = await fetch_linkedin_jobs(supabase, ctx.user_id, keywords=kw, location="United States")
+                    linkedin_results.append(result)
+                except Exception as e:
+                    logger.error(f"[HF] LinkedIn fetch failed for '{kw}': {e}")
+                await asyncio.sleep(random.uniform(1.5, 3.0))
 
+            # Fetch Jobright concurrently (separate service, no rate-limit concern)
+            try:
+                jobright_result = await fetch_jobright_jobs(limit=15, max_age_hours=2.0)
+                linkedin_results.append(jobright_result)
+            except Exception as e:
+                logger.error(f"[HF] Jobright fetch failed: {e}")
+
+            valid_results = [r for r in linkedin_results if isinstance(r, dict)]
             total = len(valid_results)
             failed = sum(1 for r in valid_results if r.get("failed", True))
             logger.info(
