@@ -99,7 +99,7 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
         f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
         f"?keywords={encoded_keywords}"
         f"&sortBy=DD"
-        f"&f_TPR=r1200"
+        f"&f_TPR=r1800"
         f"&f_JT=F"
         f"&f_E=2,3"
         f"&f_WT=1,2,3"
