@@ -76,11 +76,16 @@ def parse_posted_at(time_tag) -> datetime | None:
     return None
 
 
+LINKEDIN_PAGE_SIZE = 25   # LinkedIn returns ~25 jobs per page
+MAX_PAGES = 4             # Cap at 4 pages (100 jobs) to avoid rate-limiting
+
+
 async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, location: str = None) -> dict:
     """
     Hits the public LinkedIn guest API and parses the HTML response
     into a list of JobCreate objects with real posted_at timestamps.
-    Uses filters: sortBy=DD (date), f_TPR=r120 (last 2 min), f_JT=F (full-time), f_E=2,3 (entry/associate).
+    Paginates up to MAX_PAGES pages to capture all recent jobs.
+    Uses filters: sortBy=DD (date), f_TPR=r3600 (last 1 hour), f_JT=F (full-time), f_E=2,3 (entry/associate).
     Returns dict with keys: jobs, retries, failed.
     """
     target_keywords = await get_target_keywords(supabase, user_id)
@@ -88,115 +93,135 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
     search_location = location or "United States"
     encoded_keywords = urllib.parse.quote(search_term)
     encoded_location = urllib.parse.quote_plus(search_location)
-    url = (
+
+    base_url = (
         f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
         f"?keywords={encoded_keywords}"
         f"&sortBy=DD"
-        f"&f_TPR=r120"
-        f"&start=0"
+        f"&f_TPR=r3600"
         f"&f_JT=F"
         f"&f_E=2,3"
         f"&f_WT=1,2,3"
         f"&location={encoded_location}"
     )
 
-    logger.info(f"Pinging LinkedIn Guest API for: {search_term} in {search_location}")
+    logger.info(f"[LinkedIn] Starting paginated fetch for '{search_term}' in {search_location} (up to {MAX_PAGES} pages)")
 
-    # proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    # Get config from Supabase (once, before pagination loop)
+    title_filter_keywords = await get_title_filter_keywords(supabase, user_id)
+    blocked_companies = await get_blocked_companies(supabase, user_id)
+
     max_retries = 3
-    retries_used = 0
+    total_retries = 0
+    parsed_jobs = []
+    start = 0          # cursor-based: advances by actual cards returned, not a fixed 25
+    pages_fetched = 0
+
+    # Rotate User-Agent per pagination session to avoid fingerprinting
+    headers = {**HEADERS, "User-Agent": ua.get_random_user_agent()}
+
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        try:
-            response = None
-            for attempt in range(1, max_retries + 1):
-                try:
-                    response = await client.get(url, headers=HEADERS, timeout=15.0)
+        for page in range(MAX_PAGES):
+            url = f"{base_url}&start={start}"
+
+            try:
+                response = None
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        response = await client.get(url, headers=headers, timeout=15.0)
+                        break
+                    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError) as retry_err:
+                        total_retries += 1
+                        if attempt < max_retries:
+                            logger.warning(f"Retry {attempt}/{max_retries} for '{search_term}' page {page + 1}: {type(retry_err).__name__}")
+                            await asyncio.sleep(1 * attempt)
+                        else:
+                            raise
+
+                if response.status_code != 200:
+                    logger.error(f"[LinkedIn] Page {page + 1} for '{search_term}': HTTP {response.status_code}")
+                    if page == 0:
+                        return {"jobs": [], "retries": total_retries, "failed": True}
                     break
-                except (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError) as retry_err:
-                    retries_used = attempt
-                    if attempt < max_retries:
-                        logger.warning(f"Retry {attempt}/{max_retries} for '{search_term}' in '{search_location}': {type(retry_err).__name__}")
-                        await asyncio.sleep(1 * attempt)
-                    else:
-                        raise
 
-            if response.status_code != 200:
-                logger.error(f"LinkedIn API Error: {response.status_code}")
-                return {"jobs": [], "retries": retries_used, "failed": True}
+                if not response.text or not response.text.strip():
+                    logger.info(f"[LinkedIn] Page {page + 1}/{MAX_PAGES} for '{search_term}' (start={start}): empty response, stopping")
+                    break
 
-            if not response.text:
-                return {"jobs": [], "retries": retries_used, "failed": False}
+                soup = BeautifulSoup(response.text, "html.parser")
+                job_cards = [li for li in soup.find_all("li") if li.find("h3", class_="base-search-card__title")]
 
-            logger.info("Successfully retrieved raw job data from LinkedIn! Parsing HTML...")
+                if not job_cards:
+                    logger.info(f"[LinkedIn] Page {page + 1}/{MAX_PAGES} for '{search_term}' (start={start}): 0 cards, stopping")
+                    break
 
-            soup = BeautifulSoup(response.text, "html.parser")
-            job_cards = soup.find_all("li")
-            parsed_jobs = []
+                pages_fetched += 1
+                page_count = 0
+                for card in job_cards:
+                    try:
+                        title_tag = card.find("h3", class_="base-search-card__title")
+                        title = title_tag.get_text(strip=True) if title_tag else None
+                        if not title:
+                            continue
 
-            # Get config from Supabase
-            title_filter_keywords = await get_title_filter_keywords(supabase, user_id)
-            blocked_companies = await get_blocked_companies(supabase, user_id)
+                        if any(kw in title.lower() for kw in title_filter_keywords):
+                            logger.debug(f"Skipping job with filtered title: {title}")
+                            continue
 
-            for card in job_cards:
-                try:
-                    title_tag = card.find("h3", class_="base-search-card__title")
-                    title = title_tag.get_text(strip=True) if title_tag else None
-                    if not title:
-                        continue  # skip empty/malformed cards
+                        company_tag = card.find("h4", class_="base-search-card__subtitle")
+                        company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
 
-                    if any(kw in title.lower() for kw in title_filter_keywords):
-                        logger.debug(f"Skipping job with filtered title: {title}")
+                        if any(blocked.lower() in company.lower() for blocked in blocked_companies):
+                            logger.info(f"Skipping job from blocked company: {company}")
+                            continue
+
+                        location_tag = card.find("span", class_="job-search-card__location")
+                        location = location_tag.get_text(strip=True) if location_tag else "Unknown Location"
+
+                        link_tag = card.find("a", class_="base-card__full-link")
+                        job_url = link_tag["href"].split("?")[0] if link_tag else ""
+                        if not job_url:
+                            continue
+
+                        external_id = None
+                        id_match = re.search(r"-(\d+)$", job_url) or re.search(r"/(\d+)/?$", job_url)
+                        if id_match:
+                            external_id = id_match.group(1)
+                        else:
+                            urn = card.find("div", attrs={"data-entity-urn": True})
+                            if urn:
+                                external_id = urn["data-entity-urn"].split(":")[-1]
+                        if not external_id:
+                            continue
+
+                        time_tag = card.find("time")
+                        posted_at = parse_posted_at(time_tag)
+
+                        parsed_jobs.append(JobCreate(
+                            title=title,
+                            company=company,
+                            location=location,
+                            url=job_url,
+                            source="LinkedIn",
+                            external_id=external_id,
+                            posted_at=posted_at,
+                        ))
+                        page_count += 1
+
+                    except Exception as parse_err:
+                        logger.warning(f"Failed to parse a job card: {parse_err}")
                         continue
 
-                    company_tag = card.find("h4", class_="base-search-card__subtitle")
-                    company = company_tag.get_text(strip=True) if company_tag else "Unknown Company"
+                logger.info(f"[LinkedIn] Page {page + 1}/{MAX_PAGES} for '{search_term}' (start={start}): {len(job_cards)} cards, {page_count} jobs passed filters (total so far: {len(parsed_jobs)})")
 
-                    # Skip jobs from blocked companies
-                    if any(blocked.lower() in company.lower() for blocked in blocked_companies):
-                        logger.info(f"Skipping job from blocked company: {company}")
-                        continue
+                # Advance cursor by actual number of cards returned
+                start += len(job_cards)
 
-                    location_tag = card.find("span", class_="job-search-card__location")
-                    location = location_tag.get_text(strip=True) if location_tag else "Unknown Location"
+            except Exception as e:
+                logger.error(f"[LinkedIn] FAILED '{search_term}' page {page + 1} (start={start}): {type(e).__name__}: {e}")
+                if page == 0:
+                    return {"jobs": [], "retries": total_retries, "failed": True}
+                break
 
-                    link_tag = card.find("a", class_="base-card__full-link")
-                    job_url = link_tag["href"].split("?")[0] if link_tag else ""
-                    if not job_url:
-                        continue
-
-                    # Extract numeric LinkedIn job ID from the URL
-                    external_id = None
-                    id_match = re.search(r"-(\d+)$", job_url) or re.search(r"/(\d+)/?$", job_url)
-                    if id_match:
-                        external_id = id_match.group(1)
-                    else:
-                        # Also try data-entity-urn on the card div
-                        urn = card.find("div", attrs={"data-entity-urn": True})
-                        if urn:
-                            external_id = urn["data-entity-urn"].split(":")[-1]
-                    if not external_id:
-                        continue
-
-                    time_tag = card.find("time")
-                    posted_at = parse_posted_at(time_tag)
-
-                    parsed_jobs.append(JobCreate(
-                        title=title,
-                        company=company,
-                        location=location,
-                        url=job_url,
-                        source="LinkedIn",
-                        external_id=external_id,
-                        posted_at=posted_at,
-                    ))
-
-                except Exception as parse_err:
-                    logger.warning(f"Failed to parse a job card: {parse_err}")
-                    continue
-
-            logger.info(f"OK '{search_term}' in '{search_location}': {len(parsed_jobs)} jobs parsed.")
-            return {"jobs": parsed_jobs, "retries": retries_used, "failed": False}
-
-        except Exception as e:
-            logger.error(f"Scraping FAILED for '{search_term}' in '{search_location}': {type(e).__name__}: {e}")
-            return {"jobs": [], "retries": retries_used, "failed": True}
+    logger.info(f"[LinkedIn] DONE '{search_term}' in {search_location}: {len(parsed_jobs)} total jobs from {pages_fetched} pages")
+    return {"jobs": parsed_jobs, "retries": total_retries, "failed": False}

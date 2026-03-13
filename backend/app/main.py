@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
 import random
+import time as _time
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel
 from typing import Optional, Any, List
@@ -77,6 +78,28 @@ JOB_RECENCY_MINUTES = 600
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 2
 GITHUB_TTL_SECONDS = 24 * 60 * 60
 
+# ── In-memory dedup for LinkedIn jobs ──────────────────────────────
+# Maps user_id → {external_id: timestamp_added}
+# Avoids Supabase round-trips for jobs already processed this session.
+_seen_linkedin: dict[str, dict[str, float]] = {}
+
+def _is_seen(user_id: str, external_id: str) -> bool:
+    return external_id in _seen_linkedin.get(user_id, {})
+
+def _mark_seen(user_id: str, external_id: str):
+    _seen_linkedin.setdefault(user_id, {})[external_id] = _time.monotonic()
+
+def _prune_seen(max_age: float = SEEN_JOB_TTL_SECONDS):
+    """Remove entries older than max_age seconds."""
+    now = _time.monotonic()
+    for uid in list(_seen_linkedin):
+        entries = _seen_linkedin[uid]
+        stale = [eid for eid, ts in entries.items() if now - ts > max_age]
+        for eid in stale:
+            del entries[eid]
+        if not entries:
+            del _seen_linkedin[uid]
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from supabase import create_client
@@ -94,6 +117,7 @@ async def lifespan(app: FastAPI):
                 await cleanup_expired_jobs(supabase)               # soft-delete expired scraped_jobs
                 await cleanup_old_invisible_jobs(supabase)         # hard-delete 60d+ invisible scraped_jobs
                 await cleanup_old_invisible_custom_jobs(supabase)  # hard-delete 60d+ invisible custom jobs
+                _prune_seen()                                      # evict stale in-memory dedup entries
             except Exception as e:
                 logger.warning(f"Expired job cleanup error: {e}")
             await asyncio.sleep(300)  # every 5 minutes
@@ -166,6 +190,9 @@ async def matches_target_keywords(job, supabase, user_id: str) -> bool:
 
 async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     supabase = get_supabase_client()
+    # Fetch keywords ONCE to avoid redundant DB calls per job
+    target_keywords = await get_target_keywords(supabase, ctx.user_id)
+    target_keywords_lower = [kw.lower() for kw in target_keywords]
     all_jobs: List[Any] = []
     jobright_jobs: List[Any] = []
     mathworks_jobs: List[Any] = []
@@ -196,7 +223,14 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     for job in all_jobs:
         if not is_recent(job.posted_at):
             continue
-        if not await matches_target_keywords(job, supabase, ctx.user_id):
+
+        # In-memory dedup: skip jobs already processed this session (avoids DB round-trips)
+        if _is_seen(ctx.user_id, job.external_id):
+            continue
+
+        title_lower = job.title.lower()
+        if not any(kw in title_lower for kw in target_keywords_lower):
+            _mark_seen(ctx.user_id, job.external_id)  # remember non-matching jobs too
             continue
 
         job_dict = job.model_dump(mode="json")
@@ -212,6 +246,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 job_dict["visa"] = cache.get("visa")
                 job_dict["visible"] = True
                 inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                _mark_seen(ctx.user_id, job.external_id)
                 if inserted is None:
                     continue  # already exists (possibly dismissed)
                 total_finds = total_finds + 1  # type: ignore
@@ -225,6 +260,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 await enqueue_job(supabase, job_dict["external_id"], job_dict["url"])
                 job_dict["visible"] = False
                 inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+                _mark_seen(ctx.user_id, job.external_id)
                 if inserted is None:
                     continue  # already exists
                 total_finds = total_finds + 1  # type: ignore
@@ -232,6 +268,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         else:
             job_dict["visible"] = True
             inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
+            _mark_seen(ctx.user_id, job.external_id)
             if inserted is None:
                 continue  # already exists (possibly dismissed)
             total_finds = total_finds + 1  # type: ignore
@@ -253,7 +290,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         logger.info(f"New Target (MathWorks): {job.title} @ {job.company}")
 
     for job in github_jobs:
-        if not await matches_target_keywords(job, supabase, ctx.user_id):
+        if not any(kw in job.title.lower() for kw in target_keywords_lower):
             continue
         job_dict = job.model_dump(mode="json")
         job_dict["visible"] = True
@@ -687,6 +724,7 @@ async def update_target_keywords(
     success = await set_config_list(supabase, ctx.user_id, "target_keywords", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
+    _seen_linkedin.pop(ctx.user_id, None)
     return {"message": "Updated", "target_keywords": request.values}
 
 
@@ -724,6 +762,7 @@ async def update_blocked_companies(
     success = await set_config_list(supabase, ctx.user_id, "blocked_companies", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
+    _seen_linkedin.pop(ctx.user_id, None)
     return {"message": "Updated", "blocked_companies": request.values}
 
 
@@ -742,6 +781,7 @@ async def update_title_filter_keywords(
     success = await set_config_list(supabase, ctx.user_id, "title_filter_keywords", request.values)
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
+    _seen_linkedin.pop(ctx.user_id, None)
     return {"message": "Updated", "title_filter_keywords": request.values}
 
 
@@ -838,6 +878,7 @@ async def block_company_and_remove_jobs(
             blocked_companies.append(request.company)
             await set_config_list(supabase, ctx.user_id, "blocked_companies", blocked_companies)
 
+        _seen_linkedin.pop(ctx.user_id, None)
         deleted_job_ids = await delete_jobs_by_company(supabase, ctx.user_id, request.company)
 
         await manager.broadcast(

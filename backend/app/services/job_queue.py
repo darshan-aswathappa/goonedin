@@ -51,7 +51,7 @@ async def create_cache_entry(
         }
         await asyncio.to_thread(
             lambda: supabase.table("job_analysis_cache")
-            .upsert(row, on_conflict="external_id")
+            .upsert(row, on_conflict="external_id", ignore_duplicates=True)
             .execute()
         )
         return True
@@ -119,8 +119,8 @@ async def enqueue_job(
     try:
         # Check if already analyzed and cached
         cache_entry = await get_cache_entry(supabase, external_id)
-        if cache_entry and cache_entry.get("analysis_status") == "completed":
-            logger.debug(f"Job {external_id} already analyzed and cached, skipping re-enqueue")
+        if cache_entry and cache_entry.get("analysis_status") in ("completed", "processing"):
+            logger.debug(f"Job {external_id} already {cache_entry.get('analysis_status')} in cache, skipping re-enqueue")
             return True
 
         row = {
