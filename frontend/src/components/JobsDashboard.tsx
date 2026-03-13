@@ -9,6 +9,8 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { ThemeToggle } from "./ThemeToggle";
 import { CompanyTicker } from "./CompanyTicker";
 import { AddJobSourceModal } from "./AddJobSourceModal";
+import { LocationFilterInput } from "./LocationFilterInput";
+import { ScrapeCountdown } from "./ScrapeCountdown";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCATION_FILTER } from "@/config/filters";
@@ -51,6 +53,10 @@ export function JobsDashboard() {
   const locationFilteredJobs = useJobsStore(
     (state) => state.locationFilteredJobs,
   );
+  const locationFilterLocation = useJobsStore((state) => state.locationFilterLocation);
+  const locationFilterNormalized = useJobsStore((state) => state.locationFilterNormalized);
+  const nextLinkedinScrape = useJobsStore((state) => state.nextLinkedinScrape);
+  const nextLocationScrape = useJobsStore((state) => state.nextLocationScrape);
   const customSources = useJobsStore((state) => state.customSources);
   const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
   const sourceStatuses = useJobsStore((state) => state.sourceStatuses);
@@ -174,17 +180,15 @@ export function JobsDashboard() {
                 </div>
               </TabsTrigger>
               
-              {LOCATION_FILTER.enabled && (
-                <TabsTrigger
-                  value="location"
-                  className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
-                >
-                  <div className="flex items-center gap-2">
-                    <MapPin weight="bold" className="h-5 w-5" />
-                    {LOCATION_FILTER.displayName} ({locationFilteredJobs.length})
-                  </div>
-                </TabsTrigger>
-              )}
+              <TabsTrigger
+                value="location"
+                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+              >
+                <div className="flex items-center gap-2">
+                  <MapPin weight="bold" className="h-5 w-5" />
+                  {locationFilterNormalized?.abbreviation || (LOCATION_FILTER.enabled ? LOCATION_FILTER.displayName : "Location")} ({locationFilteredJobs.length})
+                </div>
+              </TabsTrigger>
 
               <TabsTrigger
                 value="linkedin"
@@ -259,17 +263,38 @@ export function JobsDashboard() {
             />
           </TabsContent>
 
-          {LOCATION_FILTER.enabled && (
-            <TabsContent value="location" className="mt-0">
-              <JobList
-                jobs={locationFilteredJobs}
-                emptyMessage={`No jobs in ${LOCATION_FILTER.location} yet. They'll appear here when found.`}
-                isLocked={!user}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="location" className="mt-0">
+            <div className="flex flex-col gap-3 mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-1">
+                <span className="font-black uppercase tracking-tighter text-xl">
+                  {locationFilterNormalized?.full_name || "Location Filter"}
+                </span>
+                {locationFilterNormalized && (
+                  <span className="font-bold text-xs text-muted-foreground flex gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 border-2 border-black bg-red-100 dark:bg-red-900/50">{locationFilterNormalized.abbreviation}</span>
+                    <ScrapeCountdown nextScrapeAt={nextLocationScrape} />
+                  </span>
+                )}
+              </div>
+              <LocationFilterInput />
+            </div>
+            <JobList
+              jobs={locationFilteredJobs}
+              emptyMessage={
+                locationFilterLocation
+                  ? `No jobs in ${locationFilterNormalized?.full_name || locationFilterLocation} yet. They'll appear here when found.`
+                  : "Set a location above to filter jobs by state or city."
+              }
+              isLocked={!user}
+            />
+          </TabsContent>
 
           <TabsContent value="linkedin" className="mt-0">
+            {nextLinkedinScrape && (
+              <div className="mb-4">
+                <ScrapeCountdown nextScrapeAt={nextLinkedinScrape} />
+              </div>
+            )}
             <JobList
               jobs={linkedinJobs}
               emptyMessage="No LinkedIn jobs yet. They'll appear here when found."

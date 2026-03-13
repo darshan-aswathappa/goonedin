@@ -15,6 +15,7 @@ class UserContext:
     hf_task: Optional[asyncio.Task] = field(default=None)
     lf_task: Optional[asyncio.Task] = field(default=None)
     custom_sources_task: Optional[asyncio.Task] = field(default=None)
+    location_task: Optional[asyncio.Task] = field(default=None)
 
 
 # Global registry: user_id -> UserContext

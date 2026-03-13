@@ -31,13 +31,18 @@ interface CustomSourceStatusMessage {
   type: "CUSTOM_SOURCE_STATUS";
   data: { source_id: string; status: string; message: string };
 }
+interface ScrapeCycleMessage {
+  type: "SCRAPE_CYCLE";
+  data: { scraper: string; next_scrape_at: string };
+}
 
 type WebSocketMessage =
   | NewJobMessage
   | CompanyBlockedMessage
   | JobDismissedMessage
   | UpdateJobMessage
-  | CustomSourceStatusMessage;
+  | CustomSourceStatusMessage
+  | ScrapeCycleMessage;
 
 export function useWebSocket({ enabled = true } = {}) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -52,6 +57,7 @@ export function useWebSocket({ enabled = true } = {}) {
     updateJob,
     setConnectionStatus,
     setSourceStatus,
+    setNextScrape,
   } = useJobsStore();
 
   const connect = useCallback(async () => {
@@ -124,6 +130,8 @@ export function useWebSocket({ enabled = true } = {}) {
             message.data.status,
             message.data.message,
           );
+        } else if (message.type === "SCRAPE_CYCLE" && message.data) {
+          setNextScrape(message.data.scraper, message.data.next_scrape_at);
         }
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
@@ -150,6 +158,7 @@ export function useWebSocket({ enabled = true } = {}) {
     updateJob,
     setConnectionStatus,
     setSourceStatus,
+    setNextScrape,
   ]);
 
   const disconnect = useCallback(() => {

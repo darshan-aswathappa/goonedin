@@ -8,7 +8,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const REFRESH_INTERVAL = 30000;
 
 export function useJobsApi(enabled: boolean = true) {
-  const { setJobs, setLoading, setSavedJobIds } = useJobsStore();
+  const { setJobs, setLoading, setSavedJobIds, setLocationFilter } = useJobsStore();
   const connectionStatus = useJobsStore((state) => state.connectionStatus);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const prevStatusRef = useRef(connectionStatus);
@@ -16,10 +16,11 @@ export function useJobsApi(enabled: boolean = true) {
   const fetchJobs = useCallback(async () => {
     try {
       const headers = await getAuthHeaders();
-      const [jobsRes, savedRes, customRes] = await Promise.all([
+      const [jobsRes, savedRes, customRes, locationRes] = await Promise.all([
         fetch(`${API_URL}/jobs`, { headers }),
         fetch(`${API_URL}/jobs/saved`, { headers }),
         fetch(`${API_URL}/config/custom-sources`, { headers }),
+        fetch(`${API_URL}/config/location-filter`, { headers }),
       ]);
       
       if (!jobsRes.ok) throw new Error(`HTTP ${jobsRes.status}`);
@@ -27,11 +28,13 @@ export function useJobsApi(enabled: boolean = true) {
       const data = await jobsRes.json();
       const savedData = savedRes.ok ? await savedRes.json() : { jobs: [] };
       const customData = customRes.ok ? await customRes.json() : { custom_sources: [] };
+      const locationData = locationRes.ok ? await locationRes.json() : { location: null, normalized: null };
 
       const jobs: Job[] = data.jobs || [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const savedIds: string[] = (savedData.jobs || []).map((j: any) => j.external_id);
 
+      setLocationFilter(locationData.location, locationData.normalized);
       setJobs(jobs);
       setSavedJobIds(savedIds);
       const customSourcesList = customData.custom_sources || [];
@@ -52,7 +55,7 @@ export function useJobsApi(enabled: boolean = true) {
     } finally {
       setLoading(false);
     }
-  }, [setJobs, setLoading, setSavedJobIds]);
+  }, [setJobs, setLoading, setSavedJobIds, setLocationFilter]);
 
   useEffect(() => {
     if (!enabled) return;

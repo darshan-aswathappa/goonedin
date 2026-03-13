@@ -49,13 +49,14 @@ DEFAULT_TITLE_FILTER_KEYWORDS = [
     "Dental", "Pharmacist", "Veterinarian",
 ]
 
-VALID_KEYS = ["target_keywords", "target_locations", "blocked_companies", "title_filter_keywords"]
+VALID_KEYS = ["target_keywords", "target_locations", "blocked_companies", "title_filter_keywords", "location_filter_location"]
 
 DEFAULTS = {
     "target_keywords": DEFAULT_TARGET_KEYWORDS,
     "target_locations": DEFAULT_TARGET_LOCATIONS,
     "blocked_companies": DEFAULT_BLOCKED_COMPANIES,
     "title_filter_keywords": DEFAULT_TITLE_FILTER_KEYWORDS,
+    "location_filter_location": [],
 }
 
 
@@ -151,6 +152,17 @@ async def get_all_config(supabase: Any, user_id: str) -> dict:
         "blocked_companies": await get_blocked_companies(supabase, user_id),
         "title_filter_keywords": await get_title_filter_keywords(supabase, user_id),
     }
+
+
+async def get_location_filter(supabase: Any, user_id: str) -> str | None:
+    """Get the user's location filter value (e.g. 'MA', 'California')."""
+    vals = await _get_setting(supabase, user_id, "location_filter_location")
+    return vals[0] if vals else None
+
+
+async def set_location_filter(supabase: Any, user_id: str, value: str | None) -> bool:
+    """Set the user's location filter. Pass None to clear."""
+    return await _set_setting(supabase, user_id, "location_filter_location", [value] if value else [])
 
 
 async def seed_settings_if_missing(supabase: Any, user_id: str) -> None:

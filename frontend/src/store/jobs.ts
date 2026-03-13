@@ -53,22 +53,47 @@ export interface Job {
   is_custom?: boolean;
 }
 
-const matchesLocationFilter = (job: Job): boolean => {
+interface LocationNormalized {
+  full_name: string;
+  abbreviation: string;
+  cities: string[];
+  state_patterns: string[];
+}
+
+const matchesLocationFilter = (job: Job, normalized: LocationNormalized | null): boolean => {
+  // Use dynamic normalized data if available, else fall back to static config
+  if (normalized) {
+    const location = job.location;
+    const locationLower = location.toLowerCase();
+
+    const hasStateMatch = normalized.state_patterns.some(pattern =>
+      location.includes(pattern) || locationLower.includes(pattern.toLowerCase())
+    );
+    if (hasStateMatch) return true;
+
+    const hasCityMatch = normalized.cities.some(city => {
+      const cityLower = city.toLowerCase();
+      const regex = new RegExp(`\\b${cityLower}\\b`, 'i');
+      return regex.test(location);
+    });
+    return hasCityMatch;
+  }
+
+  // Fallback to static LOCATION_FILTER
   if (!LOCATION_FILTER.enabled) return false;
   const location = job.location;
   const locationLower = location.toLowerCase();
-  
-  const hasStateMatch = LOCATION_FILTER.exactStatePatterns.some(pattern => 
+
+  const hasStateMatch = LOCATION_FILTER.exactStatePatterns.some(pattern =>
     location.includes(pattern) || locationLower.includes(pattern.toLowerCase())
   );
   if (hasStateMatch) return true;
-  
+
   const hasCityMatch = LOCATION_FILTER.cityPatterns.some(city => {
     const cityLower = city.toLowerCase();
     const regex = new RegExp(`\\b${cityLower}\\b`, 'i');
     return regex.test(location);
   });
-  
   return hasCityMatch;
 };
 
@@ -79,6 +104,10 @@ interface JobsState {
   mathworksJobs: Job[];
   githubJobs: Job[];
   locationFilteredJobs: Job[];
+  locationFilterLocation: string | null;
+  locationFilterNormalized: LocationNormalized | null;
+  nextLinkedinScrape: string | null;
+  nextLocationScrape: string | null;
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
   addJob: (job: Job) => void;
@@ -86,6 +115,8 @@ interface JobsState {
   removeJobsByCompany: (company: string) => void;
   updateJob: (externalId: string, updates: Partial<Job>) => void;
   setJobs: (jobs: Job[]) => void;
+  setLocationFilter: (location: string | null, normalized: LocationNormalized | null) => void;
+  setNextScrape: (scraper: string, nextAt: string) => void;
   setConnectionStatus: (status: "connecting" | "connected" | "disconnected") => void;
   setLoading: (loading: boolean) => void;
   clearJobs: () => void;
@@ -110,6 +141,10 @@ export const useJobsStore = create<JobsState>((set) => ({
   mathworksJobs: [],
   githubJobs: [],
   locationFilteredJobs: [],
+  locationFilterLocation: null,
+  locationFilterNormalized: null,
+  nextLinkedinScrape: null,
+  nextLocationScrape: null,
   connectionStatus: "disconnected",
   isLoading: true,
   savedJobIds: new Set<string>(),
@@ -138,7 +173,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         githubJobs: job.source === "GitHub"
           ? [job, ...state.githubJobs]
           : state.githubJobs,
-        locationFilteredJobs: matchesLocationFilter(job)
+        locationFilteredJobs: matchesLocationFilter(job, state.locationFilterNormalized)
           ? [job, ...state.locationFilteredJobs]
           : state.locationFilteredJobs,
       };
@@ -193,12 +228,25 @@ export const useJobsStore = create<JobsState>((set) => ({
         jobrightJobs: filtered.filter((j) => j.source === "Jobright"),
         mathworksJobs: filtered.filter((j) => j.source === "MathWorks"),
         githubJobs: filtered.filter((j) => j.source === "GitHub"),
-        locationFilteredJobs: filtered.filter(matchesLocationFilter),
+        locationFilteredJobs: filtered.filter((j) => matchesLocationFilter(j, state.locationFilterNormalized)),
       };
     }),
 
+  setLocationFilter: (location, normalized) =>
+    set((state) => ({
+      locationFilterLocation: location,
+      locationFilterNormalized: normalized,
+      locationFilteredJobs: state.jobs.filter((j) => matchesLocationFilter(j, normalized)),
+    })),
+
+  setNextScrape: (scraper, nextAt) =>
+    set(scraper === "linkedin"
+      ? { nextLinkedinScrape: nextAt }
+      : { nextLocationScrape: nextAt }
+    ),
+
   setConnectionStatus: (status) => set({ connectionStatus: status }),
-  
+
   setLoading: (isLoading) => set({ isLoading }),
 
   clearJobs: () =>

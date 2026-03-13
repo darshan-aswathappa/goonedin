@@ -134,7 +134,7 @@ def analyze_job_with_deepseek(description: str, api_key: str) -> dict[str, Any]:
     )
 
     response = client.chat.completions.create(
-        model="deepseek-reasoner",
+        model="deepseek-chat",
         messages=[
             {"role": "system", "content": JOB_ANALYSIS_PROMPT},
             {"role": "user", "content": f"Analyze this job description:\n\n{description}"},

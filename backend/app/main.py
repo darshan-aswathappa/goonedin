@@ -17,7 +17,10 @@ from app.core.supabase_config import (
     get_title_filter_keywords,
     get_all_config,
     set_config_list,
+    get_location_filter,
+    set_location_filter,
 )
+from app.core.location_map import normalize_location
 from app.services.supabase_jobs import (
     is_already_seen as is_already_seen_sb,
     upsert_job,
@@ -152,6 +155,8 @@ async def lifespan(app: FastAPI):
             ctx.lf_task.cancel()
         if ctx.custom_sources_task and not ctx.custom_sources_task.done():
             ctx.custom_sources_task.cancel()
+        if ctx.location_task and not ctx.location_task.done():
+            ctx.location_task.cancel()
 
 
 app = FastAPI(
@@ -372,7 +377,13 @@ async def run_high_frequency_loop(ctx: UserContext):
                 logger.debug(f"[HF] {ctx.user_id} No new targets.")
         except Exception as e:
             logger.error(f"[HF] {ctx.user_id} Error: {e}")
-        await asyncio.sleep(90 + random.uniform(-10, 10))
+        sleep_secs = 90 + random.uniform(-10, 10)
+        next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
+        await manager.broadcast(ctx.user_id, {
+            "type": "SCRAPE_CYCLE",
+            "data": {"scraper": "linkedin", "next_scrape_at": next_at.isoformat()}
+        })
+        await asyncio.sleep(sleep_secs)
 
 
 async def run_low_frequency_loop(ctx: UserContext):
@@ -533,6 +544,62 @@ async def run_custom_sources_loop(ctx: UserContext):
         await asyncio.sleep(60)
 
 
+async def run_location_scrape_loop(ctx: UserContext, location: str):
+    """LinkedIn scrape loop for a specific location. Mirrors run_high_frequency_loop."""
+    supabase = get_supabase_client()
+    logger.info(f"[LOC] Location scraper started for {ctx.user_id} → {location}")
+    while True:
+        try:
+            target_keywords = await get_target_keywords(supabase, ctx.user_id)
+
+            linkedin_results = []
+            for kw in target_keywords:
+                try:
+                    result = await fetch_linkedin_jobs(supabase, ctx.user_id, keywords=kw, location=location)
+                    linkedin_results.append(result)
+                except Exception as e:
+                    logger.error(f"[LOC] LinkedIn fetch failed for '{kw}' in {location}: {e}")
+                await asyncio.sleep(random.uniform(1.5, 3.0))
+
+            valid_results = [r for r in linkedin_results if isinstance(r, dict)]
+            total = len(valid_results)
+            failed = sum(1 for r in valid_results if r.get("failed", True))
+            logger.info(
+                f"[LOC] {ctx.user_id} ({location}) | {total} calls | "
+                f"{total - failed} passed | {failed} failed"
+            )
+            new_finds = await process_and_alert_jobs(valid_results, ctx)
+            if new_finds == 0:
+                logger.debug(f"[LOC] {ctx.user_id} ({location}) No new targets.")
+        except asyncio.CancelledError:
+            logger.info(f"[LOC] Location scraper stopped for {ctx.user_id}")
+            break
+        except Exception as e:
+            logger.error(f"[LOC] {ctx.user_id} ({location}) Error: {e}")
+        sleep_secs = 90 + random.uniform(-10, 10)
+        next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
+        await manager.broadcast(ctx.user_id, {
+            "type": "SCRAPE_CYCLE",
+            "data": {"scraper": "location", "next_scrape_at": next_at.isoformat()}
+        })
+        await asyncio.sleep(sleep_secs)
+
+
+def _start_location_scraper(ctx: UserContext, linkedin_location: str):
+    """Start or restart the location-specific LinkedIn scraper."""
+    _stop_location_scraper(ctx)
+    ctx.location_task = asyncio.create_task(run_location_scrape_loop(ctx, linkedin_location))
+    logger.info(f"[LOC] Started location scraper for {ctx.user_id} → {linkedin_location}")
+
+
+def _stop_location_scraper(ctx: UserContext):
+    """Stop the location-specific LinkedIn scraper if running."""
+    if ctx.location_task and not ctx.location_task.done():
+        ctx.location_task.cancel()
+        logger.info(f"[LOC] Stopped location scraper for {ctx.user_id}")
+    ctx.location_task = None
+
+
 def start_user_scrapers(ctx: UserContext) -> None:
     """Start HF and LF scraper tasks for a user if they aren't already running."""
     # Ensure we don't start them multiple times due to race conditions
@@ -546,7 +613,24 @@ def start_user_scrapers(ctx: UserContext) -> None:
     if getattr(ctx, "custom_sources_task", None) is None or ctx.custom_sources_task.done():
         ctx.custom_sources_task = asyncio.create_task(run_custom_sources_loop(ctx))
 
+    # Start location scraper if user has a location filter set
+    if ctx.location_task is None or ctx.location_task.done():
+        asyncio.create_task(_maybe_start_location_scraper(ctx))
+
     ctx._scrapers_started = True
+
+
+async def _maybe_start_location_scraper(ctx: UserContext):
+    """Check if user has a location filter and start the scraper if so."""
+    try:
+        supabase = get_supabase_client()
+        raw = await get_location_filter(supabase, ctx.user_id)
+        if raw:
+            normalized = normalize_location(raw)
+            if normalized:
+                _start_location_scraper(ctx, normalized["full_name"])
+    except Exception as e:
+        logger.warning(f"[LOC] Failed to check location filter for {ctx.user_id}: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -781,6 +865,37 @@ async def update_title_filter_keywords(
         raise HTTPException(status_code=500, detail="Failed to update config")
     _seen_linkedin.pop(ctx.user_id, None)
     return {"message": "Updated", "title_filter_keywords": request.values}
+
+
+class LocationFilterRequest(BaseModel):
+    location: Optional[str] = None
+
+
+@app.get("/config/location-filter")
+async def get_location_filter_endpoint(ctx: UserContext = Depends(_get_ctx)):
+    supabase = get_supabase_client()
+    raw = await get_location_filter(supabase, ctx.user_id)
+    normalized = normalize_location(raw) if raw else None
+    return {"location": raw, "normalized": normalized}
+
+
+@app.put("/config/location-filter")
+async def update_location_filter(
+    request: LocationFilterRequest, ctx: UserContext = Depends(_get_ctx)
+):
+    supabase = get_supabase_client()
+
+    if request.location:
+        normalized = normalize_location(request.location)
+        if not normalized:
+            raise HTTPException(status_code=400, detail=f"Unrecognized location: '{request.location}'. Try a US state name, abbreviation, or major city.")
+        await set_location_filter(supabase, ctx.user_id, request.location)
+        _start_location_scraper(ctx, normalized["full_name"])
+        return {"location": request.location, "normalized": normalized}
+    else:
+        await set_location_filter(supabase, ctx.user_id, None)
+        _stop_location_scraper(ctx)
+        return {"location": None, "normalized": None}
 
 
 class CustomSourceRequest(BaseModel):
