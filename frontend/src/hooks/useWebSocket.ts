@@ -5,7 +5,8 @@ import { useJobsStore, Job } from "@/store/jobs";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
+const WS_BASE_URL =
+  process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws/jobs";
 const INITIAL_RECONNECT_INTERVAL = 1000;
 const MAX_RECONNECT_INTERVAL = 30000;
 const PING_INTERVAL = 30000;
@@ -31,7 +32,12 @@ interface CustomSourceStatusMessage {
   data: { source_id: string; status: string; message: string };
 }
 
-type WebSocketMessage = NewJobMessage | CompanyBlockedMessage | JobDismissedMessage | UpdateJobMessage | CustomSourceStatusMessage;
+type WebSocketMessage =
+  | NewJobMessage
+  | CompanyBlockedMessage
+  | JobDismissedMessage
+  | UpdateJobMessage
+  | CustomSourceStatusMessage;
 
 export function useWebSocket({ enabled = true } = {}) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -39,10 +45,24 @@ export function useWebSocket({ enabled = true } = {}) {
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const processedEventsRef = useRef<Map<string, number>>(new Map());
   const reconnectAttemptsRef = useRef(0);
-  const { addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus, setSourceStatus } = useJobsStore();
+  const {
+    addJob,
+    removeJob,
+    removeJobsByCompany,
+    updateJob,
+    setConnectionStatus,
+    setSourceStatus,
+  } = useJobsStore();
 
   const connect = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    // Close any lingering connection (e.g. in CONNECTING or CLOSING state)
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
     setConnectionStatus("connecting");
 
@@ -91,9 +111,8 @@ export function useWebSocket({ enabled = true } = {}) {
           });
         } else if (message.type === "COMPANY_BLOCKED" && message.data) {
           removeJobsByCompany(message.data.company);
-          const count = message.data.deleted_job_ids.length;
           toast.success(`Blocked: ${message.data.company}`, {
-            description: `Removed ${count} job${count !== 1 ? "s" : ""} from all lists`,
+            description: "Future jobs from this company will be hidden",
           });
         } else if (message.type === "JOB_DISMISSED" && message.data) {
           removeJob(message.data.external_id);
@@ -103,7 +122,7 @@ export function useWebSocket({ enabled = true } = {}) {
           setSourceStatus(
             message.data.source_id,
             message.data.status,
-            message.data.message
+            message.data.message,
           );
         }
       } catch (error) {
@@ -117,14 +136,21 @@ export function useWebSocket({ enabled = true } = {}) {
 
       const delayMs = Math.min(
         INITIAL_RECONNECT_INTERVAL * Math.pow(2, reconnectAttemptsRef.current),
-        MAX_RECONNECT_INTERVAL
+        MAX_RECONNECT_INTERVAL,
       );
       reconnectAttemptsRef.current += 1;
       reconnectTimeoutRef.current = setTimeout(() => connect(), delayMs);
     };
 
     ws.onerror = () => ws.close();
-  }, [addJob, removeJob, removeJobsByCompany, updateJob, setConnectionStatus, setSourceStatus]);
+  }, [
+    addJob,
+    removeJob,
+    removeJobsByCompany,
+    updateJob,
+    setConnectionStatus,
+    setSourceStatus,
+  ]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);

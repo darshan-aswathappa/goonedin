@@ -237,18 +237,22 @@ async def delete_jobs_by_company(
     supabase: Any, user_id: str, company: str
 ) -> list[str]:
     """Soft-delete all jobs from a specific company by setting visible=False. Returns list of affected external_ids."""
+    all_hidden: list[str] = []
+    company_lower = company.lower()
+
+    # 1) Soft-delete from scraped_jobs
     try:
-        # Find matching jobs first
         resp = await asyncio.to_thread(
             lambda: supabase.table("scraped_jobs")
             .select("external_id, company")
             .eq("user_id", user_id)
+            .eq("visible", True)
             .execute()
         )
         to_hide = []
         for row in (resp.data or []):
             job_company = (row.get("company") or "").lower()
-            if company.lower() in job_company or job_company == company.lower():
+            if company_lower in job_company or job_company == company_lower:
                 to_hide.append(row["external_id"])
 
         if to_hide:
@@ -259,10 +263,38 @@ async def delete_jobs_by_company(
                 .in_("external_id", to_hide)
                 .execute()
             )
-        return to_hide
+            all_hidden.extend(to_hide)
     except Exception as e:
-        logger.error(f"delete_jobs_by_company failed: {e}")
-        return []
+        logger.error(f"delete_jobs_by_company (scraped_jobs) failed: {e}")
+
+    # 2) Soft-delete from custom_source_jobs
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("custom_source_jobs")
+            .select("external_id, company")
+            .eq("user_id", user_id)
+            .eq("visible", True)
+            .execute()
+        )
+        to_hide_custom = []
+        for row in (resp.data or []):
+            job_company = (row.get("company") or "").lower()
+            if company_lower in job_company or job_company == company_lower:
+                to_hide_custom.append(row["external_id"])
+
+        if to_hide_custom:
+            await asyncio.to_thread(
+                lambda: supabase.table("custom_source_jobs")
+                .update({"visible": False})
+                .eq("user_id", user_id)
+                .in_("external_id", to_hide_custom)
+                .execute()
+            )
+            all_hidden.extend(to_hide_custom)
+    except Exception as e:
+        logger.error(f"delete_jobs_by_company (custom_source_jobs) failed: {e}")
+
+    return all_hidden
 
 
 async def cleanup_expired_jobs(supabase: Any) -> int:
