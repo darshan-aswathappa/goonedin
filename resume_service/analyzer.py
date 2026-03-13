@@ -51,7 +51,7 @@ def analyze_resume_with_deepseek(resume_text: str, api_key: str) -> dict:
     )
 
     response = client.chat.completions.create(
-        model="deepseek-reasoner",
+        model="deepseek-chat",
         messages=[
             {"role": "system", "content": DEEPSEEK_SYSTEM_PROMPT},
             {"role": "user", "content": f"Analyze this resume:\n\n{resume_text}"},
