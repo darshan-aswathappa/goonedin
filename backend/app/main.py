@@ -69,8 +69,10 @@ logger = logging.getLogger("VelocityMain")
 
 broadcast_handler = BroadcastLogHandler(log_manager.broadcast)
 broadcast_handler.setLevel(logging.INFO)
-logging.getLogger("VelocityMain").addHandler(broadcast_handler)
-logging.getLogger("VelocityScraper").addHandler(broadcast_handler)
+for _logger_name in ("VelocityMain", "VelocityScraper"):
+    _named_logger = logging.getLogger(_logger_name)
+    if not any(isinstance(h, BroadcastLogHandler) for h in _named_logger.handlers):
+        _named_logger.addHandler(broadcast_handler)
 
 settings = get_settings()
 
