@@ -80,13 +80,9 @@ export default function CompanyLeaderboard({ data }: Props) {
               </span>
 
               {/* Bar */}
-              <div style={{ flex: 1, position: "relative", height: "16px" }}>
+              <div style={{ width: "45%", flexShrink: 0, height: "6px", position: "relative" }}>
                 <div
                   style={{
-                    position: "absolute",
-                    left: 0,
-                    top: "50%",
-                    transform: "translateY(-50%)",
                     height: "6px",
                     width: `${pct}%`,
                     background: isTop3 ? "var(--teal)" : "var(--border-bright)",
@@ -95,24 +91,22 @@ export default function CompanyLeaderboard({ data }: Props) {
                     minWidth: "2px",
                   }}
                 />
-                <span
-                  style={{
-                    position: "absolute",
-                    left: `${pct + 1}%`,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "9px",
-                    color: "var(--muted)",
-                    whiteSpace: "nowrap",
-                    maxWidth: "calc(100% - 5px)",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {row.company}
-                </span>
               </div>
+              {/* Label */}
+              <span
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "9px",
+                  color: "var(--muted)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {row.company}
+              </span>
 
               {/* Count */}
               <span

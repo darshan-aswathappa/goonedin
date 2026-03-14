@@ -59,33 +59,31 @@ export default function LocationChart({ data }: Props) {
               >
                 {i + 1}
               </span>
-              <div style={{ flex: 1, position: "relative", height: "16px" }}>
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    height: "5px",
-                    width: `${pct}%`,
-                    background: "var(--blue)",
-                    opacity: i === 0 ? 0.9 : 0.5,
-                    borderRadius: "1px",
-                    transition: "width 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
-                    transitionDelay: `${i * 30}ms`,
-                    minWidth: "2px",
-                  }}
-                />
+              <div style={{ display: "flex", flex: 1, alignItems: "center", gap: "8px", minWidth: 0 }}>
+                <div style={{ width: "50%", flexShrink: 0, height: "5px" }}>
+                  <div
+                    style={{
+                      height: "5px",
+                      width: `${pct}%`,
+                      background: "var(--blue)",
+                      opacity: i === 0 ? 0.9 : 0.5,
+                      borderRadius: "1px",
+                      transition: "width 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+                      transitionDelay: `${i * 30}ms`,
+                      minWidth: "2px",
+                    }}
+                  />
+                </div>
                 <span
                   style={{
-                    position: "absolute",
-                    left: `${Math.min(pct + 1, 50)}%`,
-                    top: "50%",
-                    transform: "translateY(-50%)",
+                    flex: 1,
+                    minWidth: 0,
                     fontFamily: "var(--font-mono)",
                     fontSize: "9px",
                     color: "var(--text-dim)",
                     whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
                   {row.city}
