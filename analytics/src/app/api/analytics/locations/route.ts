@@ -1,0 +1,31 @@
+import { NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase-server";
+import { normalizeLocation } from "@/lib/analytics";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  try {
+    const sb = createServerClient();
+    const { data, error } = await sb.rpc("analytics_locations");
+    if (error) throw error;
+
+    // Normalize and merge city aliases
+    const freq: Record<string, number> = {};
+    for (const row of data as { location: string; count: number }[]) {
+      const city = normalizeLocation(row.location);
+      if (!city || city.length < 2) continue;
+      freq[city] = (freq[city] ?? 0) + Number(row.count);
+    }
+
+    const locations = Object.entries(freq)
+      .map(([city, count]) => ({ city, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15);
+
+    return NextResponse.json({ locations });
+  } catch (err) {
+    console.error("[analytics/locations]", err);
+    return NextResponse.json({ error: "Failed to fetch locations" }, { status: 500 });
+  }
+}

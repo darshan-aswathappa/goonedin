@@ -1,0 +1,165 @@
+"use client";
+
+import { TrendUp, Buildings, Code, MapPin, Sparkle } from "@phosphor-icons/react";
+
+interface Props {
+  topCompany?: string;
+  topSkill?: string;
+  topCity?: string;
+  sponsorshipRate?: number;
+  avgJobsPerDay?: number;
+  completionRate?: number;
+  totalJobs?: number;
+}
+
+interface InsightItem {
+  icon: React.ReactNode;
+  color: string;
+  label: string;
+  text: string;
+}
+
+export default function IntelPanel({
+  topCompany,
+  topSkill,
+  topCity,
+  sponsorshipRate,
+  avgJobsPerDay,
+  completionRate,
+  totalJobs,
+}: Props) {
+  const insights: InsightItem[] = [];
+
+  if (topCompany) {
+    insights.push({
+      icon: <Buildings size={12} weight="bold" />,
+      color: "var(--teal)",
+      label: "DOMINANT EMPLOYER",
+      text: `${topCompany} leads all companies in posting volume — consistently the most active recruiter in this dataset.`,
+    });
+  }
+
+  if (topSkill) {
+    insights.push({
+      icon: <Code size={12} weight="bold" />,
+      color: "var(--blue)",
+      label: "HOT SKILL",
+      text: `${topSkill} appears more frequently than any other keyword in analyzed job descriptions. High signal for resume optimization.`,
+    });
+  }
+
+  if (topCity) {
+    insights.push({
+      icon: <MapPin size={12} weight="bold" />,
+      color: "var(--amber)",
+      label: "TOP MARKET",
+      text: `${topCity} has the highest concentration of postings. Remote roles are also a significant portion of the listing mix.`,
+    });
+  }
+
+  if (sponsorshipRate !== undefined) {
+    const level = sponsorshipRate > 40 ? "strong" : sponsorshipRate > 20 ? "moderate" : "limited";
+    insights.push({
+      icon: <Sparkle size={12} weight="bold" />,
+      color: sponsorshipRate > 40 ? "var(--green)" : sponsorshipRate > 20 ? "var(--amber)" : "var(--red)",
+      label: "VISA SIGNAL",
+      text: `${sponsorshipRate}% sponsorship availability — a ${level} signal. ${
+        sponsorshipRate > 40
+          ? "International candidates have favorable conditions in this market."
+          : sponsorshipRate > 20
+          ? "Sponsorship is available but not the norm. Target companies explicitly."
+          : "Sponsorship is scarce. Prioritize companies with established H1-B programs."
+      }`,
+    });
+  }
+
+  if (avgJobsPerDay !== undefined && totalJobs !== undefined) {
+    insights.push({
+      icon: <TrendUp size={12} weight="bold" />,
+      color: "var(--purple)",
+      label: "MARKET VELOCITY",
+      text: `${avgJobsPerDay} jobs/day over the last 30 days. ${totalJobs.toLocaleString()} total postings tracked. ${
+        completionRate !== undefined ? `${completionRate}% AI-analyzed.` : ""
+      }`,
+    });
+  }
+
+  return (
+    <div className="panel chart-enter" style={{ height: "100%" }}>
+      <div className="panel-header">Market Intelligence</div>
+      <div
+        style={{
+          padding: "12px 14px",
+          height: "calc(100% - 37px)",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
+        {insights.length === 0 ? (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              color: "var(--muted)",
+              textAlign: "center",
+              paddingTop: "20px",
+            }}
+          >
+            // Awaiting data...
+          </div>
+        ) : (
+          insights.map((item, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                gap: "10px",
+                paddingBottom: "12px",
+                borderBottom: i < insights.length - 1 ? "1px solid var(--border)" : "none",
+              }}
+            >
+              {/* Icon */}
+              <div
+                style={{
+                  color: item.color,
+                  flexShrink: 0,
+                  marginTop: "1px",
+                }}
+              >
+                {item.icon}
+              </div>
+
+              {/* Content */}
+              <div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "8px",
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    color: item.color,
+                    marginBottom: "4px",
+                  }}
+                >
+                  {item.label}
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10px",
+                    color: "var(--text-dim)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {item.text}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
