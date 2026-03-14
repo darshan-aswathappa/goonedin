@@ -148,17 +148,26 @@
   }
   .job-card-grid {
     display: grid;
-    /* Mobile: 1 column, Tablet: 2 columns, Desktop: 3+ columns */
+    /* Mobile: 1 column */
     grid-template-columns: 1fr;
     gap: 1rem;
     align-items: stretch;
   }
+  /* Tablet portrait: 2 columns */
   @media (min-width: 640px) {
     .job-card-grid {
       grid-template-columns: repeat(2, 1fr);
       gap: 1.25rem;
     }
   }
+  /* Tablet landscape: fluid 2–3 columns */
+  @media (min-width: 768px) {
+    .job-card-grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+  }
+  /* Desktop */
   @media (min-width: 1024px) {
     .job-card-grid {
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -171,6 +180,50 @@
       gap: 1.5rem;
     }
   }
+  /* ── Brutal typography ──────────────────────────────────────── */
+  .heading-brutal {
+    font-weight: 900;
+    text-transform: uppercase;
+    font-style: italic;
+    letter-spacing: -0.05em;
+  }
+
+  /* ── Shadow scale ────────────────────────────────────────────── */
+  .brutal-shadow-sm {
+    box-shadow: 1px 1px 0px 0px var(--border);
+  }
+  .brutal-shadow-md {
+    box-shadow: 2px 2px 0px 0px var(--border);
+  }
+  /* Responsive: 1px on mobile, 2px on sm+ */
+  .brutal-shadow-responsive {
+    box-shadow: 1px 1px 0px 0px var(--border);
+  }
+  @media (min-width: 640px) {
+    .brutal-shadow-responsive {
+      box-shadow: 2px 2px 0px 0px var(--border);
+    }
+  }
+
+  /* ── Icon button — square, touch-friendly, responsive ─────── */
+  .icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;          /* p-1.5 */
+    height: 2.75rem;            /* 44px touch target */
+    width: 2.75rem;
+    box-shadow: 1px 1px 0px 0px var(--border);
+  }
+  @media (min-width: 640px) {
+    .icon-btn {
+      padding: 0.5rem;          /* p-2 */
+      height: 42px;
+      width: 42px;
+      box-shadow: 2px 2px 0px 0px var(--border);
+    }
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

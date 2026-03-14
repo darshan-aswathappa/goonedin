@@ -14,30 +14,32 @@ export function ConnectionStatus() {
     <div
       role="status"
       aria-label={connectionStatus === "connected" ? "Connected" : connectionStatus === "connecting" ? "Updating" : "Disconnected"}
-      className={`flex items-center gap-0 sm:gap-2 brutal-border px-3 py-1 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] h-[42px] border-2 border-black ${
+      className={`flex items-center gap-1.5 brutal-border px-2 sm:px-3 py-1 font-black text-[9px] sm:text-[10px] uppercase tracking-widest brutal-shadow-md h-10 sm:h-[42px] ${
         connectionStatus === "connected"
-          ? "bg-[#E6F4EA] text-[#009063] dark:bg-[#009063] dark:text-white"
+          ? "bg-green-50 text-green-700 dark:bg-green-700/20 dark:text-green-400"
           : connectionStatus === "connecting"
-          ? "bg-[#FDEBD0] text-[#F15152]"
-          : "bg-[#FFEBEB] text-[#D72638]"
+          ? "bg-sidebar-accent text-primary"
+          : "bg-red-50 text-destructive dark:bg-red-950/30"
       }`}
     >
       {connectionStatus === "connected" && (
         <>
-          <Broadcast weight="bold" className="h-3.5 w-3.5 animate-live-pulse" />
-          <span className="hidden sm:inline">Connected</span>
+          <Broadcast weight="bold" className="h-3.5 w-3.5 shrink-0 animate-live-pulse" />
+          <span>Live</span>
         </>
       )}
       {connectionStatus === "connecting" && (
         <>
-          <CircleNotch weight="bold" className="h-3.5 w-3.5 animate-spin" />
-          <span className="hidden sm:inline">Reconnecting...</span>
+          <CircleNotch weight="bold" className="h-3.5 w-3.5 shrink-0 animate-spin" />
+          <span className="hidden sm:inline">Reconnecting</span>
+          <span className="sm:hidden">Sync</span>
         </>
       )}
       {connectionStatus === "disconnected" && (
         <>
-          <Prohibit weight="bold" className="h-3.5 w-3.5" />
+          <Prohibit weight="bold" className="h-3.5 w-3.5 shrink-0" />
           <span className="hidden sm:inline">Disconnected</span>
+          <span className="sm:hidden">Off</span>
         </>
       )}
     </div>

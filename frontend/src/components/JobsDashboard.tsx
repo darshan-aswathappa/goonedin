@@ -50,6 +50,9 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 };
 import Link from "next/link";
 
+const TAB_BASE =
+  "brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 heading-brutal text-xs sm:text-sm shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0";
+
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
@@ -177,7 +180,7 @@ export function JobsDashboard() {
                 <Briefcase weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-2xl font-black uppercase italic tracking-tighter leading-tight">
+                <h1 className="text-lg sm:text-2xl heading-brutal leading-tight">
                   GoonedIn
                 </h1>
                 <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none">
@@ -188,7 +191,7 @@ export function JobsDashboard() {
 
             {user && (
               <div className="flex items-center gap-1 sm:gap-2">
-                <div className="brutal-border bg-card px-2 sm:px-3 py-1 sm:py-1.5 hidden sm:flex items-center gap-2 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 sm:h-[42px]">
+                <div className="brutal-border bg-card px-2 sm:px-3 py-1 sm:py-1.5 flex items-center gap-1.5 sm:gap-2 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 sm:h-[42px]">
                   <Sparkle weight="fill" className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                   <span key={countBumpKey} className="font-black text-xs sm:text-sm animate-count-bump">{jobs.length}</span>
                 </div>
@@ -197,25 +200,25 @@ export function JobsDashboard() {
                   <ThemeToggle />
 
                   <Link href="/saved" title="Saved jobs">
-                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center text-green-600 dark:text-green-500">
+                    <div className="brutal-border brutal-btn-hover icon-btn bg-card text-green-600 dark:text-green-500">
                       <BookmarkSimple weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
                   <Link href="/settings" title="Settings">
-                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center">
+                    <div className="brutal-border brutal-btn-hover icon-btn bg-card">
                       <Gear weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
                   <Link href="/keyword-matcher" title="Keywords">
-                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center">
+                    <div className="brutal-border brutal-btn-hover icon-btn bg-card">
                       <Tag weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
                   <Link href="/logs" title="Logs">
-                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center">
+                    <div className="brutal-border brutal-btn-hover icon-btn bg-card">
                       <TerminalWindow weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
@@ -224,7 +227,7 @@ export function JobsDashboard() {
 
                   <button
                     onClick={signOut}
-                    className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-primary text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center"
+                    className="brutal-border brutal-btn-hover icon-btn bg-primary text-white"
                     title="Sign Out"
                   >
                     <SignOut weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -256,19 +259,18 @@ export function JobsDashboard() {
               <TabsList className="flex flex-nowrap h-auto gap-0.5 sm:gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-1 sm:pb-2">
                 <TabsTrigger
                 value="all"
-                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                className={`${TAB_BASE} data-[state=active]:bg-primary data-[state=active]:text-white`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <Globe weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline">All</span>
-                  <span className="sm:hidden">All</span>
+                  <span>All</span>
                   <span className="text-xs sm:text-sm">({jobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="location"
-                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                className={`${TAB_BASE} data-[state=active]:bg-primary data-[state=active]:text-white`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <MapPin weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -279,48 +281,44 @@ export function JobsDashboard() {
 
               <TabsTrigger
                 value="linkedin"
-                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                className={`${TAB_BASE} data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <LinkedinLogo weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline">LinkedIn</span>
-                  <span className="sm:hidden">LI</span>
+                  <span>LinkedIn</span>
                   <span className="text-xs">({linkedinJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="jobright"
-                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#5465FF] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                className={`${TAB_BASE} data-[state=active]:bg-[#5465FF] data-[state=active]:text-white`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <Briefcase weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline">Jobright</span>
-                  <span className="sm:hidden">JR</span>
+                  <span>Jobright</span>
                   <span className="text-xs">({jobrightJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="mathworks"
-                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                className={`${TAB_BASE} data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <Buildings weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline">MathWorks</span>
-                  <span className="sm:hidden">MW</span>
+                  <span>MathWorks</span>
                   <span className="text-xs">({mathworksJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="github"
-                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#24292e] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                className={`${TAB_BASE} data-[state=active]:bg-[#24292e] data-[state=active]:text-white`}
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <GithubLogo weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="hidden sm:inline">GitHub</span>
-                  <span className="sm:hidden">GH</span>
+                  <span>GitHub</span>
                   <span className="text-xs">({githubJobs.length})</span>
                 </div>
               </TabsTrigger>
@@ -331,7 +329,7 @@ export function JobsDashboard() {
                   <TabsTrigger
                     key={source.id}
                     value={source.id}
-                    className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-foreground data-[state=active]:text-background shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
+                    className={`${TAB_BASE} data-[state=active]:bg-foreground data-[state=active]:text-background`}
                   >
                     <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                       {getDynamicIcon(source.icon)}
@@ -349,7 +347,7 @@ export function JobsDashboard() {
               <div className="shrink-0 pb-1 sm:pb-2">
                 <AddJobSourceModal onSuccess={(id: string) => setActiveTab(id)} />
               </div>
-              <div className="pointer-events-none absolute right-8 sm:right-10 top-0 h-full w-8 sm:w-10 bg-background sm:hidden" aria-hidden="true" />
+              <div className="pointer-events-none absolute right-8 top-0 h-full w-10 bg-gradient-to-l from-background to-transparent md:hidden" aria-hidden="true" />
             </div>
           )}
 
@@ -480,7 +478,7 @@ export function JobsDashboard() {
                       {isError && (
                         <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
                       )}
-                      <span className={`font-black uppercase tracking-tighter text-xs sm:text-sm ${
+                      <span className={`heading-brutal text-xs sm:text-sm ${
                         isError ? "text-destructive" : "text-foreground"
                       }`}>
                         {statusMessage || (isProcessing ? "Processing..." : "Fetch failed")}

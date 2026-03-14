@@ -91,7 +91,7 @@ export function JobList({
       <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
         <div className="brutal-border bg-red-50 dark:bg-red-950/30 p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] mb-4 sm:mb-6 border-red-500 max-w-md w-full">
           <WarningCircle weight="bold" className="h-8 w-8 sm:h-10 sm:w-10 text-red-500 mb-2 sm:mb-4" />
-          <h3 className="text-lg sm:text-2xl font-black uppercase italic tracking-tighter mb-2 text-red-700 dark:text-red-400">
+          <h3 className="text-lg sm:text-2xl heading-brutal mb-2 text-red-700 dark:text-red-400">
             Couldn&apos;t Load Jobs
           </h3>
           <p className="font-bold text-muted-foreground mb-2 break-words text-xs sm:text-sm">
@@ -120,7 +120,7 @@ export function JobList({
           </div>
           <div className="absolute inset-[-6px] border-2 border-primary/40 animate-scan-ring pointer-events-none" />
         </div>
-        <h3 className="text-base sm:text-2xl font-black uppercase italic tracking-tighter mb-1 sm:mb-2 max-w-xs">
+        <h3 className="text-base sm:text-2xl heading-brutal mb-1 sm:mb-2 max-w-xs">
           {emptyMessage}
         </h3>
         <p className="font-bold text-muted-foreground text-xs sm:text-sm mb-6">
@@ -162,7 +162,7 @@ export function JobList({
               <Lock weight="fill" className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
             </div>
             <div className="space-y-1 sm:space-y-2">
-              <h3 className="text-lg sm:text-3xl font-black uppercase italic tracking-tighter leading-tight">
+              <h3 className="text-lg sm:text-3xl heading-brutal leading-tight">
                 Create an Account
               </h3>
               <p className="font-bold text-muted-foreground leading-tight text-xs sm:text-base">

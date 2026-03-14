@@ -247,16 +247,16 @@ export function AddJobSourceModal({
     >
       <DialogTrigger asChild>
         {triggerNode || (
-          <button className="brutal-border rounded-none px-2.5 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm bg-muted text-foreground shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0 flex items-center gap-1 sm:gap-2 h-10 sm:h-auto">
+          <button className="brutal-border rounded-none px-2.5 sm:px-4 py-2 sm:py-3 heading-brutal text-xs sm:text-sm bg-muted text-foreground shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0 flex items-center gap-1 sm:gap-2 h-10 sm:h-auto">
             <Plus weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="sr-only sm:not-sr-only sm:inline">Add Source</span>
           </button>
         )}
       </DialogTrigger>
 
-      <DialogContent className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] brutal-border rounded-none bg-card shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] md:max-w-lg brutal-border rounded-none bg-card shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="font-black italic uppercase tracking-tighter text-lg sm:text-2xl text-foreground">
+          <DialogTitle className="heading-brutal text-lg sm:text-2xl text-foreground">
             {editingId ? "Edit Job Board" : "Custom Job Board"}
           </DialogTitle>
           <DialogDescription className="font-bold uppercase text-xs text-muted-foreground">
@@ -294,9 +294,6 @@ export function AddJobSourceModal({
             {validationErrors.name && (
               <p className="text-xs text-destructive font-bold uppercase">{validationErrors.name}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              {name.length}/{CONSTRAINTS.NAME_MAX}
-            </p>
           </div>
           <div className="grid gap-1.5 sm:gap-2">
             <label
@@ -327,9 +324,6 @@ export function AddJobSourceModal({
             {validationErrors.url && (
               <p className="text-xs text-destructive font-bold uppercase">{validationErrors.url}</p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Must start with http:// or https://
-            </p>
           </div>
 
           <div className="grid gap-1.5 sm:gap-2">
@@ -387,7 +381,6 @@ export function AddJobSourceModal({
               {validationErrors.ttlHours && (
                 <p className="text-xs text-destructive font-bold uppercase">{validationErrors.ttlHours}</p>
               )}
-              <p className="text-xs text-muted-foreground">1-720</p>
             </div>
             <div className="grid gap-1.5 sm:gap-2">
               <label
@@ -420,7 +413,6 @@ export function AddJobSourceModal({
               {validationErrors.intervalMinutes && (
                 <p className="text-xs text-destructive font-bold uppercase">{validationErrors.intervalMinutes}</p>
               )}
-              <p className="text-xs text-muted-foreground">1-10080</p>
             </div>
           </div>
 
@@ -440,9 +432,6 @@ export function AddJobSourceModal({
                 Browser scraping (works on JS-heavy sites)
               </label>
             </div>
-            <p className="text-xs text-muted-foreground ml-6">
-              Slower but handles complex sites
-            </p>
           </div>
 
           <DialogFooter className="mt-3 sm:mt-4 items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between border-t border-border pt-3 sm:pt-4">

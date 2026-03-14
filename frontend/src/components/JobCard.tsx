@@ -212,31 +212,31 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
 
         <div className="flex flex-col h-full space-y-2 sm:space-y-4">
           <div className="space-y-0.5 sm:space-y-1 pr-10 sm:pr-12 min-w-0">
-            <h3 className="text-sm sm:text-xl font-black leading-tight line-clamp-3 sm:line-clamp-2 italic uppercase tracking-tighter break-words">
+            <h3 className="text-sm sm:text-xl heading-brutal leading-tight line-clamp-3 sm:line-clamp-2 break-words">
               {job.title}
             </h3>
-            <div className="flex items-center gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm min-w-0">
-              <Buildings weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <div className="flex items-center gap-2 font-bold text-xs sm:text-sm min-w-0">
+              <Buildings weight="bold" className="h-4 w-4 shrink-0" />
               <span className="truncate">{job.company}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-1.5 sm:gap-2 border-t-2 border-border pt-2 sm:pt-4">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium min-w-0">
-              <MapPin weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm font-medium min-w-0">
+              <MapPin weight="bold" className="h-4 w-4 shrink-0" />
               <span className="truncate">{job.location}</span>
             </div>
 
             {postedAt && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium min-w-0">
-                <Clock weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-medium min-w-0">
+                <Clock weight="bold" className="h-4 w-4 shrink-0" />
                 <span className="whitespace-nowrap">{postedAt}</span>
               </div>
             )}
 
             {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                <CurrencyDollar weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <CurrencyDollar weight="bold" className="h-4 w-4 shrink-0" />
                 <span className="truncate">{formatSalary(job.salary)}</span>
               </div>
             )}
@@ -246,8 +246,8 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
               return (
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                  <Globe weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                  <Globe weight="bold" className="h-4 w-4 shrink-0" />
                   <span className="truncate">{formatted}</span>
                 </div>
               );
@@ -264,7 +264,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                     disabled={isAnyActionInFlight}
                     aria-label={isSaved ? "Unsave job" : "Save job"}
                     title={isSaved ? "Unsave" : "Save"}
-                    className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 ${
+                    className={`brutal-border p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 ${
                       isSaved ? "bg-primary text-white" : "bg-card text-foreground"
                     }`}
                   >
@@ -290,7 +290,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                     disabled={isAnyActionInFlight}
                     aria-label="Dismiss job"
                     title="Dismiss"
-                    className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
+                    className="brutal-border p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
                   >
                     {isDismissing ? (
                       <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
@@ -311,7 +311,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                     disabled={isAnyActionInFlight}
                     aria-label="Block company"
                     title="Block"
-                    className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
+                    className="brutal-border p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
                   >
                     {isBlocking ? (
                       <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
