@@ -8,7 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-ibm-mono), var(--font-geist-mono), "Courier New", monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -84,23 +84,24 @@
 
 .dark {
   --background: #000000;
-  --foreground: #FFFFFF;
-  --card: #151515;
-  --card-foreground: #FFFFFF;
-  --popover: #151515;
-  --popover-foreground: #FFFFFF;
+  --foreground: #e8e8e8;
+  --card: #080808;
+  --card-foreground: #e8e8e8;
+  --popover: #080808;
+  --popover-foreground: #e8e8e8;
   --primary: #FF5A5B;
   --primary-foreground: #000000;
-  --secondary: #3E5B7D;
-  --secondary-foreground: #FFFFFF;
-  --muted: #1A1A1A;
-  --muted-foreground: #A0A0A0;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #e8e8e8;
+  --muted: #111111;
+  --muted-foreground: #888888;
   --accent: #FF5A5B;
   --accent-foreground: #000000;
   --destructive: #FF3B3B;
-  --border: #FFFFFF;
-  --input: #FFFFFF;
-  --ring: #FFFFFF;
+  --border: #2a2a2a;
+  --border-active: #d95f00;
+  --input: #2a2a2a;
+  --ring: #FF5A5B;
 }
 
 @layer base {
@@ -120,6 +121,46 @@
   .brutal-shadow {
     box-shadow: 4px 4px 0px 0px var(--border);
   }
+
+  /* ── Dark mode: terminal panel aesthetic ────────────────────── */
+  .dark .brutal-border {
+    border: 1px solid var(--border);
+  }
+  .dark .brutal-shadow {
+    box-shadow: none;
+  }
+  .dark .brutal-shadow-sm {
+    box-shadow: none;
+  }
+  .dark .brutal-shadow-md {
+    box-shadow: none;
+  }
+  .dark .brutal-shadow-responsive {
+    box-shadow: none;
+  }
+  .dark .icon-btn {
+    box-shadow: none;
+  }
+
+  /* ── Active panel border (orange) ────────────────────────────── */
+  .panel-active {
+    border-color: var(--border-active, #d95f00) !important;
+  }
+
+  /* ── Terminal typography ─────────────────────────────────────── */
+  .mono-data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  .terminal-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
   .brutal-btn-hover {
     transition: all 0.1s ease-in-out;
   }

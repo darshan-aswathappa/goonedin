@@ -196,7 +196,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
     <>
       <div
         onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
-        className={`group relative brutal-border brutal-shadow bg-card p-6 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
+        className={`group relative brutal-border brutal-shadow bg-card p-3 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
           isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
         } ${isExiting ? "animate-card-exit" : ""}`}
       >
@@ -210,8 +210,8 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
           {job.source}
         </div>
 
-        <div className="flex flex-col h-full space-y-2 sm:space-y-4">
-          <div className="space-y-0.5 sm:space-y-1 pr-10 sm:pr-12 min-w-0">
+        <div className="flex flex-col h-full space-y-1.5 sm:space-y-2">
+          <div className="space-y-0.5 pr-10 sm:pr-12 min-w-0">
             <h3 className="text-sm sm:text-xl heading-brutal leading-tight line-clamp-3 sm:line-clamp-2 break-words">
               {job.title}
             </h3>
@@ -221,23 +221,23 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-1.5 sm:gap-2 border-t-2 border-border pt-2 sm:pt-4">
-            <div className="flex items-center gap-2 text-xs sm:text-sm font-medium min-w-0">
-              <MapPin weight="bold" className="h-4 w-4 shrink-0" />
-              <span className="truncate">{job.location}</span>
+          <div className="grid grid-cols-1 gap-1 border-t border-border pt-1.5">
+            <div className="flex items-center gap-2 text-xs font-medium min-w-0">
+              <MapPin weight="bold" className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate mono-data">{job.location}</span>
             </div>
 
             {postedAt && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-medium min-w-0">
-                <Clock weight="bold" className="h-4 w-4 shrink-0" />
-                <span className="whitespace-nowrap">{postedAt}</span>
+              <div className="flex items-center gap-2 text-xs font-medium min-w-0">
+                <Clock weight="bold" className="h-3.5 w-3.5 shrink-0" />
+                <span className="whitespace-nowrap mono-data">{postedAt}</span>
               </div>
             )}
 
             {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                <CurrencyDollar weight="bold" className="h-4 w-4 shrink-0" />
-                <span className="truncate">{formatSalary(job.salary)}</span>
+              <div className="flex items-center gap-2 text-xs font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 py-0.5 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <CurrencyDollar weight="bold" className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate mono-data">{formatSalary(job.salary)}</span>
               </div>
             )}
 
@@ -246,15 +246,15 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
               return (
-                <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                  <Globe weight="bold" className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{formatted}</span>
+                <div className="flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                  <Globe weight="bold" className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate mono-data">{formatted}</span>
                 </div>
               );
             })()}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 pt-2 sm:pt-4 mt-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 pt-1.5 mt-auto">
             <TooltipProvider>
             <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
               <Tooltip>

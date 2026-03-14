@@ -183,7 +183,7 @@ export function JobsDashboard() {
                 <h1 className="text-lg sm:text-2xl heading-brutal leading-tight">
                   GoonedIn
                 </h1>
-                <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none">
+                <p className="terminal-label text-muted-foreground leading-none">
                   Job Extraction Engine
                 </p>
               </div>
