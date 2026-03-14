@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --bg-root: #080808;
-  --bg-panel: #0d1117;
-  --bg-panel-hover: #111820;
-  --border: #1e2d3d;
-  --border-bright: #2d4a6b;
-  --teal: #00d4aa;
-  --teal-dim: rgba(0, 212, 170, 0.15);
-  --teal-glow: rgba(0, 212, 170, 0.4);
-  --amber: #f59e0b;
-  --amber-dim: rgba(245, 158, 11, 0.15);
-  --red: #ef4444;
-  --red-dim: rgba(239, 68, 68, 0.15);
-  --green: #4ade80;
-  --green-dim: rgba(74, 222, 128, 0.15);
-  --blue: #3b82f6;
-  --blue-dim: rgba(59, 130, 246, 0.15);
-  --purple: #a855f7;
-  --text: #e2e8f0;
-  --text-dim: #94a3b8;
-  --muted: #64748b;
+  /* Backgrounds — stark black, no gradients */
+  --bg-root: #000000;
+  --bg-panel: #080808;
+  --bg-panel-hover: #0f0f0f;
+  --border: #1c1c1c;
+  --border-bright: #333333;
+
+  /* Bloomberg signature amber/orange — headers, panel titles, key labels */
+  --teal: #ff8c00;
+  --teal-dim: rgba(255, 140, 0, 0.12);
+  --teal-glow: rgba(255, 140, 0, 0.35);
+
+  /* Yellow — alerts, warnings, highlighted data */
+  --amber: #ffd700;
+  --amber-dim: rgba(255, 215, 0, 0.12);
+
+  /* Red — drops, negative values, negative trends */
+  --red: #ff3333;
+  --red-dim: rgba(255, 51, 51, 0.12);
+
+  /* No green for positives — yellow takes that role */
+  --green: #ffd700;
+  --green-dim: rgba(255, 215, 0, 0.12);
+
+  /* Cyan/light blue — interactive fields, hyperlinks, highlighted data */
+  --blue: #00bfff;
+  --blue-dim: rgba(0, 191, 255, 0.12);
+
+  /* Magenta — certain data categories, chart series */
+  --purple: #cc33cc;
+
+  /* Text — high contrast white/light gray against black */
+  --text: #f0f0f0;
+  --text-dim: #aaaaaa;
+  --muted: #555555;
+
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-sans: "Inter", system-ui, sans-serif;
   --radius: 2px;
@@ -69,16 +85,7 @@ body {
 }
 
 .panel::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 212, 170, 0.02) 0%,
-    transparent 60%
-  );
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 /* Panel header */
@@ -88,7 +95,7 @@ body {
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--teal);
   padding: 10px 14px 8px;
   border-bottom: 1px solid var(--border);
   display: flex;
