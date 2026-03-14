@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useJobsStore } from "@/store/jobs";
+import { useShallow } from "zustand/react/shallow";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
 import { JobList } from "./JobList";
@@ -34,8 +35,19 @@ import {
   Trash,
   Tag,
   X,
+  Code,
+  MagnifyingGlass,
+  Monitor,
 } from "@phosphor-icons/react";
-import * as PhosphorIcons from "@phosphor-icons/react";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Buildings,
+  Briefcase,
+  Code,
+  MagnifyingGlass,
+  Monitor,
+};
 import Link from "next/link";
 
 export function JobsDashboard() {
@@ -45,23 +57,41 @@ export function JobsDashboard() {
   useWebSocket({ enabled: !!user });
   const { refetch: retryFetch } = useJobsApi(!!user);
 
-  const jobs = useJobsStore((state) => state.jobs);
-  const apiError = useJobsStore((state) => state.apiError);
-  const setApiError = useJobsStore((state) => state.setApiError);
-  const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
-  const jobrightJobs = useJobsStore((state) => state.jobrightJobs);
-  const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
-  const githubJobs = useJobsStore((state) => state.githubJobs);
-  const locationFilteredJobs = useJobsStore(
-    (state) => state.locationFilteredJobs,
+  const {
+    jobs,
+    apiError,
+    setApiError,
+    linkedinJobs,
+    jobrightJobs,
+    mathworksJobs,
+    githubJobs,
+    locationFilteredJobs,
+    locationFilterLocation,
+    locationFilterNormalized,
+    nextLinkedinScrape,
+    nextLocationScrape,
+    customSources,
+    removeCustomSource,
+    sourceStatuses,
+  } = useJobsStore(
+    useShallow((state) => ({
+      jobs: state.jobs,
+      apiError: state.apiError,
+      setApiError: state.setApiError,
+      linkedinJobs: state.linkedinJobs,
+      jobrightJobs: state.jobrightJobs,
+      mathworksJobs: state.mathworksJobs,
+      githubJobs: state.githubJobs,
+      locationFilteredJobs: state.locationFilteredJobs,
+      locationFilterLocation: state.locationFilterLocation,
+      locationFilterNormalized: state.locationFilterNormalized,
+      nextLinkedinScrape: state.nextLinkedinScrape,
+      nextLocationScrape: state.nextLocationScrape,
+      customSources: state.customSources,
+      removeCustomSource: state.removeCustomSource,
+      sourceStatuses: state.sourceStatuses,
+    })),
   );
-  const locationFilterLocation = useJobsStore((state) => state.locationFilterLocation);
-  const locationFilterNormalized = useJobsStore((state) => state.locationFilterNormalized);
-  const nextLinkedinScrape = useJobsStore((state) => state.nextLinkedinScrape);
-  const nextLocationScrape = useJobsStore((state) => state.nextLocationScrape);
-  const customSources = useJobsStore((state) => state.customSources);
-  const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
-  const sourceStatuses = useJobsStore((state) => state.sourceStatuses);
 
   const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);
   const prevJobCountRef = useRef(jobs.length);
@@ -124,8 +154,8 @@ export function JobsDashboard() {
   };
 
   const getDynamicIcon = (iconName: string) => {
-    const icons = PhosphorIcons as unknown as Record<string, React.ComponentType<{ weight?: string; className?: string }>>;
-    const IconComponent = icons[iconName] || PhosphorIcons.Buildings;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const IconComponent: React.ComponentType<any> = ICON_MAP[iconName] ?? Buildings;
     return <IconComponent weight="bold" className="h-5 w-5" />;
   };
 

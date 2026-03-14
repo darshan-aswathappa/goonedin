@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Job, useJobsStore } from "@/store/jobs";
 import {
   Buildings,
@@ -31,7 +31,7 @@ interface JobCardProps {
   isLocked?: boolean;
 }
 
-export function JobCard({ job, isLocked = false }: JobCardProps) {
+function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   const [isBlocking, setIsBlocking] = useState(false);
   const [isBlockFlash, setIsBlockFlash] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
@@ -255,82 +255,78 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 pt-2 sm:pt-4 mt-auto">
+            <TooltipProvider>
             <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleToggleSave}
-                      disabled={isAnyActionInFlight}
-                      aria-label={isSaved ? "Unsave job" : "Save job"}
-                      title={isSaved ? "Unsave" : "Save"}
-                      className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 ${
-                        isSaved ? "bg-primary text-white" : "bg-card text-foreground"
-                      }`}
-                    >
-                      {isSaving ? (
-                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                      ) : (
-                        <BookmarkSimple
-                          weight={isSaved ? "fill" : "bold"}
-                          className={`h-4 w-4 sm:h-5 sm:w-5 ${animateSave ? "animate-save-pop" : ""}`}
-                        />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
-                    <p>{isSaved ? "Unsave" : "Save"}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleToggleSave}
+                    disabled={isAnyActionInFlight}
+                    aria-label={isSaved ? "Unsave job" : "Save job"}
+                    title={isSaved ? "Unsave" : "Save"}
+                    className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 ${
+                      isSaved ? "bg-primary text-white" : "bg-card text-foreground"
+                    }`}
+                  >
+                    {isSaving ? (
+                      <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    ) : (
+                      <BookmarkSimple
+                        weight={isSaved ? "fill" : "bold"}
+                        className={`h-4 w-4 sm:h-5 sm:w-5 ${animateSave ? "animate-save-pop" : ""}`}
+                      />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
+                  <p>{isSaved ? "Unsave" : "Save"}</p>
+                </TooltipContent>
+              </Tooltip>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleDismissJob}
-                      disabled={isAnyActionInFlight}
-                      aria-label="Dismiss job"
-                      title="Dismiss"
-                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
-                    >
-                      {isDismissing ? (
-                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                      ) : (
-                        <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
-                    <p>Dismiss</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleDismissJob}
+                    disabled={isAnyActionInFlight}
+                    aria-label="Dismiss job"
+                    title="Dismiss"
+                    className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
+                  >
+                    {isDismissing ? (
+                      <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    ) : (
+                      <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
+                  <p>Dismiss</p>
+                </TooltipContent>
+              </Tooltip>
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={handleBlockCompany}
-                      disabled={isAnyActionInFlight}
-                      aria-label="Block company"
-                      title="Block"
-                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
-                    >
-                      {isBlocking ? (
-                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                      ) : (
-                        <ThumbsDown weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
-                    <p>Block Company</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleBlockCompany}
+                    disabled={isAnyActionInFlight}
+                    aria-label="Block company"
+                    title="Block"
+                    className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
+                  >
+                    {isBlocking ? (
+                      <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                    ) : (
+                      <ThumbsDown weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
+                  <p>Block Company</p>
+                </TooltipContent>
+              </Tooltip>
 
             </div>
+            </TooltipProvider>
 
             <a
               href={job.url}
@@ -356,3 +352,5 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     </>
   );
 }
+
+export const JobCard = memo(JobCardComponent);
