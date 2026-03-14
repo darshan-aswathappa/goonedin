@@ -113,7 +113,7 @@ export function ResumeManager() {
   }, []);
 
   const handleUpload = async () => {
-    if (stagedFiles.length === 0) return;
+    if (stagedFiles.length === 0 || isUploading) return;
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -126,7 +126,7 @@ export function ResumeManager() {
       const formData = new FormData();
       formData.append("file", file);
       
-      const finalName = name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`;
+      const finalName = name.toLowerCase().endsWith('.pdf') ? name.slice(0, -4) + '.pdf' : `${name}.pdf`;
       formData.append("filename", finalName);
 
       try {
@@ -246,28 +246,28 @@ export function ResumeManager() {
     switch (status) {
       case "processing":
         return (
-          <div className="flex items-center gap-1.5 brutal-border bg-amber-100 text-amber-700 px-2 py-0.5 shadow-[1px_1px_0px_0px_var(--border)]">
+          <div className="flex items-center gap-1.5 brutal-badge bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
             <CircleNotch className="h-3 w-3 animate-spin" />
-            <span className="text-[10px] font-black uppercase tracking-widest">Analyzing…</span>
+            <span>Analyzing…</span>
           </div>
         );
       case "completed":
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-emerald-100 text-emerald-700">
+          <div className="flex items-center gap-1.5 brutal-badge bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
             <Brain className="h-3 w-3" />
             <span>AI Ready</span>
           </div>
         );
       case "failed":
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-red-100 text-red-700">
+          <div className="flex items-center gap-1.5 brutal-badge bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
             <Warning className="h-3 w-3" />
             <span>Failed</span>
           </div>
         );
       default:
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-green-100 text-green-700">
+          <div className="flex items-center gap-1.5 brutal-badge bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
             <CheckCircle className="h-3 w-3" />
             <span>Ready</span>
           </div>
@@ -392,11 +392,11 @@ export function ResumeManager() {
                     className="group flex cursor-pointer flex-col justify-between brutal-border bg-card p-5 min-h-[88px] transition-all shadow-[4px_4px_0px_0px_var(--border)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)]"
                   >
                     <div className="mb-4 flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="flex items-center gap-3 overflow-hidden min-w-0">
                         <div className="flex h-8 w-8 items-center justify-center brutal-border bg-muted shrink-0 shadow-[1px_1px_0px_0px_var(--border)]">
                           <FileText className="h-4 w-4 text-primary" />
                         </div>
-                        <span className="truncate text-sm font-black uppercase tracking-tight">
+                        <span className="truncate text-sm font-black uppercase tracking-tight min-w-0">
                           {resume.filename}
                         </span>
                       </div>
@@ -405,7 +405,7 @@ export function ResumeManager() {
                           e.stopPropagation();
                           openDeleteDialog(resume);
                         }}
-                        className="rounded p-1.5 text-muted-foreground hover:bg-primary hover:text-white transition-all brutal-border shadow-[1px_1px_0px_0px_var(--border)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                        className="p-1.5 text-muted-foreground hover:bg-primary hover:text-white transition-all brutal-border shadow-[1px_1px_0px_0px_var(--border)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
                         title="Delete resume"
                       >
                         <Trash className="h-4 w-4" />
@@ -414,7 +414,13 @@ export function ResumeManager() {
                     
                     <div className="flex items-center justify-between">
                       <span suppressHydrationWarning className="brutal-badge bg-muted text-muted-foreground">
-                        {formatDistanceToNow(new Date(resume.uploaded_at), { addSuffix: true })}
+                        {(() => {
+                          try {
+                            return formatDistanceToNow(new Date(resume.uploaded_at), { addSuffix: true });
+                          } catch {
+                            return "recently";
+                          }
+                        })()}
                       </span>
                       {getStatusBadge(resume.analysis_status)}
                     </div>
@@ -464,8 +470,8 @@ export function ResumeManager() {
               </div>
             ) : analysisStatus === "failed" ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-8 brutal-border bg-destructive/12 dark:bg-destructive/22 p-6 shadow-[8px_8px_0px_0px_var(--border)]">
-                  <Warning className="h-12 w-12 text-[#D72638]" />
+                <div className="mb-8 brutal-border bg-destructive/10 dark:bg-destructive/20 p-6 shadow-[8px_8px_0px_0px_var(--border)]">
+                  <Warning className="h-12 w-12 text-destructive" />
                 </div>
                 <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">We Couldn't Analyze This Resume</h3>
                 <p className="text-sm font-bold text-muted-foreground leading-tight">
@@ -532,7 +538,7 @@ export function ResumeManager() {
                       {analysis.skills.map((skill, i) => (
                         <div
                           key={i}
-                          className="brutal-border bg-primary text-white px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--border)] hover:bg-black transition-all"
+                          className="brutal-border bg-primary text-primary-foreground px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--border)] hover:bg-foreground hover:text-background transition-all"
                         >
                           {skill}
                         </div>
@@ -583,7 +589,7 @@ export function ResumeManager() {
           showCloseButton={false}
           className="max-w-md bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] p-0 gap-0"
         >
-          <DialogHeader className="p-6 border-b-2 border-border bg-destructive/12 dark:bg-destructive/22 space-y-2 text-left">
+          <DialogHeader className="p-6 border-b-2 border-border bg-destructive/10 dark:bg-destructive/20 space-y-2 text-left">
             <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
               <Warning className="h-5 w-5 text-destructive" />
               Delete Resume

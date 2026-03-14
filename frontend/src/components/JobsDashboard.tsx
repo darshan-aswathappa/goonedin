@@ -33,6 +33,7 @@ import {
   PencilSimple,
   Trash,
   Tag,
+  X,
 } from "@phosphor-icons/react";
 import * as PhosphorIcons from "@phosphor-icons/react";
 import Link from "next/link";
@@ -62,6 +63,7 @@ export function JobsDashboard() {
   const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
   const sourceStatuses = useJobsStore((state) => state.sourceStatuses);
 
+  const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);
   const prevJobCountRef = useRef(jobs.length);
   const [countBumpKey, setCountBumpKey] = useState(0);
   useEffect(() => {
@@ -72,6 +74,8 @@ export function JobsDashboard() {
   }, [jobs.length]);
 
   const handleDeleteSource = async (id: string, name: string) => {
+      if (deletingSourceId) return;
+      setDeletingSourceId(id);
       try {
           const headers = await getAuthHeaders();
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -79,13 +83,16 @@ export function JobsDashboard() {
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-          const res = await fetch(`${apiUrl}/config/custom-sources/${id}`, {
-              method: "DELETE",
-              headers,
-              signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
+          let res: Response;
+          try {
+            res = await fetch(`${apiUrl}/config/custom-sources/${id}`, {
+                method: "DELETE",
+                headers,
+                signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
 
           if (!res.ok) {
               let errorMsg = "Failed to delete source";
@@ -111,6 +118,8 @@ export function JobsDashboard() {
           } else {
               toast.error("Failed to delete source. Please try again.");
           }
+      } finally {
+          setDeletingSourceId(null);
       }
   };
 
@@ -325,14 +334,14 @@ export function JobsDashboard() {
           </TabsContent>
 
           <TabsContent value="location" className="mt-0">
-            <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-border border-dotted sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-0.5 sm:gap-1">
                 <span className="font-black uppercase tracking-tighter text-base sm:text-xl">
                   {locationFilterNormalized?.full_name || "Location Filter"}
                 </span>
                 {locationFilterNormalized && (
                   <span className="font-bold text-xs text-muted-foreground flex gap-1 sm:gap-2 flex-wrap">
-                    <span className="px-1.5 sm:px-2 py-0.5 text-xs border-2 border-black bg-red-100 dark:bg-red-900/50">{locationFilterNormalized.abbreviation}</span>
+                    <span className="brutal-badge bg-red-100 dark:bg-red-900/50 text-foreground">{locationFilterNormalized.abbreviation}</span>
                     <ScrapeCountdown nextScrapeAt={nextLocationScrape} />
                   </span>
                 )}
@@ -397,12 +406,12 @@ export function JobsDashboard() {
             const progressPercent = status === "pending" ? 10 : status === "fetching" ? 40 : status === "parsing" ? 75 : 100;
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
-                <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-border border-dotted sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-col gap-0.5 sm:gap-1">
                      <span className="font-black uppercase tracking-tighter text-base sm:text-xl">{source.name}</span>
                      <span className="font-bold text-xs text-muted-foreground flex gap-1 sm:gap-2 flex-wrap">
-                        <span className="px-1.5 sm:px-2 py-0.5 text-xs border-2 border-black bg-yellow-100 dark:bg-yellow-900/50">{source.interval_minutes}m</span>
-                        <span className="px-1.5 sm:px-2 py-0.5 text-xs border-2 border-black bg-blue-100 dark:bg-blue-900/50">{source.ttl_hours}h</span>
+                        <span className="brutal-badge bg-yellow-100 dark:bg-yellow-900/50 text-foreground">{source.interval_minutes}m</span>
+                        <span className="brutal-badge bg-blue-100 dark:bg-blue-900/50 text-foreground">{source.ttl_hours}h</span>
                      </span>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">
@@ -417,27 +426,32 @@ export function JobsDashboard() {
                     />
                     <button
                       onClick={() => handleDeleteSource(source.id, source.name)}
-                      className="brutal-border px-2 sm:px-3 py-1 sm:py-1.5 font-bold text-xs sm:text-sm bg-destructive text-white brutal-btn-hover flex items-center gap-1 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] flex-1 sm:flex-none justify-center sm:justify-start"
+                      disabled={deletingSourceId === source.id}
+                      className="brutal-border px-2 sm:px-3 py-1 sm:py-1.5 font-bold text-xs sm:text-sm bg-destructive text-white brutal-btn-hover flex items-center gap-1 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] flex-1 sm:flex-none justify-center sm:justify-start disabled:opacity-50"
                     >
-                      <Trash weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">Delete</span>
+                      {deletingSourceId === source.id ? (
+                        <CircleNotch weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Trash weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      )}
+                      <span className="hidden sm:inline">{deletingSourceId === source.id ? "Deleting..." : "Delete"}</span>
                     </button>
                   </div>
                 </div>
 
                 {(isProcessing || isError) && (
                   <div className={`brutal-border mb-4 sm:mb-6 p-3 sm:p-4 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] ${
-                    isError ? "bg-red-50 dark:bg-red-950/30 border-red-500" : "bg-card"
+                    isError ? "bg-destructive/10 dark:bg-destructive/20 border-destructive" : "bg-card"
                   }`}>
                     <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                       {isProcessing && (
                         <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-primary" />
                       )}
                       {isError && (
-                        <div className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 font-black text-lg leading-none">✕</div>
+                        <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 text-destructive shrink-0" />
                       )}
                       <span className={`font-black uppercase tracking-tighter text-xs sm:text-sm ${
-                        isError ? "text-red-500" : "text-foreground"
+                        isError ? "text-destructive" : "text-foreground"
                       }`}>
                         {statusMessage || (isProcessing ? "Processing..." : "Fetch failed")}
                       </span>

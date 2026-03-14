@@ -46,6 +46,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const removeSavedJobId = useJobsStore((state) => state.removeSavedJobId);
   
   const isSaved = savedJobIds.has(job.external_id);
+  const isAnyActionInFlight = isSaving || isDismissing || isBlocking;
   
   const formatSalary = (salary: string) => {
     if (!salary) return salary;
@@ -71,9 +72,14 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     return visa;
   };
 
-  const postedAt = job.posted_at
-    ? formatDistanceToNow(new Date(job.posted_at), { addSuffix: true })
-    : null;
+  let postedAt: string | null = null;
+  if (job.posted_at) {
+    try {
+      postedAt = formatDistanceToNow(new Date(job.posted_at), { addSuffix: true });
+    } catch {
+      // malformed date — skip display
+    }
+  }
 
   const handleBlockCompany = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -255,7 +261,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={handleToggleSave}
-                      disabled={isSaving}
+                      disabled={isAnyActionInFlight}
                       aria-label={isSaved ? "Unsave job" : "Save job"}
                       title={isSaved ? "Unsave" : "Save"}
                       className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 ${
@@ -283,7 +289,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={handleDismissJob}
-                      disabled={isDismissing}
+                      disabled={isAnyActionInFlight}
                       aria-label="Dismiss job"
                       title="Dismiss"
                       className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
@@ -306,7 +312,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                   <TooltipTrigger asChild>
                     <button
                       onClick={handleBlockCompany}
-                      disabled={isBlocking}
+                      disabled={isAnyActionInFlight}
                       aria-label="Block company"
                       title="Block"
                       className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"

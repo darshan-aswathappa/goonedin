@@ -27,16 +27,24 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    const completed = localStorage.getItem(ONBOARDING_KEY);
-    if (!completed) {
-      // Small delay so the dashboard has time to mount
-      const t = setTimeout(() => setOpen(true), 600);
-      return () => clearTimeout(t);
+    try {
+      const completed = localStorage.getItem(ONBOARDING_KEY);
+      if (!completed) {
+        // Small delay so the dashboard has time to mount
+        const t = setTimeout(() => setOpen(true), 600);
+        return () => clearTimeout(t);
+      }
+    } catch {
+      // localStorage unavailable (private browsing, permissions) — skip onboarding
     }
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem(ONBOARDING_KEY, "completed");
+    try {
+      localStorage.setItem(ONBOARDING_KEY, "completed");
+    } catch {
+      // localStorage unavailable — dismiss in-memory only
+    }
     setOpen(false);
   };
 
@@ -148,7 +156,7 @@ function StepWelcome({ userEmail }: { userEmail?: string }) {
 function StepHowItWorks() {
   return (
     <div className="flex flex-col gap-5 flex-1">
-      <div className="brutal-border bg-green-600 p-3 w-fit shadow-[3px_3px_0px_0px_var(--border)]">
+      <div className="brutal-border bg-[var(--chart-3)] p-3 w-fit shadow-[3px_3px_0px_0px_var(--border)]">
         <Broadcast weight="fill" className="h-8 w-8 text-white" />
       </div>
       <div>
@@ -201,7 +209,7 @@ function StepHowItWorks() {
 function StepGetStarted({ onDone }: { onDone: () => void }) {
   return (
     <div className="flex flex-col gap-5 flex-1">
-      <div className="brutal-border bg-amber-500 p-3 w-fit shadow-[3px_3px_0px_0px_var(--border)]">
+      <div className="brutal-border bg-[var(--chart-4)] p-3 w-fit shadow-[3px_3px_0px_0px_var(--border)]">
         <CheckCircle weight="fill" className="h-8 w-8 text-white" />
       </div>
       <div>

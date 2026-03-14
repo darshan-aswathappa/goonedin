@@ -19,14 +19,17 @@ export function useJobsApi(enabled: boolean = true) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const [jobsRes, savedRes, customRes, locationRes] = await Promise.all([
-        fetch(`${API_URL}/jobs`, { headers, signal: controller.signal }),
-        fetch(`${API_URL}/jobs/saved`, { headers, signal: controller.signal }),
-        fetch(`${API_URL}/config/custom-sources`, { headers, signal: controller.signal }),
-        fetch(`${API_URL}/config/location-filter`, { headers, signal: controller.signal }),
-      ]);
-
-      clearTimeout(timeoutId);
+      let jobsRes: Response, savedRes: Response, customRes: Response, locationRes: Response;
+      try {
+        [jobsRes, savedRes, customRes, locationRes] = await Promise.all([
+          fetch(`${API_URL}/jobs`, { headers, signal: controller.signal }),
+          fetch(`${API_URL}/jobs/saved`, { headers, signal: controller.signal }),
+          fetch(`${API_URL}/config/custom-sources`, { headers, signal: controller.signal }),
+          fetch(`${API_URL}/config/location-filter`, { headers, signal: controller.signal }),
+        ]);
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!jobsRes.ok) {
         let errorMsg = "Failed to load jobs";
