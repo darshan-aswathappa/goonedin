@@ -3,9 +3,8 @@
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobCard } from "./JobCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Briefcase, Lock } from "@phosphor-icons/react";
+import { Briefcase, Lock, Gear, ArrowRight, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
-import { ErrorBanner } from "./ErrorBanner";
 
 interface JobListProps {
   jobs: Job[];
@@ -59,7 +58,7 @@ function JobCardSkeleton() {
     <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] space-y-4 h-full flex flex-col">
       <div className="h-6 w-3/4 animate-pulse bg-muted brutal-border" />
       <div className="h-4 w-1/2 animate-pulse bg-muted brutal-border opacity-50" />
-      <div className="pt-4 border-t-2 border-black dark:border-white space-y-2 mt-auto">
+      <div className="pt-4 border-t-2 border-border space-y-2 mt-auto">
         <div className="h-4 w-2/3 animate-pulse bg-muted brutal-border" />
         <div className="h-4 w-1/3 animate-pulse bg-muted brutal-border" />
       </div>
@@ -91,12 +90,12 @@ export function JobList({
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
         <div className="brutal-border bg-red-50 dark:bg-red-950/30 p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] mb-4 sm:mb-6 border-red-500 max-w-md w-full">
-          <div className="text-red-500 text-3xl sm:text-4xl mb-2 sm:mb-4">⚠️</div>
+          <WarningCircle weight="bold" className="h-8 w-8 sm:h-10 sm:w-10 text-red-500 mb-2 sm:mb-4" />
           <h3 className="text-lg sm:text-2xl font-black uppercase italic tracking-tighter mb-2 text-red-700 dark:text-red-400">
-            Couldn't Load Jobs
+            Couldn&apos;t Load Jobs
           </h3>
           <p className="font-bold text-muted-foreground mb-2 break-words text-xs sm:text-sm">
-            <span className="font-black">Why:</span> {error}
+            {error}
           </p>
           <p className="font-bold text-muted-foreground mb-4 sm:mb-6 text-xs sm:text-sm">Try refreshing or check your connection.</p>
           {onRetry && (
@@ -114,16 +113,26 @@ export function JobList({
 
   if (displayJobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
-        <div className="brutal-border bg-card p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] mb-4 sm:mb-6">
-          <Briefcase weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-8 sm:py-16 px-3 text-center">
+        <div className="relative mb-4 sm:mb-6">
+          <div className="brutal-border bg-card p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] relative z-10">
+            <Briefcase weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
+          </div>
+          <div className="absolute inset-[-6px] border-2 border-primary/40 animate-scan-ring pointer-events-none" />
         </div>
         <h3 className="text-base sm:text-2xl font-black uppercase italic tracking-tighter mb-1 sm:mb-2 max-w-xs">
           {emptyMessage}
         </h3>
-        <p className="font-bold text-muted-foreground text-xs sm:text-base">
-          New jobs appear as we find them.
+        <p className="font-bold text-muted-foreground text-xs sm:text-sm mb-6">
+          Streaming live — new extractions appear automatically.
         </p>
+        <Link href="/settings">
+          <div className="brutal-border bg-card px-4 py-2.5 shadow-[2px_2px_0px_0px_var(--border)] brutal-btn-hover flex items-center gap-2">
+            <Gear weight="bold" className="h-4 w-4 text-primary" />
+            <span className="font-black uppercase italic text-sm tracking-tight">Configure keywords &amp; location</span>
+            <ArrowRight weight="bold" className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </Link>
       </div>
     );
   }
@@ -136,7 +145,8 @@ export function JobList({
             {displayJobs.map((job, index) => (
               <div
                 key={job.external_id}
-                className={`h-full ${isLocked && index >= 3 ? "blur-[2px] opacity-40" : ""}`}
+                className={`h-full animate-job-enter ${isLocked && index >= 3 ? "blur-[2px] opacity-40" : ""}`}
+                style={{ animationDelay: `${Math.min(index * 40, 200)}ms` }}
               >
                 <JobCard job={job} isLocked={isLocked} />
               </div>

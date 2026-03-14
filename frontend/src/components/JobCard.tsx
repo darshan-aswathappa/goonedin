@@ -31,14 +31,13 @@ interface JobCardProps {
   isLocked?: boolean;
 }
 
-function getSourceColor(source: string) {
-  return "brutal-badge bg-primary text-primary-foreground";
-}
-
 export function JobCard({ job, isLocked = false }: JobCardProps) {
   const [isBlocking, setIsBlocking] = useState(false);
+  const [isBlockFlash, setIsBlockFlash] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [animateSave, setAnimateSave] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   
   const removeJob = useJobsStore((state) => state.removeJob);
@@ -81,12 +80,14 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     e.stopPropagation();
     if (isBlocking) return;
     setIsBlocking(true);
+    setIsBlockFlash(true);
+    setTimeout(() => setIsBlockFlash(false), 350);
     try {
       const headers = await getAuthHeaders();
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const res = await fetch(`${API_URL}/jobs/block`, {
+      await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ company: job.company }),
@@ -94,18 +95,9 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
       });
 
       clearTimeout(timeoutId);
-
-      if (!res.ok) {
-        // WebSocket will still broadcast, but show error if it fails
-        console.error("Failed to block company:", res.status);
-      }
       // WebSocket will broadcast the block and show the toast
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.error("Block company request timed out");
-      } else if (!(error instanceof DOMException)) {
-        console.error("Failed to block company:", error);
-      }
+    } catch {
+      // Timeout or network error — WebSocket broadcast handles UI update
     } finally {
       setIsBlocking(false);
     }
@@ -135,16 +127,11 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
       clearTimeout(timeoutId);
 
       if (response.ok) {
-        removeJob(job.external_id);
-      } else {
-        console.error("Failed to dismiss job:", response.status);
+        setIsExiting(true);
+        setTimeout(() => removeJob(job.external_id), 180);
       }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.error("Dismiss job request timed out");
-      } else if (!(error instanceof DOMException)) {
-        console.error("Failed to dismiss job:", error);
-      }
+    } catch {
+      // Timeout or network error — job stays visible
     } finally {
       setIsDismissing(false);
     }
@@ -169,8 +156,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         clearTimeout(timeoutId);
         if (res.ok) {
           removeSavedJobId(job.external_id);
-        } else {
-          console.error("Failed to unsave job:", res.status);
         }
       } else {
         const res = await fetch(`${API_URL}/jobs/save`, {
@@ -190,16 +175,12 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         clearTimeout(timeoutId);
         if (res.ok) {
           addSavedJobId(job.external_id);
-        } else {
-          console.error("Failed to save job:", res.status);
+          setAnimateSave(true);
+          setTimeout(() => setAnimateSave(false), 400);
         }
       }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        console.error("Toggle save job request timed out");
-      } else if (!(error instanceof DOMException)) {
-        console.error("Failed to toggle save job:", error);
-      }
+    } catch {
+      // Timeout or network error — save state unchanged
     } finally {
       setIsSaving(false);
     }
@@ -211,12 +192,14 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
         onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
         className={`group relative brutal-border brutal-shadow bg-card p-6 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
           isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
-        }`}
+        } ${isExiting ? "animate-card-exit" : ""}`}
       >
+        {isBlockFlash && (
+          <div className="absolute inset-0 bg-red-500/25 animate-block-flash pointer-events-none z-20" />
+        )}
+
         <div
-          className={`absolute top-0 right-0 brutal-border border-t-0 border-r-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getSourceColor(
-            job.source
-          )}`}
+          className="absolute top-0 right-0 brutal-border border-t-0 border-r-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider brutal-badge bg-primary text-primary-foreground"
         >
           {job.source}
         </div>
@@ -246,7 +229,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             )}
 
             {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
                 <CurrencyDollar weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <span className="truncate">{formatSalary(job.salary)}</span>
               </div>
@@ -257,7 +240,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
               return (
-                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
                   <Globe weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   <span className="truncate">{formatted}</span>
                 </div>
@@ -275,14 +258,17 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                       disabled={isSaving}
                       aria-label={isSaved ? "Unsave job" : "Save job"}
                       title={isSaved ? "Unsave" : "Save"}
-                      className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center ${
+                      className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 ${
                         isSaved ? "bg-primary text-white" : "bg-card text-foreground"
                       }`}
                     >
                       {isSaving ? (
                         <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                       ) : (
-                        <BookmarkSimple weight={isSaved ? "fill" : "bold"} className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <BookmarkSimple
+                          weight={isSaved ? "fill" : "bold"}
+                          className={`h-4 w-4 sm:h-5 sm:w-5 ${animateSave ? "animate-save-pop" : ""}`}
+                        />
                       )}
                     </button>
                   </TooltipTrigger>
@@ -300,7 +286,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                       disabled={isDismissing}
                       aria-label="Dismiss job"
                       title="Dismiss"
-                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-[#FFEBEB] dark:hover:bg-[#4A1A1A] transition-colors flex-1 sm:flex-none flex items-center justify-center"
+                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
                     >
                       {isDismissing ? (
                         <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
@@ -323,7 +309,7 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                       disabled={isBlocking}
                       aria-label="Block company"
                       title="Block"
-                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center"
+                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50"
                     >
                       {isBlocking ? (
                         <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />

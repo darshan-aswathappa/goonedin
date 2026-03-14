@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useJobsStore } from "@/store/jobs";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
@@ -9,12 +9,12 @@ import { ConnectionStatus } from "./ConnectionStatus";
 import { ThemeToggle } from "./ThemeToggle";
 import { CompanyTicker } from "./CompanyTicker";
 import { AddJobSourceModal } from "./AddJobSourceModal";
+import { OnboardingModal } from "./OnboardingModal";
 import { LocationFilterInput } from "./LocationFilterInput";
 import { ScrapeCountdown } from "./ScrapeCountdown";
 import { ErrorBanner } from "./ErrorBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
-import { LOCATION_FILTER } from "@/config/filters";
 import { useAuth, getAuthHeaders } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import {
@@ -30,20 +30,18 @@ import {
   BookmarkSimple,
   SignOut,
   Sparkle,
-  Plus,
   PencilSimple,
   Trash,
   Tag,
 } from "@phosphor-icons/react";
 import * as PhosphorIcons from "@phosphor-icons/react";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
 
-  const { connect: reconnectWs } = useWebSocket({ enabled: !!user });
+  useWebSocket({ enabled: !!user });
   const { refetch: retryFetch } = useJobsApi(!!user);
 
   const jobs = useJobsStore((state) => state.jobs);
@@ -63,6 +61,15 @@ export function JobsDashboard() {
   const customSources = useJobsStore((state) => state.customSources);
   const removeCustomSource = useJobsStore((state) => state.removeCustomSource);
   const sourceStatuses = useJobsStore((state) => state.sourceStatuses);
+
+  const prevJobCountRef = useRef(jobs.length);
+  const [countBumpKey, setCountBumpKey] = useState(0);
+  useEffect(() => {
+    if (jobs.length > prevJobCountRef.current) {
+      setCountBumpKey((k) => k + 1);
+    }
+    prevJobCountRef.current = jobs.length;
+  }, [jobs.length]);
 
   const handleDeleteSource = async (id: string, name: string) => {
       try {
@@ -104,19 +111,19 @@ export function JobsDashboard() {
           } else {
               toast.error("Failed to delete source. Please try again.");
           }
-          console.error(err);
       }
   };
 
   const getDynamicIcon = (iconName: string) => {
-    const IconComponent = (PhosphorIcons as any)[iconName] || PhosphorIcons.Buildings;
+    const icons = PhosphorIcons as unknown as Record<string, React.ComponentType<{ weight?: string; className?: string }>>;
+    const IconComponent = icons[iconName] || PhosphorIcons.Buildings;
     return <IconComponent weight="bold" className="h-5 w-5" />;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFF7F1] flex items-center justify-center">
-        <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-[#F15152]" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
@@ -144,14 +151,14 @@ export function JobsDashboard() {
               <div className="flex items-center gap-1 sm:gap-2">
                 <div className="brutal-border bg-card px-2 sm:px-3 py-1 sm:py-1.5 hidden sm:flex items-center gap-2 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 sm:h-[42px]">
                   <Sparkle weight="fill" className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
-                  <span className="font-black text-xs sm:text-sm">{jobs.length}</span>
+                  <span key={countBumpKey} className="font-black text-xs sm:text-sm animate-count-bump">{jobs.length}</span>
                 </div>
 
                 <div className="flex items-center gap-0.5 h-10 sm:h-[42px]">
                   <ThemeToggle />
 
                   <Link href="/saved" title="Saved jobs">
-                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center text-[#009063]">
+                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center text-green-600 dark:text-green-500">
                       <BookmarkSimple weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
@@ -190,6 +197,8 @@ export function JobsDashboard() {
         </div>
       </header>
 
+      {user && <OnboardingModal userEmail={user.email} />}
+
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {!user && <CompanyTicker />}
 
@@ -224,7 +233,7 @@ export function JobsDashboard() {
               >
                 <div className="flex items-center gap-1 sm:gap-2">
                   <MapPin weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span className="text-xs sm:text-sm">{locationFilterNormalized?.abbreviation || "Loc"}</span>
+                  <span className="text-xs sm:text-sm">{locationFilterNormalized?.abbreviation || "Location"}</span>
                   <span className="text-xs">({locationFilteredJobs.length})</span>
                 </div>
               </TabsTrigger>
@@ -357,7 +366,7 @@ export function JobsDashboard() {
           <TabsContent value="jobright" className="mt-0">
             <JobList
               jobs={jobrightJobs}
-              emptyMessage="No Jobright jobs found yet."
+              emptyMessage="No Jobright jobs found yet. We'll update you as we discover them."
               isLocked={!user}
             />
           </TabsContent>
@@ -365,7 +374,7 @@ export function JobsDashboard() {
           <TabsContent value="mathworks" className="mt-0">
             <JobList
               jobs={mathworksJobs}
-              emptyMessage="No MathWorks jobs found yet."
+              emptyMessage="No MathWorks jobs found yet. We'll update you as we discover them."
               isLocked={!user}
             />
           </TabsContent>
@@ -373,7 +382,7 @@ export function JobsDashboard() {
           <TabsContent value="github" className="mt-0">
             <JobList
               jobs={githubJobs}
-              emptyMessage="No GitHub jobs found yet."
+              emptyMessage="No GitHub jobs found yet. We'll update you as we discover them."
               isLocked={!user}
             />
           </TabsContent>
@@ -430,7 +439,7 @@ export function JobsDashboard() {
                       <span className={`font-black uppercase tracking-tighter text-xs sm:text-sm ${
                         isError ? "text-red-500" : "text-foreground"
                       }`}>
-                        {statusMessage || (isProcessing ? "Processing..." : "Error")}
+                        {statusMessage || (isProcessing ? "Processing..." : "Fetch failed")}
                       </span>
                     </div>
                     {isProcessing && (
@@ -443,7 +452,7 @@ export function JobsDashboard() {
                     )}
                     {isProcessing && (
                       <div className="flex justify-between mt-1.5 sm:mt-2 gap-1">
-                        {["Queued", "Fetching", "AI", "Done"].map((step, idx) => {
+                        {["Queued", "Fetching", "Analyzing", "Done"].map((step, idx) => {
                           const stepStatuses = ["pending", "fetching", "parsing", "done"];
                           const currentIdx = stepStatuses.indexOf(status);
                           const isActive = idx <= currentIdx;

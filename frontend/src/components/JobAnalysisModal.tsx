@@ -28,11 +28,27 @@ interface JobAnalysisModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const LOADING_MESSAGES = [
+  "Parsing requirements...",
+  "Extracting keywords...",
+  "Calibrating match score...",
+  "Analyzing role fit...",
+];
+
 export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalProps) {
   const [fetchedAnalysis, setFetchedAnalysis] = useState<JobAnalysis | null>(null);
   const [fetchStatus, setFetchStatus] = useState<"idle" | "loading" | "done" | "failed">("idle");
+  const [msgIdx, setMsgIdx] = useState(0);
 
   const analysis: JobAnalysis | null = job.analysis || fetchedAnalysis;
+
+  useEffect(() => {
+    if (fetchStatus !== "loading") return;
+    const interval = setInterval(() => {
+      setMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [fetchStatus]);
 
   useEffect(() => {
     if (!open) return;
@@ -99,21 +115,23 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
         <div className="p-3 sm:p-6 space-y-4 sm:space-y-8">
           {!analysis && fetchStatus === "loading" ? (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12">
-              <CircleNotch weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 animate-spin text-[#F15152] mb-2 sm:mb-4" />
-              <h3 className="text-base sm:text-xl font-black uppercase italic">Analyzing requirements...</h3>
+              <CircleNotch weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 animate-spin text-primary mb-2 sm:mb-4" />
+              <h3 key={msgIdx} className="text-base sm:text-xl font-black uppercase italic tracking-tighter animate-msg-in">
+                {LOADING_MESSAGES[msgIdx]}<span className="animate-cursor-blink">_</span>
+              </h3>
             </div>
           ) : job.analysis_status === "unavailable" && !analysis ? (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-2 text-center">
-              <WarningCircle weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-[#F0A500] mb-2 sm:mb-4" />
-              <h3 className="text-base sm:text-xl font-black uppercase italic">Couldn't Analyze</h3>
+              <WarningCircle weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-amber-500 mb-2 sm:mb-4" />
+              <h3 className="text-base sm:text-xl font-black uppercase italic">Couldn&apos;t Analyze</h3>
               <p className="font-bold text-muted-foreground mt-1 sm:mt-2 text-xs sm:text-sm max-w-sm">
-                This job couldn't be analyzed. View the posting directly.
+                We couldn&apos;t analyze this job. Check the original posting for details.
               </p>
             </div>
           ) : analysis ? (
             <div className="space-y-4 sm:space-y-8">
               {analysis.summary && (
-                <div className="brutal-border bg-card p-2.5 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)]">
+                <div className="brutal-border bg-card p-2.5 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] animate-tab-in" style={{ animationDelay: "0ms" }}>
                   <div className="mb-2 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-black uppercase tracking-widest text-muted-foreground">
                     <Sparkle weight="bold" className="h-3 w-3 sm:h-4 sm:w-4" />
                     Summary
@@ -125,11 +143,11 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
               )}
 
               {analysis.must_have_keywords.length > 0 && (
-                <div className="space-y-2 sm:space-y-4">
+                <div className="space-y-2 sm:space-y-4 animate-tab-in" style={{ animationDelay: "80ms" }}>
                   <div className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg font-black uppercase italic tracking-tighter">
-                    <ShieldCheck weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-[#F15152]" />
+                    <ShieldCheck weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-destructive" />
                     Must-Have
-                    <span className="brutal-border bg-[#F15152] text-white px-1.5 sm:px-2 py-0.5 text-xs not-italic">
+                    <span className="brutal-border bg-destructive text-white px-1.5 sm:px-2 py-0.5 text-xs not-italic">
                       {analysis.must_have_keywords.length}
                     </span>
                   </div>
@@ -137,7 +155,8 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                     {analysis.must_have_keywords.map((kw, i) => (
                       <div
                         key={i}
-                        className="brutal-border bg-card px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-black uppercase shadow-[1px_1px_0px_0px_var(--border)] hover:bg-primary hover:text-white transition-colors cursor-default"
+                        className="brutal-border bg-card px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-black uppercase shadow-[1px_1px_0px_0px_var(--border)] hover:bg-primary hover:text-white transition-colors cursor-default animate-tab-in"
+                        style={{ animationDelay: `${80 + i * 22}ms` }}
                       >
                         {kw}
                       </div>
@@ -147,11 +166,11 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
               )}
 
               {analysis.good_to_have_keywords.length > 0 && (
-                <div className="space-y-2 sm:space-y-4">
+                <div className="space-y-2 sm:space-y-4 animate-tab-in" style={{ animationDelay: "160ms" }}>
                   <div className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg font-black uppercase italic tracking-tighter">
-                    <Star weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-[#009063]" />
+                    <Star weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-green-600 dark:text-green-500" />
                     Nice-to-Have
-                    <span className="brutal-border bg-[#009063] text-white px-1.5 sm:px-2 py-0.5 text-xs not-italic">
+                    <span className="brutal-border bg-green-600 text-white px-1.5 sm:px-2 py-0.5 text-xs not-italic">
                       {analysis.good_to_have_keywords.length}
                     </span>
                   </div>
@@ -159,7 +178,8 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
                     {analysis.good_to_have_keywords.map((kw, i) => (
                       <div
                         key={i}
-                        className="brutal-border bg-card px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-black uppercase shadow-[1px_1px_0px_0px_var(--border)] hover:bg-primary hover:text-white transition-colors cursor-default"
+                        className="brutal-border bg-card px-2 sm:px-3 py-0.5 sm:py-1 text-xs font-black uppercase shadow-[1px_1px_0px_0px_var(--border)] hover:bg-primary hover:text-white transition-colors cursor-default animate-tab-in"
+                        style={{ animationDelay: `${240 + i * 22}ms` }}
                       >
                         {kw}
                       </div>
@@ -169,7 +189,7 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
               )}
 
               {analysis.minimum_qualifications.length > 0 && (
-                <div className="space-y-2 sm:space-y-4">
+                <div className="space-y-2 sm:space-y-4 animate-tab-in" style={{ animationDelay: "240ms" }}>
                   <div className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg font-black uppercase italic tracking-tighter text-foreground">
                     <GraduationCap weight="fill" className="h-5 w-5 sm:h-6 sm:w-6" />
                     Education
@@ -190,9 +210,9 @@ export function JobAnalysisModal({ job, open, onOpenChange }: JobAnalysisModalPr
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-2 text-center">
-              <WarningCircle weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-[#606060] mb-2 sm:mb-4" />
-              <h3 className="text-base sm:text-xl font-black uppercase italic">Not Ready Yet</h3>
-              <p className="font-bold text-[#606060] text-xs sm:text-sm">The analysis is being prepared. Please check back shortly.</p>
+              <WarningCircle weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground mb-2 sm:mb-4" />
+              <h3 className="text-base sm:text-xl font-black uppercase italic">Analysis Queued</h3>
+              <p className="font-bold text-muted-foreground text-xs sm:text-sm">This job is in the analysis queue. It will be ready shortly.</p>
             </div>
           )}
         </div>
