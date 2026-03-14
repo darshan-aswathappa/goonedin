@@ -1153,21 +1153,13 @@ async def get_job_analysis(external_id: str, ctx: UserContext = Depends(_get_ctx
         # Check scraped_jobs table for analysis
         job_data = await get_job(supabase, ctx.user_id, "LinkedIn", external_id)
         if job_data and job_data.get("analysis"):
-            resume_match_raw = job_data.get("resume_match")
-            if isinstance(resume_match_raw, str):
-                import json as _json
-                try:
-                    resume_match_raw = _json.loads(resume_match_raw)
-                except (ValueError, TypeError):
-                    resume_match_raw = None
             return {
                 "status": "completed",
                 "analysis": job_data["analysis"],
-                "resume_match": resume_match_raw,
             }
 
         if job_data and job_data.get("analysis_status") == "unavailable":
-            return {"status": "unavailable", "analysis": None, "resume_match": None}
+            return {"status": "unavailable", "analysis": None}
 
         # Not available yet — analysis may still be in progress
         return {"status": "pending", "analysis": None}

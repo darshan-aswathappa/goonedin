@@ -13,12 +13,10 @@ import {
   CurrencyDollar,
   Globe,
   CircleNotch,
-  FileText,
 } from "@phosphor-icons/react";
 import { formatDistanceToNow } from "date-fns";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { JobAnalysisModal } from "./JobAnalysisModal";
-import { ResumeMatchModal } from "./ResumeMatchModal";
 import {
   Tooltip,
   TooltipContent,
@@ -51,7 +49,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
   const [isDismissing, setIsDismissing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
-  const [resumeMatchOpen, setResumeMatchOpen] = useState(false);
   
   const removeJob = useJobsStore((state) => state.removeJob);
   const savedJobIds = useJobsStore((state) => state.savedJobIds);
@@ -298,24 +295,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                 </Tooltip>
               </TooltipProvider>
 
-              {job.source === "LinkedIn" && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setResumeMatchOpen(true); }}
-                        aria-label="Resume match"
-                        className="brutal-border p-2 bg-card text-[#7C3AED] hover:bg-[#7C3AED] hover:text-white transition-colors"
-                      >
-                        <FileText weight="bold" className="h-5 w-5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
-                      <p>Resume Match</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
             </div>
 
             <a
@@ -337,13 +316,6 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           job={job}
           open={analysisOpen}
           onOpenChange={setAnalysisOpen}
-        />
-      )}
-      {job.source === "LinkedIn" && (
-        <ResumeMatchModal
-          job={job}
-          open={resumeMatchOpen}
-          onOpenChange={setResumeMatchOpen}
         />
       )}
     </>

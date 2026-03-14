@@ -15,8 +15,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
 from analyzer import analyze_resume_with_deepseek, extract_text_from_pdf
-from matcher import compute_match
-from models import AnalyzeResponse, MatchRequest, MatchResponse, MatchResult
+from models import AnalyzeResponse
 
 load_dotenv()
 
@@ -74,23 +73,3 @@ async def analyze(file: UploadFile = File(...)):
     )
 
 
-@app.post("/match", response_model=MatchResponse)
-async def match(req: MatchRequest):
-    result = compute_match(
-        req.resume_skills,
-        req.resume_project_keywords,
-        req.must_have_keywords,
-        req.good_to_have_keywords,
-    )
-
-    if result is None:
-        return MatchResponse(match=None)
-
-    return MatchResponse(
-        match=MatchResult(
-            score=result["score"],
-            matched_must_have=result["matched_must_have"],
-            missing_must_have=result["missing_must_have"],
-            matched_good_to_have=result["matched_good_to_have"],
-        )
-    )
