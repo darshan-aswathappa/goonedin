@@ -5,11 +5,14 @@ import { JobCard } from "./JobCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Briefcase, Lock } from "@phosphor-icons/react";
 import Link from "next/link";
+import { ErrorBanner } from "./ErrorBanner";
 
 interface JobListProps {
   jobs: Job[];
   emptyMessage?: string;
   isLocked?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
 }
 
 const DUMMY_JOBS: Job[] = [
@@ -64,10 +67,12 @@ function JobCardSkeleton() {
   );
 }
 
-export function JobList({ 
-  jobs, 
-  emptyMessage = "No jobs yet. Waiting for new opportunities...",
-  isLocked = false
+export function JobList({
+  jobs,
+  emptyMessage = "No jobs yet. We're actively searching—check back in a few minutes!",
+  isLocked = false,
+  error,
+  onRetry,
 }: JobListProps) {
   const isLoading = useJobsStore((state) => state.isLoading);
   const displayJobs = isLocked ? DUMMY_JOBS : jobs;
@@ -82,17 +87,42 @@ export function JobList({
     );
   }
 
+  if (error && !isLocked) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
+        <div className="brutal-border bg-red-50 dark:bg-red-950/30 p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] mb-4 sm:mb-6 border-red-500 max-w-md w-full">
+          <div className="text-red-500 text-3xl sm:text-4xl mb-2 sm:mb-4">⚠️</div>
+          <h3 className="text-lg sm:text-2xl font-black uppercase italic tracking-tighter mb-2 text-red-700 dark:text-red-400">
+            Couldn't Load Jobs
+          </h3>
+          <p className="font-bold text-muted-foreground mb-2 break-words text-xs sm:text-sm">
+            <span className="font-black">Why:</span> {error}
+          </p>
+          <p className="font-bold text-muted-foreground mb-4 sm:mb-6 text-xs sm:text-sm">Try refreshing or check your connection.</p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="brutal-border px-4 sm:px-6 py-2 sm:py-3 font-bold text-sm sm:text-base bg-red-600 text-white hover:bg-red-700 transition-colors w-full"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (displayJobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 sm:py-24 text-center">
-        <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] mb-6">
-          <Briefcase weight="bold" className="h-12 w-12 text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
+        <div className="brutal-border bg-card p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] mb-4 sm:mb-6">
+          <Briefcase weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
         </div>
-        <h3 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter mb-2">
+        <h3 className="text-base sm:text-2xl font-black uppercase italic tracking-tighter mb-1 sm:mb-2 max-w-xs">
           {emptyMessage}
         </h3>
-        <p className="font-bold text-muted-foreground">
-          New jobs will appear here in real-time.
+        <p className="font-bold text-muted-foreground text-xs sm:text-base">
+          New jobs appear as we find them.
         </p>
       </div>
     );
@@ -101,10 +131,10 @@ export function JobList({
   return (
     <div className="relative">
       <div className={isLocked ? "pointer-events-none" : ""}>
-        <ScrollArea className={`${isLocked ? "h-[600px] overflow-hidden" : "h-[calc(100dvh-220px)]"} pr-4 pb-8`}>
+        <ScrollArea className={`${isLocked ? "h-[500px] sm:h-[600px] overflow-hidden" : "h-[calc(100dvh-200px)] sm:h-[calc(100dvh-220px)]"} pr-3 sm:pr-4 pb-6 sm:pb-8`}>
           <div className="job-card-grid">
             {displayJobs.map((job, index) => (
-              <div 
+              <div
                 key={job.external_id}
                 className={`h-full ${isLocked && index >= 3 ? "blur-[2px] opacity-40" : ""}`}
               >
@@ -116,22 +146,22 @@ export function JobList({
       </div>
 
       {isLocked && (
-        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px]">
-          <div className="brutal-border bg-card p-6 sm:p-10 shadow-[8px_8px_0px_0px_var(--border)] flex flex-col items-center gap-6 max-w-md text-center">
-            <div className="brutal-border bg-primary p-4 shadow-[4px_4px_0px_0px_var(--border)]">
-              <Lock weight="fill" className="h-10 w-10 text-white" />
+        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px] p-3 sm:p-0">
+          <div className="brutal-border bg-card p-4 sm:p-10 shadow-[4px_4px_0px_0px_var(--border)] sm:shadow-[8px_8px_0px_0px_var(--border)] flex flex-col items-center gap-3 sm:gap-6 max-w-sm text-center w-full">
+            <div className="brutal-border bg-primary p-3 sm:p-4 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)]">
+              <Lock weight="fill" className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
             </div>
-            <div className="space-y-2">
-              <h3 className="text-3xl font-black uppercase italic tracking-tighter">
-                Access Denied
+            <div className="space-y-1 sm:space-y-2">
+              <h3 className="text-lg sm:text-3xl font-black uppercase italic tracking-tighter leading-tight">
+                Create an Account
               </h3>
-              <p className="font-bold text-muted-foreground leading-tight">
-                Create an account to unlock exclusive job postings and real-time alerts.
+              <p className="font-bold text-muted-foreground leading-tight text-xs sm:text-base">
+                Sign up free to see all jobs and get real-time alerts.
               </p>
             </div>
             <Link href="/login" className="w-full">
-              <button className="w-full brutal-border bg-primary text-white py-4 font-black uppercase italic text-xl brutal-btn-hover">
-                Sign In Now
+              <button className="w-full brutal-border bg-primary text-white py-2.5 sm:py-4 font-black uppercase italic text-sm sm:text-xl brutal-btn-hover">
+                Get Started Free
               </button>
             </Link>
           </div>

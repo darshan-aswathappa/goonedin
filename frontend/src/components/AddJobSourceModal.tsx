@@ -29,6 +29,25 @@ const ICONS = [
   { name: "Monitor", component: Monitor },
 ];
 
+const CONSTRAINTS = {
+  NAME_MAX: 100,
+  URL_MAX: 500,
+  TTL_MIN: 1,
+  TTL_MAX: 720,
+  INTERVAL_MIN: 1,
+  INTERVAL_MAX: 10080,
+};
+
+const validateUrl = (urlStr: string): boolean => {
+  if (!urlStr.trim()) return false;
+  try {
+    const url = new URL(urlStr);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 interface AddJobSourceModalProps {
   editSource?: CustomSource;
   triggerNode?: React.ReactNode;
@@ -49,6 +68,7 @@ export function AddJobSourceModal({
   const [intervalMinutes, setIntervalMinutes] = useState("60");
   const [disableJavascript, setDisableJavascript] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const addCustomSource = useJobsStore((state) => state.addCustomSource);
 
   useEffect(() => {
@@ -65,14 +85,51 @@ export function AddJobSourceModal({
     }
   }, [open, editSource]);
 
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!name.trim()) {
+      errors.name = "Source name is required";
+    } else if (name.length > CONSTRAINTS.NAME_MAX) {
+      errors.name = `Name must be ${CONSTRAINTS.NAME_MAX} characters or less`;
+    }
+
+    if (!url.trim()) {
+      errors.url = "URL is required";
+    } else if (!validateUrl(url)) {
+      errors.url = "Please enter a valid URL (include http:// or https://)";
+    } else if (url.length > CONSTRAINTS.URL_MAX) {
+      errors.url = `URL must be ${CONSTRAINTS.URL_MAX} characters or less`;
+    }
+
+    const ttlNum = parseInt(ttlHours);
+    if (isNaN(ttlNum) || ttlNum < CONSTRAINTS.TTL_MIN || ttlNum > CONSTRAINTS.TTL_MAX) {
+      errors.ttlHours = `TTL must be between ${CONSTRAINTS.TTL_MIN} and ${CONSTRAINTS.TTL_MAX} hours`;
+    }
+
+    const intervalNum = parseInt(intervalMinutes);
+    if (isNaN(intervalNum) || intervalNum < CONSTRAINTS.INTERVAL_MIN || intervalNum > CONSTRAINTS.INTERVAL_MAX) {
+      errors.intervalMinutes = `Interval must be between ${CONSTRAINTS.INTERVAL_MIN} minute and ${CONSTRAINTS.INTERVAL_MAX / 1440} days`;
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setValidationErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      setIsSubmitting(true);
-
       const headers = await getAuthHeaders();
-
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
       const requestPayload = {
         source: {
           id: editingId || crypto.randomUUID(),
@@ -90,6 +147,9 @@ export function AddJobSourceModal({
         : `${apiUrl}/config/custom-sources`;
       const method = editingId ? "PUT" : "POST";
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const res = await fetch(endpoint, {
         method,
         headers: {
@@ -97,12 +157,33 @@ export function AddJobSourceModal({
           ...headers,
         },
         body: JSON.stringify(requestPayload),
+        signal: controller.signal,
       });
 
-      if (!res.ok)
-        throw new Error(
-          `Failed to ${editingId ? "update" : "add"} custom source`,
-        );
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        let errorMsg = "Failed to save source";
+        try {
+          const errorData = await res.json();
+          if (errorData.detail) {
+            errorMsg = errorData.detail;
+          }
+        } catch {
+          if (res.status === 409) {
+            errorMsg = "A source with this name already exists";
+          } else if (res.status === 400) {
+            errorMsg = "URL or settings are invalid. Check the URL format and try again.";
+          } else if (res.status >= 500) {
+            errorMsg = "Server error. Please try again later.";
+          } else if (res.status === 401) {
+            errorMsg = "Please sign in again";
+          }
+        }
+        toast.error(errorMsg);
+        setIsSubmitting(false);
+        return;
+      }
 
       const responseData = await res.json();
       const newSourceList: CustomSource[] = responseData.custom_sources || [];
@@ -121,7 +202,6 @@ export function AddJobSourceModal({
         );
         if (onSuccess) onSuccess(newSource.id);
       } else {
-        // Fallback if not found for some reason, just update the whole list
         useJobsStore.getState().setCustomSources(newSourceList);
         toast.success(
           `${editingId ? "Updated" : "Tracking jobs from"} ${name}`,
@@ -134,7 +214,13 @@ export function AddJobSourceModal({
       setOpen(false);
       resetForm();
     } catch (err) {
-      toast.error("Error creating job source");
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        toast.error("Request timed out. Please check your connection and try again.");
+      } else if (err instanceof TypeError) {
+        toast.error("Network error. Check your connection and try again.");
+      } else {
+        toast.error("Failed to save source. Please try again.");
+      }
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -161,170 +247,224 @@ export function AddJobSourceModal({
     >
       <DialogTrigger asChild>
         {triggerNode || (
-          <button className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm bg-muted text-foreground shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:bg-neutral-200 dark:hover:bg-neutral-800 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none whitespace-nowrap shrink-0 flex items-center gap-2">
-            <Plus weight="bold" className="h-5 w-5" />
+          <button className="brutal-border rounded-none px-2.5 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm bg-muted text-foreground shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0 flex items-center gap-1 sm:gap-2 h-10 sm:h-auto">
+            <Plus weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="sr-only sm:not-sr-only sm:inline">Add Source</span>
           </button>
         )}
       </DialogTrigger>
 
-      <DialogContent className="max-w-[calc(100%-2rem)] sm:max-w-[425px] brutal-border brutal-shadow rounded-none sm:rounded-none bg-background">
+      <DialogContent className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] brutal-border rounded-none bg-card shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] max-h-[90dvh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="font-black italic uppercase tracking-tighter text-2xl">
-            {editingId ? "Edit Custom Job Board" : "Custom Job Board"}
+          <DialogTitle className="font-black italic uppercase tracking-tighter text-lg sm:text-2xl text-foreground">
+            {editingId ? "Edit Job Board" : "Custom Job Board"}
           </DialogTitle>
-          <DialogDescription className="font-medium">
-            AI Scrape jobs from any custom URL
+          <DialogDescription className="font-bold uppercase text-xs text-muted-foreground">
+            Automatically extract jobs from any website
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="grid gap-6 py-4">
-          <div className="grid gap-2">
+        <form onSubmit={handleSubmit} className="grid gap-3 sm:gap-6 py-2 sm:py-4">
+          <div className="grid gap-1.5 sm:gap-2">
             <label
               htmlFor="name"
-              className="font-black uppercase tracking-tight text-xs"
+              className="font-black italic uppercase tracking-tight text-xs text-foreground"
             >
-              Name
+              Name <span className="text-destructive">*</span>
             </label>
             <input
               id="name"
               value={name}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setName(e.target.value)
-              }
-              className="flex h-10 w-full bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none focus-visible:ring-0 focus-visible:border-black"
+              maxLength={CONSTRAINTS.NAME_MAX}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setName(e.target.value.slice(0, CONSTRAINTS.NAME_MAX));
+                if (validationErrors.name) {
+                  setValidationErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.name;
+                    return next;
+                  });
+                }
+              }}
+              className={`flex h-9 sm:h-10 w-full bg-background px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none shadow-[1px_1px_0px_0px_var(--border)] ${
+                validationErrors.name ? "border-destructive" : ""
+              }`}
               placeholder="e.g. Acme Corp Jobs"
-              required
             />
+            {validationErrors.name && (
+              <p className="text-xs text-destructive font-bold uppercase">{validationErrors.name}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {name.length}/{CONSTRAINTS.NAME_MAX}
+            </p>
           </div>
-          <div className="grid gap-2">
+          <div className="grid gap-1.5 sm:gap-2">
             <label
               htmlFor="url"
-              className="font-black uppercase tracking-tight text-xs"
+              className="font-black italic uppercase tracking-tight text-xs text-foreground"
             >
-              Origin URL
+              Job Board URL <span className="text-destructive">*</span>
             </label>
             <input
               id="url"
-              type="url"
               value={url}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setUrl(e.target.value)
-              }
-              className="flex h-10 w-full bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none focus-visible:ring-0 focus-visible:border-black"
-              placeholder="https://acme.com/careers"
-              required
+              maxLength={CONSTRAINTS.URL_MAX}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setUrl(e.target.value.slice(0, CONSTRAINTS.URL_MAX));
+                if (validationErrors.url) {
+                  setValidationErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.url;
+                    return next;
+                  });
+                }
+              }}
+              className={`flex h-9 sm:h-10 w-full bg-background px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none shadow-[1px_1px_0px_0px_var(--border)] ${
+                validationErrors.url ? "border-destructive" : ""
+              }`}
+              placeholder="https://jobs.example.com"
             />
+            {validationErrors.url && (
+              <p className="text-xs text-destructive font-bold uppercase">{validationErrors.url}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Must start with http:// or https://
+            </p>
           </div>
 
-          <div className="grid gap-2 flex-1">
+          <div className="grid gap-1.5 sm:gap-2">
             <label
               htmlFor="icon"
-              className="font-black uppercase tracking-tight text-xs"
+              className="font-black italic uppercase tracking-tight text-xs text-foreground"
             >
               Icon
             </label>
-            <div className="relative">
-              <select
-                id="icon"
-                value={icon}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                  setIcon(e.target.value)
-                }
-                className="brutal-border font-bold w-full rounded-none flex h-10 w-full bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {ICONS.map((Ico) => (
-                  <option key={Ico.name} value={Ico.name} className="font-bold">
-                    {Ico.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              id="icon"
+              value={icon}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                setIcon(e.target.value)
+              }
+              className="brutal-border font-bold w-full rounded-none flex h-9 sm:h-10 bg-background px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 shadow-[1px_1px_0px_0px_var(--border)]"
+            >
+              {ICONS.map((Ico) => (
+                <option key={Ico.name} value={Ico.name} className="font-bold">
+                  {Ico.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="grid gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid gap-1.5 sm:gap-2">
               <label
                 htmlFor="ttl"
-                className="font-black uppercase tracking-tight text-xs"
+                className="font-black italic uppercase tracking-tight text-xs text-foreground"
               >
-                Job TTL (Hours)
+                Keep jobs (hrs) <span className="text-destructive">*</span>
               </label>
               <input
                 id="ttl"
                 type="number"
-                min="1"
+                min={CONSTRAINTS.TTL_MIN}
+                max={CONSTRAINTS.TTL_MAX}
+                step="1"
                 value={ttlHours}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setTtlHours(e.target.value)
-                }
-                className="flex h-10 w-full bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none focus-visible:ring-0 focus-visible:border-black"
-                required
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  setTtlHours(e.target.value);
+                  if (validationErrors.ttlHours) {
+                    setValidationErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.ttlHours;
+                      return next;
+                    });
+                  }
+                }}
+                className={`flex h-9 sm:h-10 w-full bg-background px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none shadow-[1px_1px_0px_0px_var(--border)] ${
+                  validationErrors.ttlHours ? "border-destructive" : ""
+                }`}
               />
+              {validationErrors.ttlHours && (
+                <p className="text-xs text-destructive font-bold uppercase">{validationErrors.ttlHours}</p>
+              )}
+              <p className="text-xs text-muted-foreground">1-720</p>
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-1.5 sm:gap-2">
               <label
                 htmlFor="interval"
-                className="font-black uppercase tracking-tight text-xs"
+                className="font-black italic uppercase tracking-tight text-xs text-foreground"
               >
-                Refresh (Mins)
+                Check every (min) <span className="text-destructive">*</span>
               </label>
               <input
                 id="interval"
                 type="number"
-                min="5"
+                min={CONSTRAINTS.INTERVAL_MIN}
+                max={CONSTRAINTS.INTERVAL_MAX}
+                step="1"
                 value={intervalMinutes}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setIntervalMinutes(e.target.value)
-                }
-                className="flex h-10 w-full bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none focus-visible:ring-0 focus-visible:border-black"
-                required
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  setIntervalMinutes(e.target.value);
+                  if (validationErrors.intervalMinutes) {
+                    setValidationErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.intervalMinutes;
+                      return next;
+                    });
+                  }
+                }}
+                className={`flex h-9 sm:h-10 w-full bg-background px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 brutal-border rounded-none shadow-[1px_1px_0px_0px_var(--border)] ${
+                  validationErrors.intervalMinutes ? "border-destructive" : ""
+                }`}
               />
+              {validationErrors.intervalMinutes && (
+                <p className="text-xs text-destructive font-bold uppercase">{validationErrors.intervalMinutes}</p>
+              )}
+              <p className="text-xs text-muted-foreground">1-10080</p>
             </div>
           </div>
 
-          <div className="grid gap-2">
-            <div className="flex items-center space-x-2 mt-2">
+          <div className="grid gap-1.5 sm:gap-2">
+            <div className="flex items-start space-x-2 mt-1 sm:mt-2">
               <input
                 type="checkbox"
                 id="disable_js"
                 checked={disableJavascript}
                 onChange={(e) => setDisableJavascript(e.target.checked)}
-                className="h-4 w-4 brutal-border accent-black"
+                className="h-4 w-4 brutal-border accent-black mt-1"
               />
               <label
                 htmlFor="disable_js"
-                className="font-black uppercase tracking-tight text-xs cursor-pointer py-2 px-1"
+                className="font-black italic uppercase tracking-tight text-xs cursor-pointer text-foreground"
               >
-                Disable JavaScript (Faster)
+                Browser scraping (works on JS-heavy sites)
               </label>
             </div>
             <p className="text-xs text-muted-foreground ml-6">
-              Enable this only if the job board is a Single Page App (SPA) that
-              requires JavaScript to load listings.
+              Slower but handles complex sites
             </p>
           </div>
 
-          <DialogFooter className="mt-2 items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <DialogFooter className="mt-3 sm:mt-4 items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between border-t border-border pt-3 sm:pt-4">
             {editingId && (
               <Button
                 type="button"
                 onClick={() => setOpen(false)}
                 variant="outline"
-                className="w-full brutal-border font-black italic uppercase sm:w-auto sm:flex-none shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+                className="brutal-border font-black italic uppercase shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none bg-card text-foreground hover:bg-muted w-full sm:w-auto sm:flex-none text-xs sm:text-sm py-1.5 sm:py-2"
               >
-                Cancel Edit
+                Cancel
               </Button>
             )}
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="w-full brutal-border rounded-none font-black italic uppercase bg-primary text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:bg-primary/90 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none disabled:opacity-50 sm:flex-1 sm:min-w-0"
+              className="w-full brutal-border rounded-none font-black italic uppercase bg-primary text-primary-foreground shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] transition-all active:translate-x-[1px] active:translate-y-[1px] active:shadow-none disabled:opacity-50 sm:flex-1 sm:min-w-0 hover:bg-primary/90 text-xs sm:text-sm py-1.5 sm:py-2"
             >
               {isSubmitting
                 ? "Saving..."
                 : editingId
-                  ? "Update Source"
+                  ? "Update"
                   : "Start Scraping"}
             </Button>
           </DialogFooter>

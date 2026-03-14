@@ -18,8 +18,8 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center"
-      title="Toggle theme"
+      className="brutal-border brutal-btn-hover p-2 bg-card shadow-[2px_2px_0px_0px_var(--border)] h-[42px] w-[42px] flex items-center justify-center"
+      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
     >
       {theme === "dark" ? (
         <Sun weight="bold" className="h-5 w-5 text-[#FFB30F]" />

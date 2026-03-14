@@ -11,6 +11,7 @@ import { CompanyTicker } from "./CompanyTicker";
 import { AddJobSourceModal } from "./AddJobSourceModal";
 import { LocationFilterInput } from "./LocationFilterInput";
 import { ScrapeCountdown } from "./ScrapeCountdown";
+import { ErrorBanner } from "./ErrorBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { LOCATION_FILTER } from "@/config/filters";
@@ -41,11 +42,13 @@ import { useTheme } from "next-themes";
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState("all");
-  
-  useWebSocket({ enabled: !!user });
-  useJobsApi(!!user);
+
+  const { connect: reconnectWs } = useWebSocket({ enabled: !!user });
+  const { refetch: retryFetch } = useJobsApi(!!user);
 
   const jobs = useJobsStore((state) => state.jobs);
+  const apiError = useJobsStore((state) => state.apiError);
+  const setApiError = useJobsStore((state) => state.setApiError);
   const linkedinJobs = useJobsStore((state) => state.linkedinJobs);
   const jobrightJobs = useJobsStore((state) => state.jobrightJobs);
   const mathworksJobs = useJobsStore((state) => state.mathworksJobs);
@@ -65,18 +68,42 @@ export function JobsDashboard() {
       try {
           const headers = await getAuthHeaders();
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-          
+
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const res = await fetch(`${apiUrl}/config/custom-sources/${id}`, {
               method: "DELETE",
-              headers
+              headers,
+              signal: controller.signal,
           });
-          
-          if (!res.ok) throw new Error("Failed to delete");
+
+          clearTimeout(timeoutId);
+
+          if (!res.ok) {
+              let errorMsg = "Failed to delete source";
+              if (res.status === 409) {
+                  errorMsg = "Can't delete yet. This source is still processing jobs. Please wait until it finishes.";
+              } else if (res.status === 404) {
+                  errorMsg = "Source not found. It may have been deleted already.";
+              } else if (res.status >= 500) {
+                  errorMsg = "Server error. Please try again later.";
+              }
+              toast.error(errorMsg);
+              return;
+          }
+
           removeCustomSource(id);
           setActiveTab("all");
           toast.success(`Deleted source: ${name}`);
       } catch (err) {
-          toast.error("Error deleting job source");
+          if (err instanceof DOMException && err.name === 'AbortError') {
+              toast.error("Request timed out. Please check your connection and try again.");
+          } else if (err instanceof TypeError) {
+              toast.error("Network error. Check your connection and try again.");
+          } else {
+              toast.error("Failed to delete source. Please try again.");
+          }
           console.error(err);
       }
   };
@@ -97,53 +124,53 @@ export function JobsDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground font-medium transition-colors duration-300">
       <header className="brutal-border border-t-0 border-l-0 border-r-0 bg-card sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="brutal-border bg-primary p-2 shadow-[2px_2px_0px_0px_var(--border)]">
-                <Briefcase weight="fill" className="h-6 w-6 text-white" />
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="brutal-border bg-primary p-1.5 sm:p-2 shadow-[2px_2px_0px_0px_var(--border)]">
+                <Briefcase weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-black uppercase italic tracking-tighter leading-none">
+                <h1 className="text-lg sm:text-2xl font-black uppercase italic tracking-tighter leading-tight">
                   GoonedIn
                 </h1>
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                <p className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none">
                   Job Extraction Engine
                 </p>
               </div>
             </div>
 
             {user && (
-              <div className="flex items-center gap-2">
-                <div className="brutal-border bg-card px-3 py-1.5 hidden sm:flex items-center gap-2 shadow-[2px_2px_0px_0px_var(--border)] h-[42px]">
-                  <Sparkle weight="fill" className="h-4 w-4 text-primary" />
-                  <span className="font-black text-sm">{jobs.length}</span>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <div className="brutal-border bg-card px-2 sm:px-3 py-1 sm:py-1.5 hidden sm:flex items-center gap-2 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 sm:h-[42px]">
+                  <Sparkle weight="fill" className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
+                  <span className="font-black text-xs sm:text-sm">{jobs.length}</span>
                 </div>
 
-                <div className="flex items-center gap-0.5 sm:gap-1 h-[42px]">
+                <div className="flex items-center gap-0.5 h-10 sm:h-[42px]">
                   <ThemeToggle />
 
-                  <Link href="/saved">
-                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center text-[#009063]">
-                      <BookmarkSimple weight="bold" className="h-5 w-5" />
+                  <Link href="/saved" title="Saved jobs">
+                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center text-[#009063]">
+                      <BookmarkSimple weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
-                  <Link href="/settings">
-                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
-                      <Gear weight="bold" className="h-5 w-5" />
+                  <Link href="/settings" title="Settings">
+                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center">
+                      <Gear weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
-                  <Link href="/keyword-matcher">
-                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
-                      <Tag weight="bold" className="h-5 w-5" />
+                  <Link href="/keyword-matcher" title="Keywords">
+                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center">
+                      <Tag weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
-                  <Link href="/logs">
-                    <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
-                      <TerminalWindow weight="bold" className="h-5 w-5" />
+                  <Link href="/logs" title="Logs">
+                    <div className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center">
+                      <TerminalWindow weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                     </div>
                   </Link>
 
@@ -151,10 +178,10 @@ export function JobsDashboard() {
 
                   <button
                     onClick={signOut}
-                    className="brutal-border p-2 bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center"
+                    className="brutal-border brutal-btn-hover p-1.5 sm:p-2 bg-primary text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] h-10 w-10 sm:h-[42px] sm:w-[42px] flex items-center justify-center"
                     title="Sign Out"
                   >
-                    <SignOut weight="bold" className="h-5 w-5" />
+                    <SignOut weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
                 </div>
               </div>
@@ -163,70 +190,90 @@ export function JobsDashboard() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {!user && <CompanyTicker />}
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-8" : "w-full"}>
+
+        {apiError && (
+          <ErrorBanner
+            error={apiError}
+            onDismiss={() => setApiError(null)}
+            onRetry={retryFetch}
+            showRetry={true}
+          />
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-6 sm:mt-8" : "w-full"}>
           {user && (
-            <div className="relative flex items-center gap-4 w-full mb-10">
-              <TabsList className="flex flex-nowrap h-auto gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-2">
+            <div className="relative flex items-center gap-1 sm:gap-3 w-full mb-6 sm:mb-10">
+              <TabsList className="flex flex-nowrap h-auto gap-0.5 sm:gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-1 sm:pb-2">
                 <TabsTrigger
                 value="all"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <Globe weight="bold" className="h-5 w-5" />
-                  All ({jobs.length})
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Globe weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">All</span>
+                  <span className="sm:hidden">All</span>
+                  <span className="text-xs sm:text-sm">({jobs.length})</span>
                 </div>
               </TabsTrigger>
-              
+
               <TabsTrigger
                 value="location"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <MapPin weight="bold" className="h-5 w-5" />
-                  {locationFilterNormalized?.abbreviation || (LOCATION_FILTER.enabled ? LOCATION_FILTER.displayName : "Location")} ({locationFilteredJobs.length})
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <MapPin weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="text-xs sm:text-sm">{locationFilterNormalized?.abbreviation || "Loc"}</span>
+                  <span className="text-xs">({locationFilteredJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="linkedin"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#0A66C2] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <LinkedinLogo weight="bold" className="h-5 w-5" />
-                  LinkedIn ({linkedinJobs.length})
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <LinkedinLogo weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">LinkedIn</span>
+                  <span className="sm:hidden">LI</span>
+                  <span className="text-xs">({linkedinJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="jobright"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#5465FF] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#5465FF] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <Briefcase weight="bold" className="h-5 w-5" />
-                  Jobright ({jobrightJobs.length})
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Briefcase weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">Jobright</span>
+                  <span className="sm:hidden">JR</span>
+                  <span className="text-xs">({jobrightJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="mathworks"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#ED1C24] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <Buildings weight="bold" className="h-5 w-5" />
-                  MathWorks ({mathworksJobs.length})
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Buildings weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">MathWorks</span>
+                  <span className="sm:hidden">MW</span>
+                  <span className="text-xs">({mathworksJobs.length})</span>
                 </div>
               </TabsTrigger>
 
               <TabsTrigger
                 value="github"
-                className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-[#24292e] data-[state=active]:text-white shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-[#24292e] data-[state=active]:text-white shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
               >
-                <div className="flex items-center gap-2">
-                  <GithubLogo weight="bold" className="h-5 w-5" />
-                  GitHub ({githubJobs.length})
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <GithubLogo weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden sm:inline">GitHub</span>
+                  <span className="sm:hidden">GH</span>
+                  <span className="text-xs">({githubJobs.length})</span>
                 </div>
               </TabsTrigger>
 
@@ -236,42 +283,47 @@ export function JobsDashboard() {
                   <TabsTrigger
                     key={source.id}
                     value={source.id}
-                    className="brutal-border rounded-none px-4 py-3 font-black uppercase italic tracking-tighter text-sm data-[state=active]:bg-foreground data-[state=active]:text-background shadow-[4px_4px_0px_0px_var(--border)] transition-all data-[state=active]:translate-x-[2px] data-[state=active]:translate-y-[2px] data-[state=active]:shadow-none hover:bg-muted active:scale-95 whitespace-nowrap shrink-0"
+                    className="brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 font-black uppercase italic tracking-tighter text-xs sm:text-sm data-[state=active]:bg-foreground data-[state=active]:text-background shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                       {getDynamicIcon(source.icon)}
-                      {source.name} ({sourceJobs.length})
+                      <span className="truncate text-xs sm:text-sm max-w-[80px] sm:max-w-[200px]">
+                        {source.name}
+                      </span>
+                      <span className="text-xs shrink-0">({sourceJobs.length})</span>
                     </div>
                   </TabsTrigger>
                 );
               })}
 
               </TabsList>
-              
-              <div className="shrink-0 pb-2">
+
+              <div className="shrink-0 pb-1 sm:pb-2">
                 <AddJobSourceModal onSuccess={(id: string) => setActiveTab(id)} />
               </div>
-              <div className="pointer-events-none absolute right-10 top-0 h-full w-10 bg-gradient-to-l from-background to-transparent sm:hidden" aria-hidden="true" />
+              <div className="pointer-events-none absolute right-8 sm:right-10 top-0 h-full w-8 sm:w-10 bg-background sm:hidden" aria-hidden="true" />
             </div>
           )}
 
           <TabsContent value="all" className="mt-0">
             <JobList
               jobs={jobs}
-              emptyMessage="No jobs yet. Waiting for opportunities..."
+              emptyMessage="No jobs yet. We're searching now—check back soon."
               isLocked={!user}
+              error={apiError}
+              onRetry={retryFetch}
             />
           </TabsContent>
 
           <TabsContent value="location" className="mt-0">
-            <div className="flex flex-col gap-3 mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-1">
-                <span className="font-black uppercase tracking-tighter text-xl">
+            <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-0.5 sm:gap-1">
+                <span className="font-black uppercase tracking-tighter text-base sm:text-xl">
                   {locationFilterNormalized?.full_name || "Location Filter"}
                 </span>
                 {locationFilterNormalized && (
-                  <span className="font-bold text-xs text-muted-foreground flex gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 border-2 border-black bg-red-100 dark:bg-red-900/50">{locationFilterNormalized.abbreviation}</span>
+                  <span className="font-bold text-xs text-muted-foreground flex gap-1 sm:gap-2 flex-wrap">
+                    <span className="px-1.5 sm:px-2 py-0.5 text-xs border-2 border-black bg-red-100 dark:bg-red-900/50">{locationFilterNormalized.abbreviation}</span>
                     <ScrapeCountdown nextScrapeAt={nextLocationScrape} />
                   </span>
                 )}
@@ -282,7 +334,7 @@ export function JobsDashboard() {
               jobs={locationFilteredJobs}
               emptyMessage={
                 locationFilterLocation
-                  ? `No jobs in ${locationFilterNormalized?.full_name || locationFilterLocation} yet. They'll appear here when found.`
+                  ? `No jobs found in ${locationFilterNormalized?.full_name || locationFilterLocation} yet. We're searching for them.`
                   : "Set a location above to filter jobs by state or city."
               }
               isLocked={!user}
@@ -297,7 +349,7 @@ export function JobsDashboard() {
             )}
             <JobList
               jobs={linkedinJobs}
-              emptyMessage="No LinkedIn jobs yet. They'll appear here when found."
+              emptyMessage="No LinkedIn jobs found yet. We'll update you as we discover them."
               isLocked={!user}
             />
           </TabsContent>
@@ -305,7 +357,7 @@ export function JobsDashboard() {
           <TabsContent value="jobright" className="mt-0">
             <JobList
               jobs={jobrightJobs}
-              emptyMessage="No Jobright jobs yet. They'll appear here when found."
+              emptyMessage="No Jobright jobs found yet."
               isLocked={!user}
             />
           </TabsContent>
@@ -313,7 +365,7 @@ export function JobsDashboard() {
           <TabsContent value="mathworks" className="mt-0">
             <JobList
               jobs={mathworksJobs}
-              emptyMessage="No MathWorks jobs yet. New postings will appear here."
+              emptyMessage="No MathWorks jobs found yet."
               isLocked={!user}
             />
           </TabsContent>
@@ -321,7 +373,7 @@ export function JobsDashboard() {
           <TabsContent value="github" className="mt-0">
             <JobList
               jobs={githubJobs}
-              emptyMessage="No GitHub jobs yet. New grad postings from SimplifyJobs will appear here."
+              emptyMessage="No GitHub jobs found yet."
               isLocked={!user}
             />
           </TabsContent>
@@ -336,49 +388,53 @@ export function JobsDashboard() {
             const progressPercent = status === "pending" ? 10 : status === "fetching" ? 40 : status === "parsing" ? 75 : 100;
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
-                <div className="flex flex-col gap-3 mb-6 pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-col gap-1">
-                     <span className="font-black uppercase tracking-tighter text-xl">{source.name}</span>
-                     <span className="font-bold text-xs text-muted-foreground flex gap-2">
-                        <span className="px-2 py-0.5 border-2 border-black bg-yellow-100 dark:bg-yellow-900/50">Interval: {source.interval_minutes}m</span>
-                        <span className="px-2 py-0.5 border-2 border-black bg-blue-100 dark:bg-blue-900/50">TTL: {source.ttl_hours}h</span>
+                <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-black border-dotted sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-0.5 sm:gap-1">
+                     <span className="font-black uppercase tracking-tighter text-base sm:text-xl">{source.name}</span>
+                     <span className="font-bold text-xs text-muted-foreground flex gap-1 sm:gap-2 flex-wrap">
+                        <span className="px-1.5 sm:px-2 py-0.5 text-xs border-2 border-black bg-yellow-100 dark:bg-yellow-900/50">{source.interval_minutes}m</span>
+                        <span className="px-1.5 sm:px-2 py-0.5 text-xs border-2 border-black bg-blue-100 dark:bg-blue-900/50">{source.ttl_hours}h</span>
                      </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <AddJobSourceModal 
-                      editSource={source} 
+                  <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto">
+                    <AddJobSourceModal
+                      editSource={source}
                       triggerNode={
-                        <button className="brutal-border px-3 py-1.5 font-bold text-sm bg-amber-300 text-black hover:bg-amber-400 flex items-center gap-1 transition-transform active:translate-y-[2px] active:translate-x-[2px] shadow-[2px_2px_0px_0px_var(--border)] active:shadow-none">
-                          <PencilSimple weight="bold" /> Edit
+                        <button className="brutal-border px-2 sm:px-3 py-1 sm:py-1.5 font-bold text-xs sm:text-sm bg-amber-300 text-black brutal-btn-hover flex items-center gap-1 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] flex-1 sm:flex-none justify-center sm:justify-start">
+                          <PencilSimple weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">Edit</span>
                         </button>
-                      } 
+                      }
                     />
-                    <button 
+                    <button
                       onClick={() => handleDeleteSource(source.id, source.name)}
-                      className="brutal-border px-3 py-1.5 font-bold text-sm bg-red-500 text-white hover:bg-red-600 flex items-center gap-1 transition-transform active:translate-y-[2px] active:translate-x-[2px] shadow-[2px_2px_0px_0px_var(--border)] active:shadow-none"
+                      className="brutal-border px-2 sm:px-3 py-1 sm:py-1.5 font-bold text-xs sm:text-sm bg-destructive text-white brutal-btn-hover flex items-center gap-1 shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] flex-1 sm:flex-none justify-center sm:justify-start"
                     >
-                      <Trash weight="bold" /> Delete
+                      <Trash weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">Delete</span>
                     </button>
                   </div>
                 </div>
 
                 {(isProcessing || isError) && (
-                  <div className="brutal-border mb-6 p-4 bg-card shadow-[4px_4px_0px_0px_var(--border)]">
-                    <div className="flex items-center gap-3 mb-3">
+                  <div className={`brutal-border mb-4 sm:mb-6 p-3 sm:p-4 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] ${
+                    isError ? "bg-red-50 dark:bg-red-950/30 border-red-500" : "bg-card"
+                  }`}>
+                    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
                       {isProcessing && (
-                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin text-primary" />
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-primary" />
                       )}
                       {isError && (
-                        <div className="h-5 w-5 text-red-500 font-black text-lg leading-none">✕</div>
+                        <div className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 font-black text-lg leading-none">✕</div>
                       )}
-                      <span className={`font-black uppercase tracking-tighter text-sm ${
+                      <span className={`font-black uppercase tracking-tighter text-xs sm:text-sm ${
                         isError ? "text-red-500" : "text-foreground"
                       }`}>
                         {statusMessage || (isProcessing ? "Processing..." : "Error")}
                       </span>
                     </div>
                     {isProcessing && (
-                      <div className="w-full bg-muted brutal-border h-3 overflow-hidden">
+                      <div className="w-full bg-muted brutal-border h-2 sm:h-3 overflow-hidden">
                         <div
                           className="h-full bg-primary transition-all duration-700 ease-out"
                           style={{ width: `${progressPercent}%` }}
@@ -386,19 +442,29 @@ export function JobsDashboard() {
                       </div>
                     )}
                     {isProcessing && (
-                      <div className="flex justify-between mt-2">
-                        {["Queued", "Fetching", "AI Parsing", "Done"].map((step, idx) => {
+                      <div className="flex justify-between mt-1.5 sm:mt-2 gap-1">
+                        {["Queued", "Fetching", "AI", "Done"].map((step, idx) => {
                           const stepStatuses = ["pending", "fetching", "parsing", "done"];
                           const currentIdx = stepStatuses.indexOf(status);
                           const isActive = idx <= currentIdx;
                           return (
-                            <span key={step} className={`text-[10px] font-black uppercase tracking-wider ${
+                            <span key={step} className={`text-[8px] sm:text-[10px] font-black uppercase tracking-wider ${
                               isActive ? "text-primary" : "text-muted-foreground/40"
                             }`}>
                               {step}
                             </span>
                           );
                         })}
+                      </div>
+                    )}
+                    {isError && (
+                      <div className="mt-2 sm:mt-3 flex gap-1 sm:gap-2">
+                        <button
+                          onClick={() => retryFetch()}
+                          className="brutal-border px-2.5 sm:px-4 py-1 sm:py-2 font-bold text-xs sm:text-sm bg-red-600 text-white brutal-btn-hover shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)]"
+                        >
+                          Retry
+                        </button>
                       </div>
                     )}
                   </div>
@@ -408,7 +474,7 @@ export function JobsDashboard() {
                   jobs={sourceJobs}
                   emptyMessage={isProcessing
                     ? `Processing ${source.name}... Jobs will appear here shortly.`
-                    : `Waiting for jobs from ${source.name}. This may take a few minutes while our AI processes the page...`
+                    : `Searching ${source.name} for jobs. This may take a few minutes.`
                   }
                   isLocked={!user}
                 />

@@ -8,7 +8,7 @@ interface ScrapeCountdownProps {
   label?: string;
 }
 
-export function ScrapeCountdown({ nextScrapeAt, label = "Next scan" }: ScrapeCountdownProps) {
+export function ScrapeCountdown({ nextScrapeAt, label = "Next update in" }: ScrapeCountdownProps) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   useEffect(() => {
@@ -35,13 +35,13 @@ export function ScrapeCountdown({ nextScrapeAt, label = "Next scan" }: ScrapeCou
   const isActive = secondsLeft === 0;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 border-2 border-black text-xs font-black uppercase tracking-wider ${
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 brutal-border text-xs font-black uppercase tracking-wider shadow-[1px_1px_0px_0px_var(--border)] ${
       isActive
         ? "bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-300"
         : "bg-muted text-muted-foreground"
     }`}>
       <Timer weight="bold" className={`h-3.5 w-3.5 ${isActive ? "animate-spin" : ""}`} />
-      {isActive ? "Scanning..." : `${label} ${display}`}
+      {isActive ? "Checking now..." : `${label} ${display}`}
     </span>
   );
 }

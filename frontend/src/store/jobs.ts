@@ -100,6 +100,7 @@ interface JobsState {
   nextLocationScrape: string | null;
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
+  apiError: string | null;
   addJob: (job: Job) => void;
   removeJob: (externalId: string) => void;
   removeJobsByCompany: (company: string) => void;
@@ -109,6 +110,7 @@ interface JobsState {
   setNextScrape: (scraper: string, nextAt: string) => void;
   setConnectionStatus: (status: "connecting" | "connected" | "disconnected") => void;
   setLoading: (loading: boolean) => void;
+  setApiError: (error: string | null) => void;
   clearJobs: () => void;
   savedJobIds: Set<string>;
   setSavedJobIds: (ids: string[]) => void;
@@ -137,6 +139,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   nextLocationScrape: null,
   connectionStatus: "disconnected",
   isLoading: true,
+  apiError: null,
   savedJobIds: new Set<string>(),
   dismissedJobIds: new Set<string>(),
   customSources: [],
@@ -292,4 +295,6 @@ export const useJobsStore = create<JobsState>((set) => ({
         [id]: { status, message },
       },
     })),
+
+  setApiError: (error) => set({ apiError: error }),
 }));

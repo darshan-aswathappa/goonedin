@@ -10,6 +10,7 @@ const WS_BASE_URL =
 const INITIAL_RECONNECT_INTERVAL = 1000;
 const MAX_RECONNECT_INTERVAL = 30000;
 const PING_INTERVAL = 30000;
+const CONNECTION_TIMEOUT = 10000;
 
 interface NewJobMessage {
   type: "NEW_JOB";
@@ -79,7 +80,16 @@ export function useWebSocket({ enabled = true } = {}) {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
+    // Connection timeout: close if not connected within 10s
+    const connectionTimeoutRef = { current: setTimeout(() => {
+      if (ws.readyState === WebSocket.CONNECTING) {
+        console.warn("WebSocket connection timeout after 10s");
+        ws.close();
+      }
+    }, CONNECTION_TIMEOUT) };
+
     ws.onopen = () => {
+      clearTimeout(connectionTimeoutRef.current);
       setConnectionStatus("connected");
       reconnectAttemptsRef.current = 0;
       pingIntervalRef.current = setInterval(() => {
@@ -93,7 +103,15 @@ export function useWebSocket({ enabled = true } = {}) {
         const message: WebSocketMessage = JSON.parse(event.data);
         const now = Date.now();
 
-        const eventKey = `${message.type}:${JSON.stringify(message.data)}`;
+        // Use ID-based key for deduplication to reduce memory usage
+        const eventKey = message.type === "NEW_JOB" ?
+          `${message.type}:${message.data.external_id}` :
+          message.type === "JOB_DISMISSED" ?
+          `${message.type}:${message.data.external_id}` :
+          message.type === "UPDATE_JOB" ?
+          `${message.type}:${message.data.external_id}` :
+          `${message.type}:${JSON.stringify(message.data)}`;
+
         const lastProcessedTime = processedEventsRef.current.get(eventKey);
 
         // Deduplicate events within 500ms to prevent duplicate notifications from multiple connections
@@ -112,12 +130,18 @@ export function useWebSocket({ enabled = true } = {}) {
 
         if (message.type === "NEW_JOB" && message.data) {
           addJob(message.data);
-          toast.info(`New ${message.data.source} job: ${message.data.title}`, {
-            description: message.data.company,
+          const titlePreview = message.data.title.substring(0, 40) +
+            (message.data.title.length > 40 ? "..." : "");
+          const companyPreview = message.data.company.substring(0, 30) +
+            (message.data.company.length > 30 ? "..." : "");
+          toast.info(`New ${message.data.source} job: ${titlePreview}`, {
+            description: companyPreview,
           });
         } else if (message.type === "COMPANY_BLOCKED" && message.data) {
           removeJobsByCompany(message.data.company);
-          toast.success(`Blocked: ${message.data.company}`, {
+          const companyPreview = message.data.company.substring(0, 40) +
+            (message.data.company.length > 40 ? "..." : "");
+          toast.success(`Blocked: ${companyPreview}`, {
             description: "Future jobs from this company will be hidden",
           });
         } else if (message.type === "JOB_DISMISSED" && message.data) {
@@ -139,6 +163,7 @@ export function useWebSocket({ enabled = true } = {}) {
     };
 
     ws.onclose = () => {
+      clearTimeout(connectionTimeoutRef.current);
       setConnectionStatus("disconnected");
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
 
@@ -147,10 +172,18 @@ export function useWebSocket({ enabled = true } = {}) {
         MAX_RECONNECT_INTERVAL,
       );
       reconnectAttemptsRef.current += 1;
-      reconnectTimeoutRef.current = setTimeout(() => connect(), delayMs);
+      // eslint-disable-next-line react-hooks/immutability
+      reconnectTimeoutRef.current = setTimeout(() => {
+        // connect is available here as this setTimeout fires after useCallback definition
+        void connect();
+      }, delayMs);
     };
 
-    ws.onerror = () => ws.close();
+    ws.onerror = (event) => {
+      console.error("WebSocket error:", event);
+      clearTimeout(connectionTimeoutRef.current);
+      ws.close();
+    };
   }, [
     addJob,
     removeJob,

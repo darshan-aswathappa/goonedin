@@ -103,10 +103,10 @@ function BadgeSection({
                   )}
                   <button
                     onClick={() => onToggle(kw)}
-                    className={`brutal-border px-3 py-1.5 text-sm font-bold transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none ${
+                    className={`brutal-border px-3 py-1.5 text-sm font-bold brutal-btn-hover shadow-[2px_2px_0px_0px_var(--border)] ${
                       isDone
                         ? "bg-muted text-muted-foreground line-through opacity-60"
-                        : "bg-card hover:bg-muted"
+                        : "bg-card"
                     }`}
                   >
                     {kw}
@@ -185,7 +185,7 @@ export function KeywordMatcher() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/">
-                <div className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center">
+                <div className="brutal-border brutal-btn-hover p-2 bg-card shadow-[2px_2px_0px_0px_var(--border)] h-[42px] w-[42px] flex items-center justify-center">
                   <CaretLeft weight="bold" className="h-5 w-5" />
                 </div>
               </Link>
@@ -221,7 +221,7 @@ export function KeywordMatcher() {
                 {checked.size > 0 && (
                   <button
                     onClick={() => setChecked(new Set())}
-                    className="brutal-border p-2 bg-card hover:bg-muted transition-colors shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-[42px] w-[42px] flex items-center justify-center"
+                    className="brutal-border brutal-btn-hover p-2 bg-card shadow-[2px_2px_0px_0px_var(--border)] h-[42px] w-[42px] flex items-center justify-center"
                     title="Reset all"
                   >
                     <ArrowCounterClockwise weight="bold" className="h-5 w-5" />
@@ -241,21 +241,21 @@ export function KeywordMatcher() {
               Job Description
             </h2>
             <textarea
-              className="brutal-border bg-card p-3 font-mono text-sm resize-none w-full focus:outline-none focus:ring-0 min-h-[360px]"
+              className="brutal-border bg-card p-3 font-mono text-sm resize-none w-full focus:outline-none min-h-[360px] shadow-[2px_2px_0px_0px_var(--border)]"
               placeholder="Paste job description here..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               rows={20}
             />
             {error && (
-              <p className="brutal-border border-red-500 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 px-3 py-2 text-sm font-bold">
+              <p className="brutal-border border-red-500 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 px-3 py-2 text-sm font-bold shadow-[2px_2px_0px_0px_var(--border)]">
                 {error}
               </p>
             )}
             <button
               onClick={handleAnalyze}
               disabled={loading || !jobDescription.trim()}
-              className="brutal-border px-4 py-3 font-black uppercase italic tracking-tighter bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black transition-colors shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2"
+              className="brutal-border px-4 py-3 font-black uppercase italic tracking-tighter bg-primary text-white brutal-btn-hover shadow-[4px_4px_0px_0px_var(--border)] disabled:opacity-50 disabled:cursor-not-allowed w-full flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -274,32 +274,32 @@ export function KeywordMatcher() {
           {/* Right column — two rows */}
           <div className="flex flex-col gap-6">
             {!hasResults ? (
-              <div className="brutal-border bg-card p-8 mt-11 flex flex-col items-center justify-center gap-3 text-muted-foreground min-h-[90]">
+              <div className="brutal-border bg-card p-8 mt-11 flex flex-col items-center justify-center gap-3 text-muted-foreground min-h-[90] shadow-[2px_2px_0px_0px_var(--border)]">
                 <Tag weight="duotone" className="h-12 w-12 opacity-30" />
                 <p className="font-black uppercase italic tracking-tighter text-sm">
                   {loading
-                    ? "Extracting keywords..."
-                    : "Paste a job description and click Analyze"}
+                    ? "Analyzing job description..."
+                    : "Paste a job description to extract required skills and compare with your resume"}
                 </p>
               </div>
             ) : (
               <>
                 <BadgeSection
-                  title="Hard Skills"
+                  title="Technical Skills"
                   icon={<Wrench weight="bold" className="h-4 w-4 text-white" />}
                   group={hardGroup}
                   checked={checked}
                   onToggle={toggleKeyword}
-                  emptyLabel="No hard skills found"
+                  emptyLabel="No technical skills found in this description"
                   accentClass="bg-primary"
                 />
                 <BadgeSection
-                  title="Soft Skills"
+                  title="Professional Skills"
                   icon={<Users weight="bold" className="h-4 w-4 text-white" />}
                   group={softGroup}
                   checked={checked}
                   onToggle={toggleKeyword}
-                  emptyLabel="No soft skills found"
+                  emptyLabel="No professional skills found in this description"
                   accentClass="bg-[#7c3aed]"
                 />
               </>

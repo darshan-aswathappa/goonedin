@@ -32,16 +32,7 @@ interface JobCardProps {
 }
 
 function getSourceColor(source: string) {
-  switch (source) {
-    case "LinkedIn":
-      return "bg-[#0A66C2] text-white";
-    case "MathWorks":
-      return "bg-[#ED1C24] text-white";
-    case "GitHub":
-      return "bg-[#24292e] text-white";
-    default:
-      return "bg-[#2E4057] text-white";
-  }
+  return "brutal-badge bg-primary text-primary-foreground";
 }
 
 export function JobCard({ job, isLocked = false }: JobCardProps) {
@@ -92,14 +83,29 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     setIsBlocking(true);
     try {
       const headers = await getAuthHeaders();
-      // WebSocket will broadcast the block and show the toast
-      await fetch(`${API_URL}/jobs/block`, {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const res = await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ company: job.company }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        // WebSocket will still broadcast, but show error if it fails
+        console.error("Failed to block company:", res.status);
+      }
+      // WebSocket will broadcast the block and show the toast
     } catch (error) {
-      console.error("Failed to block company:", error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error("Block company request timed out");
+      } else if (!(error instanceof DOMException)) {
+        console.error("Failed to block company:", error);
+      }
     } finally {
       setIsBlocking(false);
     }
@@ -112,6 +118,9 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     setIsDismissing(true);
     try {
       const headers = await getAuthHeaders();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(`${API_URL}/jobs/dismiss`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
@@ -120,10 +129,22 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           external_id: job.external_id,
           is_custom: job.is_custom ?? false,
         }),
+        signal: controller.signal,
       });
-      if (response.ok) removeJob(job.external_id);
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        removeJob(job.external_id);
+      } else {
+        console.error("Failed to dismiss job:", response.status);
+      }
     } catch (error) {
-      console.error("Failed to dismiss job:", error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error("Dismiss job request timed out");
+      } else if (!(error instanceof DOMException)) {
+        console.error("Failed to dismiss job:", error);
+      }
     } finally {
       setIsDismissing(false);
     }
@@ -136,12 +157,21 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
     setIsSaving(true);
     try {
       const headers = await getAuthHeaders();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       if (isSaved) {
         const res = await fetch(`${API_URL}/jobs/saved/${job.external_id}`, {
           method: "DELETE",
           headers: { ...headers },
+          signal: controller.signal,
         });
-        if (res.ok) removeSavedJobId(job.external_id);
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          removeSavedJobId(job.external_id);
+        } else {
+          console.error("Failed to unsave job:", res.status);
+        }
       } else {
         const res = await fetch(`${API_URL}/jobs/save`, {
           method: "POST",
@@ -155,11 +185,21 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
             source: job.source,
             posted_at: job.posted_at || null,
           }),
+          signal: controller.signal,
         });
-        if (res.ok) addSavedJobId(job.external_id);
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          addSavedJobId(job.external_id);
+        } else {
+          console.error("Failed to save job:", res.status);
+        }
       }
     } catch (error) {
-      console.error("Failed to toggle save job:", error);
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        console.error("Toggle save job request timed out");
+      } else if (!(error instanceof DOMException)) {
+        console.error("Failed to toggle save job:", error);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -181,33 +221,33 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
           {job.source}
         </div>
 
-        <div className="flex flex-col h-full space-y-4">
-          <div className="space-y-1 pr-12">
-            <h3 className="text-base sm:text-xl font-black leading-tight line-clamp-3 sm:line-clamp-2 italic uppercase tracking-tighter">
+        <div className="flex flex-col h-full space-y-2 sm:space-y-4">
+          <div className="space-y-0.5 sm:space-y-1 pr-10 sm:pr-12 min-w-0">
+            <h3 className="text-sm sm:text-xl font-black leading-tight line-clamp-3 sm:line-clamp-2 italic uppercase tracking-tighter break-words">
               {job.title}
             </h3>
-            <div className="flex items-center gap-2 font-bold text-sm min-w-0">
-              <Buildings weight="bold" className="h-4 w-4 shrink-0" />
+            <div className="flex items-center gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm min-w-0">
+              <Buildings weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
               <span className="truncate">{job.company}</span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 border-t-2 border-border pt-4">
-            <div className="flex items-center gap-2 text-sm font-medium min-w-0">
-              <MapPin weight="bold" className="h-4 w-4 shrink-0" />
+          <div className="grid grid-cols-1 gap-1.5 sm:gap-2 border-t-2 border-border pt-2 sm:pt-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium min-w-0">
+              <MapPin weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
               <span className="truncate">{job.location}</span>
             </div>
 
             {postedAt && (
-              <div className="flex items-center gap-2 text-sm font-medium min-w-0">
-                <Clock weight="bold" className="h-4 w-4 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium min-w-0">
+                <Clock weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <span className="whitespace-nowrap">{postedAt}</span>
               </div>
             )}
 
             {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
-              <div className="flex items-center gap-2 text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                <CurrencyDollar weight="bold" className="h-4 w-4 shrink-0" />
+              <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-[#009063] dark:text-[#52c41a] bg-[#E6F4EA] dark:bg-[#009063]/20 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <CurrencyDollar weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                 <span className="truncate">{formatSalary(job.salary)}</span>
               </div>
             )}
@@ -217,16 +257,16 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
               return (
-                <div className="flex items-center gap-2 text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-2 py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
-                  <Globe weight="bold" className="h-4 w-4 shrink-0" />
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold text-[#F15152] dark:text-[#ff4d4f] bg-[#FFEBEB] dark:bg-[#F15152]/20 px-1.5 sm:px-2 py-0.5 sm:py-1 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                  <Globe weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
                   <span className="truncate">{formatted}</span>
                 </div>
               );
             })()}
           </div>
 
-          <div className="flex items-center justify-between pt-4 mt-auto">
-            <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3 pt-2 sm:pt-4 mt-auto">
+            <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -234,18 +274,19 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                       onClick={handleToggleSave}
                       disabled={isSaving}
                       aria-label={isSaved ? "Unsave job" : "Save job"}
-                      className={`brutal-border p-2 hover:bg-muted transition-colors ${
+                      title={isSaved ? "Unsave" : "Save"}
+                      className={`brutal-border p-1.5 sm:p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center ${
                         isSaved ? "bg-primary text-white" : "bg-card text-foreground"
                       }`}
                     >
                       {isSaving ? (
-                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                       ) : (
-                        <BookmarkSimple weight={isSaved ? "fill" : "bold"} className="h-5 w-5" />
+                        <BookmarkSimple weight={isSaved ? "fill" : "bold"} className="h-4 w-4 sm:h-5 sm:w-5" />
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
+                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
                     <p>{isSaved ? "Unsave" : "Save"}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -258,16 +299,17 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                       onClick={handleDismissJob}
                       disabled={isDismissing}
                       aria-label="Dismiss job"
-                      className="brutal-border p-2 bg-card text-foreground hover:bg-[#FFEBEB] dark:hover:bg-[#4A1A1A] transition-colors"
+                      title="Dismiss"
+                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-[#FFEBEB] dark:hover:bg-[#4A1A1A] transition-colors flex-1 sm:flex-none flex items-center justify-center"
                     >
                       {isDismissing ? (
-                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                       ) : (
-                        <X weight="bold" className="h-5 w-5" />
+                        <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
+                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
                     <p>Dismiss</p>
                   </TooltipContent>
                 </Tooltip>
@@ -280,16 +322,17 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
                       onClick={handleBlockCompany}
                       disabled={isBlocking}
                       aria-label="Block company"
-                      className="brutal-border p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors"
+                      title="Block"
+                      className="brutal-border p-1.5 sm:p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center"
                     >
                       {isBlocking ? (
-                        <CircleNotch weight="bold" className="h-5 w-5 animate-spin" />
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                       ) : (
-                        <ThumbsDown weight="bold" className="h-5 w-5" />
+                        <ThumbsDown weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold">
+                  <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
                     <p>Block Company</p>
                   </TooltipContent>
                 </Tooltip>
@@ -302,10 +345,10 @@ export function JobCard({ job, isLocked = false }: JobCardProps) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="brutal-border bg-[#F15152] text-white px-4 py-2 font-black text-sm flex items-center gap-2 brutal-btn-hover"
+              className="brutal-border bg-primary text-primary-foreground px-2.5 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 brutal-btn-hover uppercase w-full sm:w-auto"
             >
               Apply
-              <ArrowSquareOut weight="bold" className="h-4 w-4" />
+              <ArrowSquareOut weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </a>
           </div>
         </div>

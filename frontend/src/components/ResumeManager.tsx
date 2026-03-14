@@ -286,7 +286,7 @@ export function ResumeManager() {
             <div>
               <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">Resume Management</CardTitle>
               <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1">
-                Upload resumes (PDF). AI will automatically analyze skills.
+                Upload PDF resumes. We'll automatically extract your skills, education, and experience.
               </CardDescription>
             </div>
           </div>
@@ -306,9 +306,9 @@ export function ResumeManager() {
               <CloudArrowUp className="h-8 w-8 text-white" />
             </div>
             <h3 className="mb-2 text-lg font-black italic uppercase tracking-tighter leading-none">
-              {isDragActive ? "Drop resumes here" : "Click or drag resumes here"}
+              {isDragActive ? "Drop your resume here" : "Drag and drop your resume"}
             </h3>
-            <p className="brutal-badge bg-card text-muted-foreground mt-2 border-dashed shadow-none">PDF files up to 10MB</p>
+            <p className="brutal-badge bg-card text-muted-foreground mt-2 border-dashed shadow-none">PDF only, up to 10MB per file</p>
 
             {isUploading && (
               <div className="absolute inset-x-8 bottom-4 flex flex-col items-center gap-2">
@@ -320,7 +320,7 @@ export function ResumeManager() {
 
           {stagedFiles.length > 0 && (
             <div className="brutal-border bg-muted/30 p-6 space-y-6">
-              <h4 className="text-sm font-black italic uppercase tracking-tight">Ready to Upload</h4>
+              <h4 className="text-sm font-black italic uppercase tracking-tight">Staged for Upload</h4>
               <div className="space-y-4">
                 {stagedFiles.map((staged, index) => (
                   <div key={staged.id} className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -343,7 +343,7 @@ export function ResumeManager() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setStagedFiles(prev => prev.filter(s => s.id !== staged.id))}
-                      className="brutal-border bg-card hover:bg-red-500 hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:shrink-0 h-11 w-11 w-full sm:w-auto"
+                      className="brutal-border bg-card text-foreground hover:bg-red-500 hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:shrink-0 h-11 w-11 w-full sm:w-auto font-bold"
                       disabled={isUploading}
                     >
                       <Trash className="h-5 w-5" />
@@ -353,17 +353,17 @@ export function ResumeManager() {
               </div>
               
               <div className="mt-4 flex justify-end">
-                <Button 
-                  onClick={handleUpload} 
-                  disabled={isUploading} 
-                  className="w-full brutal-border bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-black uppercase tracking-widest px-8 py-6 h-auto sm:w-auto"
+                <Button
+                  onClick={handleUpload}
+                  disabled={isUploading}
+                  className="w-full brutal-border rounded-none bg-primary text-primary-foreground hover:bg-primary/90 shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all font-black italic uppercase tracking-widest px-8 py-6 h-auto sm:w-auto"
                 >
                   {isUploading ? (
                     <CircleNotch className="mr-3 h-5 w-5 animate-spin" />
                   ) : (
                     <CloudArrowUp className="mr-3 h-5 w-5" />
                   )}
-                  Upload {stagedFiles.length} Resume{stagedFiles.length !== 1 ? 's' : ''}
+                  Upload and Analyze ({stagedFiles.length} resume{stagedFiles.length !== 1 ? 's' : ''})
                 </Button>
               </div>
             </div>
@@ -381,7 +381,7 @@ export function ResumeManager() {
             ) : resumes.length === 0 ? (
               <div className="flex flex-col items-center justify-center brutal-border bg-muted/30 py-12 text-muted-foreground border-dashed">
                 <Warning className="mb-3 h-8 w-8 opacity-40" />
-                <p className="text-sm font-bold uppercase tracking-widest">No resumes uploaded yet</p>
+                <p className="text-sm font-bold uppercase tracking-widest">No resumes yet. Upload your PDF to get started.</p>
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -448,16 +448,16 @@ export function ResumeManager() {
             {isLoadingAnalysis ? (
               <div className="flex flex-col items-center justify-center py-20">
                 <CircleNotch className="mb-6 h-12 w-12 animate-spin text-primary" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Synthesizing insights...</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Analyzing your resume...</p>
               </div>
             ) : analysisStatus === "processing" ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-8 brutal-border bg-muted p-6 shadow-[8px_8px_0px_0px_var(--border)]">
                   <CircleNotch className="h-12 w-12 animate-spin text-primary" />
                 </div>
-                <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Analysis in Progress</h3>
+                <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Resume Analysis in Progress</h3>
                 <p className="text-sm font-bold text-muted-foreground leading-tight max-w-sm">
-                  DeepSeek AI is deciphering your experience. This typically takes 15–30 seconds.
+                  Analyzing skills, education, and experience. This usually takes 15–30 seconds.
                   <br /><br />
                   <span className="text-[10px] uppercase tracking-widest opacity-60">You can close this and check back shortly.</span>
                 </p>
@@ -467,10 +467,9 @@ export function ResumeManager() {
                 <div className="mb-8 brutal-border bg-destructive/12 dark:bg-destructive/22 p-6 shadow-[8px_8px_0px_0px_var(--border)]">
                   <Warning className="h-12 w-12 text-[#D72638]" />
                 </div>
-                <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Analysis Failed</h3>
+                <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">We Couldn't Analyze This Resume</h3>
                 <p className="text-sm font-bold text-muted-foreground leading-tight">
-                  Something went wrong during the AI analysis. 
-                  <br />Please try re-uploading the resume.
+                  Try uploading again. If the problem persists, make sure your PDF is readable.
                 </p>
               </div>
             ) : analysis ? (
@@ -564,7 +563,7 @@ export function ResumeManager() {
             ) : (
               <div className="flex flex-col items-center justify-center py-20 border-dashed brutal-border bg-muted/30">
                 <Warning className="mb-4 h-12 w-12 text-muted-foreground opacity-40" />
-                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">No analysis data available.</p>
+                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Analysis not ready yet. Please check back in a moment.</p>
               </div>
             )}
           </div>
@@ -603,7 +602,7 @@ export function ResumeManager() {
                 setResumeToDelete(null);
               }}
               disabled={isDeletingResume}
-              className="brutal-border rounded-none bg-card font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+              className="brutal-border rounded-none bg-card text-foreground font-black italic uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
             >
               Cancel
             </Button>
@@ -611,7 +610,7 @@ export function ResumeManager() {
               type="button"
               onClick={handleDeleteConfirm}
               disabled={!resumeToDelete || isDeletingResume}
-              className="brutal-border rounded-none bg-destructive text-white font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-black dark:hover:bg-white dark:hover:text-black active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+              className="brutal-border rounded-none bg-destructive text-white font-black italic uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-destructive/90 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
             >
               {isDeletingResume ? (
                 <>

@@ -69,23 +69,24 @@ export function LocationFilterInput() {
 
   return (
     <form onSubmit={handleSubmit} className="relative w-full sm:w-64">
-      <MagnifyingGlass weight="bold" className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+      <MagnifyingGlass weight="bold" className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground pointer-events-none" />
       <input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder={locationFilterLocation || "Search location (e.g. MA, California, NYC)"}
-        className="brutal-border w-full pl-9 pr-9 py-2.5 text-sm font-bold bg-card shadow-[2px_2px_0px_0px_var(--border)] focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground/60"
+        placeholder={locationFilterLocation || "Location"}
+        title="Search location (e.g., CA, Massachusetts, NYC, 10001)"
+        className="brutal-border w-full pl-7 sm:pl-9 pr-7 sm:pr-9 py-1.5 sm:py-2.5 text-xs sm:text-sm font-bold bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] focus:outline-none placeholder:text-muted-foreground/60 focus:shadow-none h-9 sm:h-auto"
         disabled={loading}
       />
       {locationFilterLocation && (
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute right-1.5 sm:right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold p-0.5 hover:text-foreground transition-colors"
           title="Clear location"
         >
-          <X weight="bold" className="h-4 w-4" />
+          <X weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </button>
       )}
     </form>

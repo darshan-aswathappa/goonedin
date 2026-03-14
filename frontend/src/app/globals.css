@@ -148,9 +148,28 @@
   }
   .job-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
-    gap: 1.5rem;
+    /* Mobile: 1 column, Tablet: 2 columns, Desktop: 3+ columns */
+    grid-template-columns: 1fr;
+    gap: 1rem;
     align-items: stretch;
+  }
+  @media (min-width: 640px) {
+    .job-card-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .job-card-grid {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+  }
+  @media (min-width: 1280px) {
+    .job-card-grid {
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
   }
   .scrollbar-hide {
     -ms-overflow-style: none;
