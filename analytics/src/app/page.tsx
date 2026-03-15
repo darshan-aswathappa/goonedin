@@ -19,6 +19,9 @@ import JobFunctionsChart from "@/components/JobFunctionsChart";
 import QueueHealth from "@/components/QueueHealth";
 import SkillCooccurrence from "@/components/SkillCooccurrence";
 import TimeDistributionChart from "@/components/TimeDistributionChart";
+import SkillMomentumPanel from "@/components/SkillMomentumPanel";
+import ExperienceDistribution from "@/components/ExperienceDistribution";
+import SalaryByLocationChart from "@/components/SalaryByLocationChart";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
 import BootSequence from "@/components/BootSequence";
 import PanelHint from "@/components/PanelHint";
@@ -95,6 +98,19 @@ interface Queue {
   withSalary: number;
   analyzedCount: number;
 }
+interface SkillMomentum {
+  rising: { skill: string; recent: number; prior: number; delta: number }[];
+  declining: { skill: string; recent: number; prior: number; delta: number }[];
+}
+interface Experience {
+  distribution: { label: string; count: number }[];
+  matched: number;
+  total: number;
+  matchRate: number;
+}
+interface SalaryByLocation {
+  cities: { city: string; median: number; count: number }[];
+}
 
 export default async function DashboardPage() {
   const [
@@ -109,6 +125,9 @@ export default async function DashboardPage() {
     seniority,
     weekday,
     queue,
+    skillMomentum,
+    experience,
+    salaryByLocation,
   ] = await Promise.all([
     fetchJson<Overview>("/api/analytics/overview"),
     fetchJson<Companies>("/api/analytics/companies"),
@@ -121,6 +140,9 @@ export default async function DashboardPage() {
     fetchJson<Seniority>("/api/analytics/seniority"),
     fetchJson<Weekday>("/api/analytics/weekday"),
     fetchJson<Queue>("/api/analytics/queue"),
+    fetchJson<SkillMomentum>("/api/analytics/skill-momentum"),
+    fetchJson<Experience>("/api/analytics/experience"),
+    fetchJson<SalaryByLocation>("/api/analytics/salary-by-location"),
   ]);
 
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
@@ -311,7 +333,30 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          <SectionGuide label="TIMING & LEVELS" description="Seniority distribution and when jobs get posted" />
+          {/* Row 5b: Skill Momentum */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr",
+              gap: "12px",
+              height: "280px",
+            }}
+          >
+            {(skillMomentum?.rising ?? []).length > 0 || (skillMomentum?.declining ?? []).length > 0 ? (
+              <SkillMomentumPanel
+                rising={skillMomentum?.rising ?? []}
+                declining={skillMomentum?.declining ?? []}
+              />
+            ) : (
+              <EmptyPanel
+                title="Skill Momentum"
+                message="Awaiting 14+ days of data"
+                suggestion="Shows which skills are rising or falling in demand compared to the prior 2 weeks."
+              />
+            )}
+          </div>
+
+          <SectionGuide label="TIMING & LEVELS" description="Seniority distribution, experience demand, and when jobs get posted" />
 
           {/* Row 6: Seniority + Weekday + Time Distribution */}
           <div
@@ -346,9 +391,43 @@ export default async function DashboardPage() {
             <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
           </div>
 
-          <SectionGuide label="VISA & FUNCTIONS" description="Sponsorship rates and job function breakdown" />
+          {/* Row 6b: Experience Demand */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+              height: "240px",
+            }}
+          >
+            {(experience?.distribution ?? []).some(d => d.count > 0) ? (
+              <ExperienceDistribution
+                distribution={experience?.distribution ?? []}
+                matched={experience?.matched ?? 0}
+                total={experience?.total ?? 0}
+                matchRate={experience?.matchRate ?? 0}
+              />
+            ) : (
+              <EmptyPanel
+                title="Experience Demand"
+                message="No experience data yet"
+                suggestion="Shows years-of-experience requirements extracted from job descriptions."
+              />
+            )}
+            {(seniority?.jobFunctions ?? []).length > 0 ? (
+              <JobFunctionsChart data={seniority?.jobFunctions ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Job Functions"
+                message="No data yet"
+                suggestion="Engineering, product, design, and other function distribution."
+              />
+            )}
+          </div>
 
-          {/* Row 7: Visa + Job Functions */}
+          <SectionGuide label="VISA & LOCATION PAY" description="Sponsorship rates and salary by city" />
+
+          {/* Row 7: Visa + Salary by Location */}
           <div
             style={{
               display: "grid",
@@ -370,13 +449,13 @@ export default async function DashboardPage() {
                 suggestion="Shows the proportion of jobs offering H-1B or other visa sponsorship."
               />
             )}
-            {(seniority?.jobFunctions ?? []).length > 0 ? (
-              <JobFunctionsChart data={seniority?.jobFunctions ?? []} />
+            {(salaryByLocation?.cities ?? []).length > 0 ? (
+              <SalaryByLocationChart cities={salaryByLocation?.cities ?? []} />
             ) : (
               <EmptyPanel
-                title="Job Functions"
-                message="No data yet"
-                suggestion="Engineering, product, design, and other function distribution."
+                title="Salary x Location"
+                message="No location salary data yet"
+                suggestion="Median salary by city. Requires 3+ salary-disclosed jobs per location."
               />
             )}
           </div>
