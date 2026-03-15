@@ -127,6 +127,62 @@ const SALARY_BUCKETS = [
   { label: "> $200K", min: 200_000, max: Infinity },
 ];
 
+/**
+ * Parse a raw salary string into an annualised midpoint value (or null if unparseable).
+ *
+ * Handles:
+ *  - Annual ranges: "$120,000 - $150,000", "$130K - $160K", "$160,000 - $600,000 USD"
+ *  - Hourly-only:   "$45 - $55/hr", "$80.00 per hour"
+ *  - Monthly-only:  "$8,000/mo - $10,000/mo"
+ *  - Mixed strings: "$140,000 annually or $80/hr" → uses annual portion only
+ *
+ * Noise numbers (ordinals, level indicators like "Level 2") are filtered out by
+ * requiring annual values ≥ $20 000 and hourly values ≥ $10.
+ * Per-token K detection replaces the previous average-based check.
+ */
+function parseSalaryToAnnual(s: string): number | null {
+  const hasHourly = /\/hr\b|per\s+hour|hourly/i.test(s);
+  const hasAnnual = /\/yr\b|per\s+year|annually\b|annual\b|\/year\b/i.test(s);
+  const hasMonthly = /\/mo(?:nth)?\b|per\s+month|monthly\b/i.test(s);
+
+  // Mixed hourly + annual → strip the hourly clause, then treat remainder as annual.
+  // If the regex doesn't match we fall through and treat it as annual-only.
+  let workStr = s;
+  if (hasHourly && hasAnnual) {
+    workStr = s.replace(/(?:,|\bor\b)[^$]*\/\s*hr\b[^,]*/gi, "").trim();
+  }
+
+  // Treat as hourly only when there's no annual indicator
+  const isHourly = hasHourly && !hasAnnual;
+
+  // Extract tokens: optional-$ · digits · optional-comma-grouping · optional-decimal · optional-K
+  const tokenRegex = /\$?([\d,]+(?:\.\d+)?)\s*(k\b)?/gi;
+  const values: number[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = tokenRegex.exec(workStr)) !== null) {
+    const raw = parseFloat(m[1].replace(/,/g, ""));
+    const isK = !!m[2];
+    values.push(isK ? raw * 1_000 : raw);
+  }
+
+  if (!values.length) return null;
+
+  // Filter to plausible salary magnitudes, discarding ordinals / level numbers
+  const filtered = isHourly
+    ? values.filter((v) => v >= 10 && v <= 500)       // hourly: $10–$500/hr
+    : hasMonthly
+    ? values.filter((v) => v >= 500 && v <= 50_000)   // monthly: $500–$50K/mo
+    : values.filter((v) => v >= 20_000 && v <= 800_000); // annual
+
+  if (!filtered.length) return null;
+
+  const midpoint = filtered.reduce((a, b) => a + b, 0) / filtered.length;
+
+  if (isHourly) return midpoint * 2_080;   // 40 hrs × 52 wks
+  if (hasMonthly) return midpoint * 12;
+  return midpoint;
+}
+
 export function aggregateSalary(
   rows: { salary?: string | null; external_id: string }[],
   totalJobs?: number
@@ -143,21 +199,13 @@ export function aggregateSalary(
       continue;
     }
 
-    const isHourly = /\/hr|per\s+hour|hourly/i.test(s);
-    const nums =
-      s.match(/[\d,]+\.?\d*/g)?.map((n) => parseFloat(n.replace(/,/g, ""))) ??
-      [];
-    if (!nums.length) {
+    const annual = parseSalaryToAnnual(s);
+    if (annual === null) {
       unlistedCount++;
       continue;
     }
 
     listedCount++;
-    const isK = /\d+\.?\d*\s*k\b/i.test(s);
-    const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
-    let annual = isK && avg < 500 ? avg * 1_000 : avg;
-    if (isHourly) annual = annual * 2_080; // 40 hrs × 52 wks
-
     annualValues.push(annual);
     for (let i = 0; i < SALARY_BUCKETS.length; i++) {
       if (annual >= SALARY_BUCKETS[i].min && annual < SALARY_BUCKETS[i].max) {
