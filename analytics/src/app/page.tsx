@@ -155,7 +155,7 @@ export default async function DashboardPage() {
             <MetricCard
               label="Unique Postings"
               value={overview?.total ?? 0}
-              subLabel="deduplicated"
+              subLabel="after deduplication"
               accent="teal"
               sparklineData={sparkline}
               delay={0}
@@ -175,7 +175,7 @@ export default async function DashboardPage() {
               delay={120}
             />
             <MetricCard
-              label="Avg / Day"
+              label="Jobs / Day"
               value={overview?.avgJobsPerDay ?? 0}
               subLabel="30-day average"
               accent="amber"
@@ -184,7 +184,7 @@ export default async function DashboardPage() {
             <MetricCard
               label="Salary Listed"
               value={salary?.listedRate ?? 0}
-              subLabel="% disclose comp"
+              subLabel="% disclose salary"
               accent="teal"
               delay={240}
             />
@@ -340,7 +340,7 @@ export default async function DashboardPage() {
           }}
         >
           <span>GOONEDIN ANALYTICS · MARKET INTELLIGENCE TERMINAL</span>
-          <span>UNIQUE JOBS · DEDUPED BY EXTERNAL ID · 60s ISR</span>
+          <span>UNIQUE JOBS · AUTO-REFRESHES EVERY 60S</span>
         </footer>
       </div>
     </>

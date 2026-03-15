@@ -44,7 +44,7 @@ export default function WeekdayChart({ data, peakDay }: Props) {
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header">
-        Posting Day Distribution
+        Busiest Posting Days
         {peakDay && (
           <span
             style={{

@@ -34,7 +34,7 @@ export default function IntelPanel({
     insights.push({
       icon: <Buildings size={12} weight="bold" />,
       color: "var(--teal)",
-      label: "DOMINANT EMPLOYER",
+      label: "TOP EMPLOYER",
       text: `${topCompany} leads all companies in posting volume — consistently the most active recruiter in this dataset.`,
     });
   }
@@ -44,7 +44,7 @@ export default function IntelPanel({
       icon: <Code size={12} weight="bold" />,
       color: "var(--blue)",
       label: "HOT SKILL",
-      text: `${topSkill} appears more frequently than any other keyword in analyzed job descriptions. High signal for resume optimization.`,
+      text: `${topSkill} appears more frequently than any other keyword in analyzed job descriptions. Consider highlighting it on your resume.`,
     });
   }
 
@@ -53,7 +53,7 @@ export default function IntelPanel({
       icon: <MapPin size={12} weight="bold" />,
       color: "var(--amber)",
       label: "TOP MARKET",
-      text: `${topCity} has the highest concentration of postings. Remote roles are also a significant portion of the listing mix.`,
+      text: `${topCity} has the highest concentration of job postings in this dataset.`,
     });
   }
 
@@ -68,7 +68,7 @@ export default function IntelPanel({
           ? "International candidates have favorable conditions in this market."
           : sponsorshipRate > 20
           ? "Sponsorship is available but not the norm. Target companies explicitly."
-          : "Sponsorship is scarce. Prioritize companies with established H1-B programs."
+          : "Sponsorship is scarce. Prioritize companies with established H-1B programs."
       }`,
     });
   }
@@ -107,7 +107,7 @@ export default function IntelPanel({
               paddingTop: "20px",
             }}
           >
-            // Awaiting data...
+            Waiting for enough data to generate insights
           </div>
         ) : (
           insights.map((item, i) => (

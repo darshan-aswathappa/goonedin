@@ -10,7 +10,7 @@ export default function SoftSkillsPanel({ data }: Props) {
 
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
-      <div className="panel-header">Qualifications Frequency</div>
+      <div className="panel-header">Top Qualifications</div>
       <div
         style={{
           padding: "10px 14px",

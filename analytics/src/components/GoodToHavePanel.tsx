@@ -12,7 +12,7 @@ export default function GoodToHavePanel({ data }: Props) {
 
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
-      <div className="panel-header">Good-to-Have Keywords</div>
+      <div className="panel-header">Nice-to-Have Skills</div>
       <div
         style={{
           padding: "10px 14px",

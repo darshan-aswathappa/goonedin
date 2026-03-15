@@ -189,7 +189,7 @@ export default function JobVolumeChart({ data: initialData }: Props) {
               zIndex: 10,
             }}
           >
-            LOADING...
+            UPDATING...
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">

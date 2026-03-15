@@ -80,7 +80,7 @@ export default function TimeDistributionChart({ fallbackData }: Props) {
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header" style={{ gap: "8px" }}>
-        Time Distribution
+        Posting Times by Day
         <div
           style={{
             marginLeft: "auto",

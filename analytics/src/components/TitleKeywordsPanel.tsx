@@ -308,7 +308,7 @@ export default function TitleKeywordsPanel({ data }: Props) {
 
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
-      <div className="panel-header">Most Demanded Job Titles</div>
+      <div className="panel-header">Top Job Titles</div>
       <div
         ref={containerRef}
         style={{

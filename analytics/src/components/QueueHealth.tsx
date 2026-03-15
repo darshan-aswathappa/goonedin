@@ -66,7 +66,7 @@ export default function QueueHealth({
 
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
-      <div className="panel-header">Analysis Pipeline</div>
+      <div className="panel-header">AI Analysis Status</div>
       <div
         style={{
           padding: "14px 16px",
@@ -81,13 +81,13 @@ export default function QueueHealth({
         <Stat label="Failed" value={failed} accent="var(--red, #ef4444)" />
         <Stat label="Success Rate" value={`${successRate}%`} accent="var(--green)" />
         <Stat
-          label="Visa Extracted"
+          label="Visa Data Found"
           value={`${visaPct}%`}
           accent="var(--blue)"
           sub={`${withVisa} jobs`}
         />
         <Stat
-          label="Salary Extracted"
+          label="Salary Data Found"
           value={`${salaryPct}%`}
           accent="var(--amber)"
           sub={`${withSalary} jobs`}

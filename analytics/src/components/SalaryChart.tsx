@@ -60,7 +60,7 @@ export default function SalaryChart({
             fontWeight: 700,
           }}
         >
-          {listedRate}% LIST SALARY
+          {listedRate}% SHOW SALARY
         </span>
       </div>
       <div
@@ -102,7 +102,7 @@ export default function SalaryChart({
                   marginTop: "2px",
                 }}
               >
-                MEDIAN EST.
+                MEDIAN SALARY
               </div>
             </div>
             <div>
@@ -126,7 +126,7 @@ export default function SalaryChart({
                   marginTop: "2px",
                 }}
               >
-                LISTED
+                JOBS WITH SALARY
               </div>
             </div>
           </div>

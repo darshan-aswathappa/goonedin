@@ -18,7 +18,7 @@ export default function SkillCooccurrence({ data }: Props) {
 
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
-      <div className="panel-header">Skill Co-occurrence</div>
+      <div className="panel-header">Commonly Paired Skills</div>
       <div
         style={{
           padding: "6px 14px 10px",
@@ -38,7 +38,7 @@ export default function SkillCooccurrence({ data }: Props) {
               marginTop: "12px",
             }}
           >
-            No data yet
+            No skill pairs found yet
           </span>
         )}
         {top.map((pair, i) => {

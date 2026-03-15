@@ -76,7 +76,7 @@ export default function VisaStats({ data, sponsorshipRate, total }: Props) {
               lineHeight: 1.5,
             }}
           >
-            SPONSOR
+            SPONSORSHIP
             <br />
             RATE
           </div>
