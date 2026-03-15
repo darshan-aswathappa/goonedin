@@ -10,11 +10,18 @@ export async function GET() {
     const { data, error } = await sb.rpc("analytics_locations");
     if (error) throw error;
 
+    // Country-level entries to exclude (we only scrape US jobs, so these are noise)
+    const COUNTRY_FILTER = new Set([
+      "united states", "usa", "us", "u.s.", "u.s.a.", "america",
+      "canada", "united kingdom", "uk", "india", "germany", "worldwide",
+    ]);
+
     // Normalize and merge city aliases
     const freq: Record<string, number> = {};
     for (const row of data as { location: string; count: number }[]) {
       const city = normalizeLocation(row.location);
       if (!city || city.length < 2) continue;
+      if (COUNTRY_FILTER.has(city.toLowerCase())) continue;
       freq[city] = (freq[city] ?? 0) + Number(row.count);
     }
 
