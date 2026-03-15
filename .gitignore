@@ -48,3 +48,5 @@ npm-debug.log*
 CLAUDE.md
 resume_comparison.md
 resume_service_breakdown_plan.md
+.mcp.json
+.playwright-mcp
