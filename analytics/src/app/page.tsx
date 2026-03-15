@@ -19,7 +19,7 @@ import JobFunctionsChart from "@/components/JobFunctionsChart";
 import QueueHealth from "@/components/QueueHealth";
 import SkillCooccurrence from "@/components/SkillCooccurrence";
 import TimeDistributionChart from "@/components/TimeDistributionChart";
-import SkillMomentumPanel from "@/components/SkillMomentumPanel";
+import SkillMomentumTable from "@/components/SkillMomentumTable";
 import ExperienceDistribution from "@/components/ExperienceDistribution";
 import SalaryByLocationChart from "@/components/SalaryByLocationChart";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
@@ -99,8 +99,9 @@ interface Queue {
   analyzedCount: number;
 }
 interface SkillMomentum {
-  rising: { skill: string; recent: number; prior: number; delta: number }[];
-  declining: { skill: string; recent: number; prior: number; delta: number }[];
+  skills: { skill: string; total: number; daily: { day: string; count: number }[] }[];
+  dailyJobs: { day: string; count: number }[];
+  dateRange: { start: string; end: string } | null;
 }
 interface Experience {
   distribution: { label: string; count: number }[];
@@ -339,19 +340,19 @@ export default async function DashboardPage() {
               display: "grid",
               gridTemplateColumns: "1fr",
               gap: "12px",
-              height: "280px",
             }}
           >
-            {(skillMomentum?.rising ?? []).length > 0 || (skillMomentum?.declining ?? []).length > 0 ? (
-              <SkillMomentumPanel
-                rising={skillMomentum?.rising ?? []}
-                declining={skillMomentum?.declining ?? []}
+            {(skillMomentum?.skills ?? []).length > 0 ? (
+              <SkillMomentumTable
+                skills={skillMomentum?.skills ?? []}
+                dailyJobs={skillMomentum?.dailyJobs ?? []}
+                dateRange={skillMomentum?.dateRange ?? null}
               />
             ) : (
               <EmptyPanel
                 title="Skill Momentum"
-                message="Awaiting 14+ days of data"
-                suggestion="Shows which skills are rising or falling in demand compared to the prior 2 weeks."
+                message="No skill data available"
+                suggestion="Shows top 10 technical skills ranked by momentum with daily sparkline trends."
               />
             )}
           </div>
