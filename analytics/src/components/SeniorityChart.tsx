@@ -84,7 +84,7 @@ export default function SeniorityChart({ data }: Props) {
         </div>
 
         {/* Legend + top stat */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "4px" }}>
+        <div style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "180px", display: "flex", flexDirection: "column", gap: "4px" }}>
           {topLevel && (
             <div style={{ marginBottom: "6px" }}>
               <div
@@ -128,9 +128,11 @@ export default function SeniorityChart({ data }: Props) {
                   fontSize: "8px",
                   color: "var(--text-dim)",
                   flex: 1,
+                  minWidth: 0,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
+                  marginRight: "8px",
                 }}
               >
                 {d.level}

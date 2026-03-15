@@ -50,6 +50,7 @@ interface Skills {
   techSkills: { keyword: string; count: number }[];
   softSkills: { skill: string; count: number }[];
   goodToHave: { keyword: string; count: number }[];
+  cooccurrencePairs: { a: string; b: string; count: number }[];
 }
 interface Timeline {
   timeline: { day: string; count: number }[];
@@ -90,10 +91,6 @@ interface Queue {
   withSalary: number;
   analyzedCount: number;
 }
-interface Cooccurrence {
-  pairs: { a: string; b: string; count: number }[];
-  topSkills: { skill: string; count: number }[];
-}
 
 export default async function DashboardPage() {
   const [
@@ -108,7 +105,6 @@ export default async function DashboardPage() {
     seniority,
     weekday,
     queue,
-    cooccurrence,
   ] = await Promise.all([
     fetchJson<Overview>("/api/analytics/overview"),
     fetchJson<Companies>("/api/analytics/companies"),
@@ -121,7 +117,6 @@ export default async function DashboardPage() {
     fetchJson<Seniority>("/api/analytics/seniority"),
     fetchJson<Weekday>("/api/analytics/weekday"),
     fetchJson<Queue>("/api/analytics/queue"),
-    fetchJson<Cooccurrence>("/api/analytics/cooccurrence"),
   ]);
 
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
@@ -245,14 +240,14 @@ export default async function DashboardPage() {
             }}
           >
             <SoftSkillsPanel data={skills?.softSkills ?? []} />
-            <SkillCooccurrence data={cooccurrence?.pairs ?? []} />
+            <SkillCooccurrence data={skills?.cooccurrencePairs ?? []} />
           </div>
 
           {/* Row 6: Seniority + Weekday */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr",
+              gridTemplateColumns: "300px 1fr",
               gap: "12px",
               height: "240px",
             }}
