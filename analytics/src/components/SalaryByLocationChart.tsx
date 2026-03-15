@@ -13,6 +13,32 @@ import {
 import ChartTooltip from "./ChartTooltip";
 import { AXIS_TICK_SM, BAR_CURSOR, CHART_ANIM_MS } from "@/lib/tokens";
 
+function CityTick({
+  x,
+  y,
+  payload,
+}: {
+  x: number;
+  y: number;
+  payload: { value: string };
+}) {
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={0}
+        dy={4}
+        textAnchor="end"
+        fill="var(--text-dim)"
+        fontSize={8}
+        fontFamily="var(--font-mono)"
+      >
+        {payload.value}
+      </text>
+    </g>
+  );
+}
+
 interface CityData {
   city: string;
   median: number;
@@ -62,10 +88,11 @@ export default function SalaryByLocationChart({ cities }: Props) {
               <YAxis
                 dataKey="city"
                 type="category"
-                tick={{ ...AXIS_TICK_SM, fill: "var(--text-dim)" }}
+                tick={<CityTick x={0} y={0} payload={{ value: "" }} />}
                 axisLine={false}
                 tickLine={false}
-                width={100}
+                width={130}
+                interval={0}
               />
               <Tooltip
                 content={

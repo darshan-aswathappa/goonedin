@@ -143,6 +143,10 @@ async def lifespan(app: FastAPI):
     from app.services.knowledge_base.conversation_memory import start_cleanup_task
     start_cleanup_task()
 
+    # Fetch live database schema for AI query layer (non-blocking)
+    from app.services.knowledge_base.schema_introspection import refresh_schema_cache
+    asyncio.create_task(refresh_schema_cache())
+
     try:
         contexts = await load_all_users()
         for ctx in contexts:

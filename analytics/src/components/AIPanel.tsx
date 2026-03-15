@@ -58,7 +58,7 @@ export default function AIPanel() {
           willChange: "transform",
         }}
       >
-        <AICompanion onClose={() => setOpen(false)} />
+        <AICompanion onClose={() => setOpen(false)} isOpen={open} />
       </div>
     </>
   );

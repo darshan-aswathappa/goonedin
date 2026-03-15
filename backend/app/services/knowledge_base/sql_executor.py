@@ -11,20 +11,23 @@ Handles:
   - Result row limiting (never return unbounded datasets to LLM)
 
 SECURITY MODEL:
-  The database does most of the heavy lifting:
-    - ai_kb_reader role has SELECT-only on safe tables, nothing on PII tables
-    - ai_kb_reader has explicit RLS policies (migration 007) for SELECT on safe tables
-      (BYPASSRLS is ignored by Supabase for non-superuser roles)
-    - All mutations fail at the privilege level before reaching this code
-  This Python layer is defense-in-depth, not the primary control.
+  All security is enforced by this Python layer:
+    - validate_sql_security() blocks mutations, DDL, and PII table access
+    - Regex + sqlglot AST checks prevent injection and forbidden tables
+    - Row cap prevents token blowout
+  The database role (postgres superuser) bypasses RLS so aggregate queries
+  work across all users. PII table restrictions are handled here, not at the
+  DB role level. This is intentional: Supabase ignores BYPASSRLS for
+  non-superuser roles, so the old ai_kb_reader approach silently returned
+  0 rows for any table with user-scoped RLS policies.
 
 CONNECTION:
   Uses asyncpg directly — Supabase REST API does not expose raw SQL.
-  Set AI_READONLY_DB_URL in .env to a connection string that authenticates
-  as ai_kb_reader, or fall back to SUPABASE_DB_URL and SET ROLE at runtime.
+  Set SUPABASE_DB_URL in .env to the postgres superuser connection string.
+  Get it from: Supabase Dashboard → Settings → Database → Connection string
 
-  Recommended: transaction pooler (port 6543) since connections are short-lived.
-  Format: postgresql://ai_kb_reader:<password>@<host>:6543/postgres
+  Recommended: session pooler (port 5432) or direct connection.
+  Format: postgresql://postgres.PROJECT_REF:DB_PASSWORD@host:5432/postgres
 """
 
 import asyncpg
@@ -32,6 +35,7 @@ import asyncio
 import logging
 import re
 import json
+import httpx
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Any, Optional
@@ -360,41 +364,107 @@ def _build_dsn() -> str:
     Build the PostgreSQL DSN for asyncpg.
 
     Priority order:
-      1. AI_READONLY_DB_URL — connection string for the ai_kb_reader role.
-         This is the preferred option. The role has SELECT-only on safe tables.
-         Use the Supabase transaction pooler (port 6543) for short-lived connections.
-         Format: postgresql://ai_kb_reader:<password>@<host>:6543/postgres
+      1. SUPABASE_DB_URL — direct postgres superuser connection string.
+         RECOMMENDED: this user has BYPASSRLS so aggregate queries across all
+         users work correctly without per-table RLS policy maintenance.
+         Get from: Supabase Dashboard → Settings → Database → Connection string
+         Format: postgresql://postgres.PROJECT_REF:DB_PASSWORD@host:5432/postgres
 
-      2. SUPABASE_DB_URL — the full service-role connection string. If used,
-         we SET ROLE ai_kb_reader immediately after connecting (see execute_query).
+      2. AI_READONLY_DB_URL — legacy fallback connecting as ai_query_user
+         (ai_kb_reader role). Subject to Supabase RLS even with BYPASSRLS set,
+         so tables with user-scoped RLS return 0 rows unless migration 007 is
+         applied for each table. Not recommended.
 
-    To get the transaction pooler URL:
-      Supabase Dashboard -> Project Settings -> Database ->
-      Connection string -> Transaction pooler URI
+    Security is enforced entirely by the Python layer (validate_sql_security)
+    — no database-side role restriction is applied at query time.
     """
-    ai_url = getattr(settings, "AI_READONLY_DB_URL", None)
-    if ai_url:
-        return ai_url
-
     supa_url = getattr(settings, "SUPABASE_DB_URL", None)
     if supa_url:
         return supa_url
 
+    ai_url = getattr(settings, "AI_READONLY_DB_URL", None)
+    if ai_url:
+        return ai_url
+
     raise RuntimeError(
-        "Neither AI_READONLY_DB_URL nor SUPABASE_DB_URL is set in .env. "
-        "Add one of these to enable NL2SQL queries. "
-        "Recommended: AI_READONLY_DB_URL=postgresql://ai_kb_reader:<pw>@<host>:6543/postgres"
+        "Neither SUPABASE_DB_URL nor AI_READONLY_DB_URL is set in .env. "
+        "Add SUPABASE_DB_URL (postgres superuser URL) to enable NL2SQL queries. "
+        "Get it from: Supabase Dashboard → Settings → Database → Connection string"
     )
 
 
-def _needs_role_switch() -> bool:
+# ---------------------------------------------------------------------------
+# REST API fallback (Supabase RPC via httpx)
+# ---------------------------------------------------------------------------
+
+
+async def _execute_via_rest(sql: str, timeout: float) -> list[dict[str, Any]]:
     """
-    Return True if we are connecting as service_role and need to
-    SET ROLE ai_kb_reader at connection time.
-    If AI_READONLY_DB_URL is set, the connection already authenticates
-    as ai_kb_reader and no switch is needed.
+    Fallback: execute read-only SQL via the ai_kb_exec_sql() RPC function
+    over Supabase's REST API. Used when asyncpg cannot connect (IPv6-only
+    direct connection, pooler circuit breaker, etc.).
+
+    The ai_kb_exec_sql() function is SECURITY DEFINER and only allows
+    SELECT/WITH statements. Python-side validation has already run before
+    this function is called.
+
+    Returns list of row dicts.
+    Raises SQLExecutionError on DB errors, RuntimeError on infra errors.
     """
-    return not bool(getattr(settings, "AI_READONLY_DB_URL", None))
+    supabase_url = settings.SUPABASE_URL
+    service_key = settings.SUPABASE_SERVICE_KEY
+
+    if not supabase_url or not service_key:
+        raise RuntimeError(
+            "SUPABASE_URL and SUPABASE_SERVICE_KEY required for REST fallback"
+        )
+
+    # Escape single quotes for the SQL string passed to the RPC function
+    escaped_sql = sql.replace("'", "''")
+    rpc_sql = f"SELECT ai_kb_exec_sql('{escaped_sql}') AS result"
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout + 5) as client:
+            resp = await client.post(
+                f"{supabase_url}/rest/v1/rpc/ai_kb_exec_sql",
+                headers={
+                    "apikey": service_key,
+                    "Authorization": f"Bearer {service_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"sql_text": sql},
+            )
+
+        if resp.status_code == 200:
+            data = resp.json()
+            # RPC returns the JSONB result directly
+            if isinstance(data, list):
+                return data[:MAX_RESULT_ROWS]
+            return []
+        elif resp.status_code in (400, 422):
+            # PostgreSQL error surfaced via PostgREST
+            error_body = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            pg_error = error_body.get("message", resp.text[:200])
+            raise SQLExecutionError(
+                "Query failed (REST fallback)",
+                original_sql=sql,
+                pg_error=pg_error,
+            )
+        else:
+            raise RuntimeError(
+                f"REST fallback returned HTTP {resp.status_code}: {resp.text[:200]}"
+            )
+
+    except httpx.TimeoutException:
+        raise SQLExecutionError(
+            f"Query timed out after {timeout}s (REST fallback)",
+            original_sql=sql,
+            pg_error=f"TIMEOUT after {timeout} seconds",
+        )
+    except (SQLExecutionError, RuntimeError):
+        raise
+    except Exception as e:
+        raise RuntimeError(f"REST fallback failed: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -410,15 +480,18 @@ async def execute_query(
     """
     Execute a validated read-only SQL query and return results as a list of dicts.
 
+    Two execution paths:
+      1. PRIMARY: asyncpg direct connection (fastest, supports prepared statements)
+      2. FALLBACK: Supabase REST API via ai_kb_exec_sql() RPC function
+         (used when asyncpg can't connect — IPv6 issues, pooler circuit breaker, etc.)
+
     Security pipeline (in order):
-      1. _validate_sql_regex()    — fast pattern matching
-      2. _validate_sql_ast()      — sqlglot AST node inspection
+      1. _validate_sql_regex()      — fast pattern matching
+      2. _validate_sql_ast()        — sqlglot AST node inspection
       3. _substitute_named_params() — safe parameterization
-      4. _inject_limit()          — row cap injection
-      5. SET LOCAL statement_timeout — server-side timeout
-      6. SET ROLE ai_kb_reader    — role downgrade (if connecting as service_role)
-      7. PostgreSQL privilege check — database-level backstop
-      8. Python truncation        — final row cap before returning to LLM
+      4. _inject_limit()            — row cap injection
+      5. SET LOCAL statement_timeout — server-side timeout (asyncpg path only)
+      6. Python truncation          — final row cap before returning to LLM
 
     Args:
         sql:     SELECT statement. May use :named_param placeholders.
@@ -443,13 +516,75 @@ async def execute_query(
     positional_sql, positional_values = _substitute_named_params(sql, params)
 
     # --- Layer 4: LIMIT injection ---
-    positional_sql = _inject_limit(positional_sql, MAX_RESULT_ROWS)
+    limited_sql = _inject_limit(positional_sql, MAX_RESULT_ROWS)
 
+    # --- Try asyncpg first, fall back to REST API ---
+    try:
+        return await _execute_via_asyncpg(sql, limited_sql, positional_values, timeout)
+    except RuntimeError as e:
+        # Connection-level failure (timeout, refused, circuit breaker, no DSN)
+        # → fall back to REST API
+        logger.warning(
+            "[SQLExecutor] asyncpg failed (%s), falling back to REST API", e
+        )
+
+    # REST fallback: inline parameter values into the SQL since RPC doesn't
+    # support positional params. Re-build from the original SQL with params
+    # substituted as literals.
+    rest_sql = _inline_params(sql, params)
+    rest_sql = _inject_limit(rest_sql, MAX_RESULT_ROWS)
+    result = await _execute_via_rest(rest_sql, timeout)
+
+    logger.info(
+        "[SQLExecutor] Query OK via REST fallback — %d rows. SQL: %.80s...",
+        len(result), sql,
+    )
+    return result
+
+
+def _inline_params(sql: str, params: dict[str, Any]) -> str:
+    """
+    Replace :named_param placeholders with literal values for REST fallback.
+    Only used when asyncpg is unavailable and we need to pass SQL as a string.
+    """
+    def replace_param(match: re.Match) -> str:
+        name = match.group(1)
+        if name not in params:
+            return match.group(0)  # leave as-is if not found
+        val = params[name]
+        if val is None:
+            return "NULL"
+        if isinstance(val, str):
+            # Escape single quotes
+            escaped = val.replace("'", "''")
+            return f"'{escaped}'"
+        if isinstance(val, (int, float)):
+            return str(val)
+        if isinstance(val, bool):
+            return "TRUE" if val else "FALSE"
+        # Default: treat as string
+        escaped = str(val).replace("'", "''")
+        return f"'{escaped}'"
+
+    return re.sub(r":([a-zA-Z_][a-zA-Z0-9_]*)", replace_param, sql)
+
+
+async def _execute_via_asyncpg(
+    original_sql: str,
+    prepared_sql: str,
+    positional_values: list[Any],
+    timeout: float,
+) -> list[dict[str, Any]]:
+    """
+    Execute via asyncpg direct PostgreSQL connection.
+    Raises RuntimeError on connection failures (caller should fall back).
+    Raises SQLSecurityError / SQLExecutionError on query-level failures.
+    """
     dsn = _build_dsn()
     conn: Optional[asyncpg.Connection] = None
 
     try:
-        # --- Layer 5: Connect (with timeout) ---
+        # --- Connect (with timeout) ---
         try:
             conn = await asyncio.wait_for(
                 asyncpg.connect(dsn=dsn),
@@ -457,38 +592,29 @@ async def execute_query(
             )
         except asyncio.TimeoutError:
             raise RuntimeError("Database connection timed out after 5s")
-        except asyncpg.PostgresError as e:
+        except (asyncpg.PostgresError, OSError, Exception) as e:
             raise RuntimeError(f"Database connection failed: {e}")
-
-        # --- Layer 6: Role switch (if connecting as service_role) ---
-        if _needs_role_switch():
-            await conn.execute("SET ROLE ai_kb_reader")
 
         # Supabase installs pgvector in the 'extensions' schema
         await conn.execute("SET search_path TO public, extensions")
 
-        # --- Layer 5 (server-side): Statement timeout ---
-        # SET LOCAL only works inside a transaction block. We use an explicit
-        # transaction so the timeout is scoped and auto-resets on commit/rollback.
-        # --- Execute ---
+        # --- Execute with server-side timeout ---
         try:
             async with conn.transaction():
                 await conn.execute(
                     f"SET LOCAL statement_timeout = '{QUERY_TIMEOUT_MS}'"
                 )
                 rows = await asyncio.wait_for(
-                    conn.fetch(positional_sql, *positional_values),
+                    conn.fetch(prepared_sql, *positional_values),
                     timeout=timeout,
                 )
         except asyncio.TimeoutError:
             raise SQLExecutionError(
                 f"Query timed out after {timeout}s",
-                original_sql=sql,
+                original_sql=original_sql,
                 pg_error=f"TIMEOUT after {timeout} seconds",
             )
         except asyncpg.InsufficientPrivilegeError as e:
-            # This fires when the LLM tries to read a PII table that isn't
-            # granted to ai_kb_reader. Treat as security violation.
             raise SQLSecurityError(
                 f"Query was blocked by database role privileges. "
                 f"The table referenced may contain PII and is not accessible."
@@ -496,19 +622,19 @@ async def execute_query(
         except asyncpg.PostgresError as e:
             raise SQLExecutionError(
                 "Query failed due to a database error",
-                original_sql=sql,
+                original_sql=original_sql,
                 pg_error=str(e),
             )
 
-        # --- Layer 8: Python-side row cap ---
+        # --- Python-side row cap ---
         result = [_serialize_row(r) for r in rows[:MAX_RESULT_ROWS]]
 
         logger.info(
-            "[SQLExecutor] Query OK — %d rows returned (cap: %d). "
+            "[SQLExecutor] Query OK via asyncpg — %d rows (cap: %d). "
             "SQL: %.80s...",
             len(result),
             MAX_RESULT_ROWS,
-            sql,
+            original_sql,
         )
         return result
 
@@ -593,8 +719,6 @@ async def execute_rpc(
 
     try:
         conn = await asyncio.wait_for(asyncpg.connect(dsn=dsn), timeout=5.0)
-        if _needs_role_switch():
-            await conn.execute("SET ROLE ai_kb_reader")
         await conn.execute("SET search_path TO public, extensions")
 
         try:

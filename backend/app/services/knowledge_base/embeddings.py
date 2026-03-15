@@ -14,6 +14,7 @@ Architecture decisions:
 import asyncio
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import httpx
@@ -30,7 +31,7 @@ EMBEDDING_DIMENSIONS = 1536
 # Similarity threshold: jobs below this score are excluded.
 # 0.70 is a solid threshold for semantic job matching — loose enough to catch
 # paraphrasing, tight enough to exclude noise.
-DEFAULT_SIMILARITY_THRESHOLD = 0.70
+DEFAULT_SIMILARITY_THRESHOLD = 0.50
 
 # Maximum results returned from vector search.
 DEFAULT_TOP_K = 20
@@ -168,7 +169,7 @@ async def upsert_job_embedding(
             lambda: supabase.table("job_analysis_cache")
             .update({
                 "embedding": embedding,
-                "embedding_generated_at": "now()",
+                "embedding_generated_at": datetime.now(timezone.utc).isoformat(),
             })
             .eq("external_id", external_id)
             .execute()

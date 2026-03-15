@@ -40,8 +40,7 @@ export async function GET() {
     const { data: rows, error } = await sb
       .from("scraped_jobs")
       .select("external_id, salary, location, created_at")
-      .not("salary", "is", null)
-      .limit(50000);
+      .not("salary", "is", null);
 
     if (error) throw error;
 

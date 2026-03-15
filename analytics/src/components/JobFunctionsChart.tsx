@@ -36,6 +36,7 @@ export default function JobFunctionsChart({ data }: Props) {
               tick={{ ...AXIS_TICK, fontSize: 10, fill: "var(--text-dim)" }}
               tickLine={false}
               axisLine={false}
+              interval={0}
             />
             <Tooltip
               content={

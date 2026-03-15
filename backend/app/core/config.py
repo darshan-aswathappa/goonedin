@@ -34,8 +34,20 @@ class Settings(BaseSettings):
     # --- KNOWLEDGE BASE / AI QUERY ---
     # OpenAI key for text-embedding-3-small (DeepSeek does not offer embeddings)
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    # asyncpg DSN for the read-only Postgres role used by the AI query layer.
-    # Format: postgresql+asyncpg://role:password@host:port/dbname
+    # Direct Postgres connection string for the AI query layer.
+    # PREFERRED: use the Supabase postgres superuser URL — this bypasses RLS so
+    # aggregate queries across all users work correctly.  The Python security
+    # layer (sql_executor.py) enforces the PII-table restrictions instead.
+    #
+    # Get it from: Supabase Dashboard → Settings → Database → Connection string
+    #   (choose "URI", port 5432 or 6543)
+    # Format: postgresql://postgres.PROJECT_REF:DB_PASSWORD@host:5432/postgres
+    #
+    # FALLBACK (legacy): AI_READONLY_DB_URL — connects as ai_query_user which
+    # has the ai_kb_reader role.  Subject to Supabase RLS even with BYPASSRLS
+    # set, so aggregate queries return 0 rows unless migration 007 is applied
+    # for every table.  Not recommended for new deployments.
+    SUPABASE_DB_URL: str = os.getenv("SUPABASE_DB_URL", "")
     AI_READONLY_DB_URL: str = os.getenv("AI_READONLY_DB_URL", "")
     # Max rows the AI SQL layer is allowed to return per query (safety cap)
     KB_SQL_ROW_LIMIT: int = int(os.getenv("KB_SQL_ROW_LIMIT", "500"))

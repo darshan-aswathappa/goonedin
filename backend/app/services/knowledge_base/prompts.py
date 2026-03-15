@@ -66,6 +66,8 @@ Return ONLY a JSON object with these exact fields:
   - Requests for user emails, passwords, or personal information
 
 === SQL DRAFTING RULES ===
+- CRITICAL: ONLY use columns that appear in the schema above. If a column is not listed for a table, it DOES NOT EXIST. Do not guess or assume columns.
+- job_analysis_cache does NOT have: company, location, title, source, work_model. For those, JOIN with scraped_jobs.
 - Always use :user_id as the parameter placeholder (not $1, not %(user_id)s)
 - PREFER materialized views (mv_skill_frequency, mv_company_hiring_stats, mv_salary_distribution) over raw table queries — they are faster and pre-computed
 - mv_skill_frequency stores skills already lowercased — match with lowercase literals: skill IN ('python', 'java'), NOT skill IN ('Python', 'Java')
@@ -125,6 +127,16 @@ Output:
   "sql": "SELECT skill, job_count FROM mv_skill_frequency WHERE skill_type = 'must_have' AND skill IN ('python', 'java') ORDER BY job_count DESC",
   "vector_query": null,
   "explanation": "Skill comparison using materialized view with case-insensitive matching.",
+  "needs_user_id": false
+}}
+
+User: "In which state or city did Google post most of their jobs?"
+Output:
+{{
+  "query_type": "sql",
+  "sql": "SELECT sj.location, COUNT(*) AS job_count FROM job_analysis_cache jac JOIN scraped_jobs sj ON sj.external_id = jac.external_id WHERE jac.analysis_status = 'completed' AND sj.company ILIKE '%google%' AND sj.location IS NOT NULL GROUP BY sj.location ORDER BY job_count DESC LIMIT 10",
+  "vector_query": null,
+  "explanation": "job_analysis_cache has no company/location columns — must JOIN scraped_jobs for those.",
   "needs_user_id": false
 }}
 

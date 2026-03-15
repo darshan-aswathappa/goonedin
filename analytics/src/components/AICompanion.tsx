@@ -12,64 +12,126 @@ const SUGGESTED_PROMPTS = [
   "Which job sources are most active?",
 ];
 
-// ── Lightweight inline markdown renderer ─────────────────────────────────────
-// Handles: **bold**, *italic*, `code`, and newlines.
-// Returns an array of React nodes suitable for inline rendering.
-function renderMarkdown(text: string): React.ReactNode[] {
+// ── Inline markdown: **bold**, *italic*, `code` ───────────────────────────────
+function renderInline(text: string, keyOffset = 0): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  // Split by markdown patterns: **bold**, *italic*, `code`
   const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-  let key = 0;
+  let key = keyOffset;
 
   while ((match = regex.exec(text)) !== null) {
-    // Push text before the match
-    if (match.index > lastIndex) {
-      nodes.push(text.slice(lastIndex, match.index));
-    }
-
+    if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
     if (match[2]) {
-      // **bold**
-      nodes.push(
-        <strong key={key++} style={{ color: "#ffffff", fontWeight: 700 }}>
-          {match[2]}
-        </strong>
-      );
+      nodes.push(<strong key={key++} style={{ color: "#ffffff", fontWeight: 700 }}>{match[2]}</strong>);
     } else if (match[3]) {
-      // *italic*
-      nodes.push(
-        <em key={key++} style={{ fontStyle: "italic" }}>
-          {match[3]}
-        </em>
-      );
+      nodes.push(<em key={key++} style={{ fontStyle: "italic" }}>{match[3]}</em>);
     } else if (match[4]) {
-      // `code`
       nodes.push(
-        <code
-          key={key++}
-          style={{
-            background: "rgba(255,140,0,0.1)",
-            border: "1px solid rgba(255,140,0,0.2)",
-            padding: "1px 4px",
-            fontSize: "11px",
-            color: "#ff8c00",
-          }}
-        >
+        <code key={key++} style={{ background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)", padding: "1px 4px", fontSize: "11px", color: "#ff8c00" }}>
           {match[4]}
         </code>
       );
     }
-
     lastIndex = match.index + match[0].length;
   }
+  if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
+  return nodes;
+}
 
-  // Push remaining text
-  if (lastIndex < text.length) {
-    nodes.push(text.slice(lastIndex));
+// ── Block markdown: tables, bullet lists, regular lines ──────────────────────
+function parseTableRow(line: string): string[] {
+  return line.split("|").map(c => c.trim()).filter((_, i, a) => i > 0 && i < a.length - 1);
+}
+
+function isSeparatorRow(cells: string[]): boolean {
+  return cells.length > 0 && cells.every(c => /^[-: ]+$/.test(c));
+}
+
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split("\n");
+  const blocks: React.ReactNode[] = [];
+  let i = 0;
+  let bk = 0; // block key
+
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+
+    // ── Markdown table ──
+    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|")) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const rows = tableLines.map(parseTableRow);
+      const sepIdx = rows.findIndex(isSeparatorRow);
+      const header = rows[0];
+      const body = sepIdx >= 0 ? rows.slice(sepIdx + 1) : rows.slice(1);
+      blocks.push(
+        <div key={bk++} style={{ overflowX: "auto", margin: "6px 0" }}>
+          <table style={{ borderCollapse: "collapse", fontSize: "11px", whiteSpace: "nowrap" }}>
+            <thead>
+              <tr>
+                {header.map((cell, j) => (
+                  <th key={j} style={{ textAlign: "left", padding: "4px 12px 4px 0", borderBottom: "1px solid rgba(255,140,0,0.35)", color: "#ff8c00", fontWeight: 700, letterSpacing: "0.06em", paddingRight: "16px" }}>
+                    {renderInline(cell, j * 1000)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {body.map((row, ri) => (
+                <tr key={ri} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} style={{ padding: "5px 16px 5px 0", color: "#e8e8e8", verticalAlign: "top" }}>
+                      {renderInline(cell, ri * 10000 + ci * 100)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    // ── Bullet list ──
+    if (/^[-*•]\s+/.test(trimmed)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*•]\s+/.test(lines[i].trim())) {
+        items.push(lines[i].trim().replace(/^[-*•]\s+/, ""));
+        i++;
+      }
+      blocks.push(
+        <ul key={bk++} style={{ margin: "4px 0", padding: 0, listStyle: "none" }}>
+          {items.map((item, j) => (
+            <li key={j} style={{ display: "flex", gap: "6px", marginBottom: "3px", alignItems: "flex-start" }}>
+              <span style={{ color: "#ff8c00", flexShrink: 0 }}>›</span>
+              <span>{renderInline(item, j * 100)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // ── Empty line → spacer ──
+    if (trimmed === "") {
+      blocks.push(<div key={bk++} style={{ height: "6px" }} />);
+      i++;
+      continue;
+    }
+
+    // ── Regular text line ──
+    blocks.push(
+      <div key={bk++}>{renderInline(lines[i])}</div>
+    );
+    i++;
   }
 
-  return nodes;
+  return blocks;
 }
 
 // ── Collapsible "Thinking" block (shows SQL + timing) ────────────────────────
@@ -305,7 +367,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           lineHeight: 1.65,
           color: "#e8e8e8",
           letterSpacing: "0.02em",
-          whiteSpace: "pre-wrap",
+          whiteSpace: isUser ? "pre-wrap" : "normal",
           wordBreak: "break-word",
         }}
       >
@@ -399,7 +461,7 @@ function injectStyles() {
 }
 
 // ── Main AICompanion component ────────────────────────────────────────────────
-export function AICompanion({ onClose }: { onClose?: () => void }) {
+export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?: boolean }) {
   const { sendMessage, messages, isStreaming, currentStatus, clearSession } =
     useKnowledgeBase();
   const [input, setInput] = useState("");
@@ -417,11 +479,12 @@ export function AICompanion({ onClose }: { onClose?: () => void }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // Auto-focus input on mount
+  // Auto-focus input when panel opens
   useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 100);
+    if (isOpen === false) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 50);
     return () => clearTimeout(t);
-  }, []);
+  }, [isOpen]);
 
   const handleSubmit = () => {
     const trimmed = input.trim();

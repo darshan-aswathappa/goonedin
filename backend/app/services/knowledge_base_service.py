@@ -21,6 +21,7 @@ import hashlib
 import logging
 import re
 import time
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import asyncpg
@@ -473,9 +474,10 @@ async def backfill_embeddings(supabase: Any) -> None:
                 # connects as ai_query_user (SELECT-only) so it cannot UPDATE.
                 _eid = external_id
                 _vec = vector
+                _ts = datetime.now(timezone.utc).isoformat()
                 await asyncio.to_thread(
                     lambda: supabase.table("job_analysis_cache")
-                    .update({"embedding": _vec})
+                    .update({"embedding": _vec, "embedding_generated_at": _ts})
                     .eq("external_id", _eid)
                     .execute()
                 )
