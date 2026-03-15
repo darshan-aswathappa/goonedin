@@ -13,15 +13,6 @@ import {
   Prohibit,
   Funnel,
 } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
@@ -43,7 +34,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "target_keywords",
     title: "Target Keywords",
     description: "Keywords to search for in job titles (e.g., 'Software Engineer', 'Python')",
-    icon: <MagnifyingGlass className="h-5 w-5" />,
+    icon: <MagnifyingGlass style={{ color: "#000", width: "12px", height: "12px" }} />,
     endpoint: "/config/target-keywords",
     dataKey: "target_keywords",
   },
@@ -51,7 +42,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "target_locations",
     title: "Target Locations",
     description: "Locations to search for jobs (e.g., 'United States', 'Remote')",
-    icon: <MapPin className="h-5 w-5" />,
+    icon: <MapPin style={{ color: "#000", width: "12px", height: "12px" }} />,
     endpoint: "/config/target-locations",
     dataKey: "target_locations",
   },
@@ -59,7 +50,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "blocked_companies",
     title: "Blocked Companies",
     description: "Companies to filter out from results (e.g., staffing agencies)",
-    icon: <Prohibit className="h-5 w-5" />,
+    icon: <Prohibit style={{ color: "#000", width: "12px", height: "12px" }} />,
     endpoint: "/config/blocked-companies",
     dataKey: "blocked_companies",
   },
@@ -67,7 +58,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "title_filter_keywords",
     title: "Title Filter Keywords",
     description: "Keywords to exclude from job titles (e.g., 'senior', 'lead', 'manager')",
-    icon: <Funnel className="h-5 w-5" />,
+    icon: <Funnel style={{ color: "#000", width: "12px", height: "12px" }} />,
     endpoint: "/config/title-filter-keywords",
     dataKey: "title_filter_keywords",
   },
@@ -88,6 +79,10 @@ function ConfigEditor({
 }) {
   const [newItem, setNewItem] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [hoveredChip, setHoveredChip] = useState<string | null>(null);
+  const [hoveredTrash, setHoveredTrash] = useState<string | null>(null);
 
   const handleAdd = () => {
     const trimmed = newItem.trim();
@@ -113,76 +108,157 @@ function ConfigEditor({
     : values;
 
   return (
-    <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
-      <CardHeader className="pb-4 border-b-2 border-border bg-card">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
-              {section.icon}
-            </div>
-            <div>
-              <CardTitle className="text-lg sm:text-xl font-black italic uppercase tracking-tighter leading-none">{section.title}</CardTitle>
-              <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1.5">{section.description}</CardDescription>
-            </div>
+    <div style={{ background: "#080808", border: "1px solid #1c1c1c", borderRadius: "2px" }}>
+      {/* Panel header */}
+      <div style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ width: "22px", height: "22px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            {section.icon}
           </div>
-          <div className="brutal-badge bg-muted">
-            {values.length} items
+          <div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
+              // {section.title.toUpperCase()}
+            </div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "2px" }}>
+              {section.description}
+            </div>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6 pt-6">
-        <div className="flex gap-2">
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", border: "1px solid #1c1c1c", padding: "2px 8px", letterSpacing: "0.1em" }}>
+          {values.length}
+        </div>
+      </div>
+
+      {/* Card body */}
+      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+        {/* Add input row */}
+        <div style={{ display: "flex", gap: "8px" }}>
           <input
             type="text"
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             placeholder={`Add new ${section.title.toLowerCase().slice(0, -1)}...`}
-            className="flex-1 brutal-border bg-muted px-3 py-2 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
+            style={{
+              background: "#0a0a0a",
+              border: inputFocused ? "1px solid #ff8c00" : "1px solid #1c1c1c",
+              color: "#f0f0f0",
+              fontFamily: "var(--font-mono)",
+              fontSize: "11px",
+              padding: "7px 10px",
+              flex: 1,
+              outline: "none",
+              borderRadius: "2px",
+            }}
           />
-          <Button
+          <button
             onClick={handleAdd}
             disabled={!newItem.trim()}
-            size="sm"
-            className="brutal-border bg-primary text-white hover:bg-black dark:hover:bg-white dark:hover:text-black shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none h-10 w-10"
+            style={{
+              border: "1px solid #ff8c00",
+              background: "rgba(255,140,0,0.1)",
+              color: "#ff8c00",
+              width: "36px",
+              height: "36px",
+              cursor: newItem.trim() ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              opacity: newItem.trim() ? 1 : 0.4,
+            }}
           >
-            <Plus className="h-5 w-5" />
-          </Button>
+            <Plus style={{ width: "14px", height: "14px" }} />
+          </button>
         </div>
 
+        {/* Search filter (when > 5 items) */}
         {values.length > 5 && (
-          <div className="relative">
-            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <div style={{ position: "relative" }}>
+            <MagnifyingGlass
+              style={{
+                position: "absolute",
+                left: "10px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "#555",
+                width: "12px",
+                height: "12px",
+                pointerEvents: "none",
+              }}
+            />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
               placeholder="Filter items..."
-              className="w-full brutal-border bg-muted pl-10 pr-3 py-2 text-sm font-bold focus:outline-none focus:bg-background transition-colors"
+              style={{
+                background: "#0a0a0a",
+                border: searchFocused ? "1px solid #ff8c00" : "1px solid #1c1c1c",
+                color: "#f0f0f0",
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+                padding: "7px 10px 7px 30px",
+                width: "100%",
+                outline: "none",
+                borderRadius: "2px",
+                boxSizing: "border-box",
+              }}
             />
           </div>
         )}
 
-        <div className="max-h-64 overflow-y-auto brutal-border bg-muted/30 p-4">
+        {/* Items list */}
+        <div style={{ background: "#000", border: "1px solid #1c1c1c", padding: "12px", maxHeight: "200px", overflowY: "auto" }}>
           {filteredValues.length === 0 ? (
-            <p className="py-4 text-center text-sm text-gray-500">
-              {searchTerm ? "No matches found" : "No items yet"}
-            </p>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", textAlign: "center", padding: "16px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {searchTerm ? "NO MATCHES FOUND" : "NO ITEMS YET"}
+            </div>
           ) : (
-            <div className="flex flex-wrap gap-3">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
               {filteredValues.map((item, index) => {
                 const originalIndex = values.indexOf(item);
+                const chipKey = `${item}-${index}`;
                 return (
                   <div
-                    key={`${item}-${index}`}
-                    className="group flex items-center gap-3 brutal-border bg-card px-3 py-2 text-sm font-black uppercase tracking-tight shadow-[3px_3px_0px_0px_var(--border)] hover:bg-muted transition-all hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0px_0px_var(--border)]"
+                    key={chipKey}
+                    onMouseEnter={() => setHoveredChip(chipKey)}
+                    onMouseLeave={() => setHoveredChip(null)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      border: hoveredChip === chipKey ? "1px solid #333" : "1px solid #1c1c1c",
+                      background: "#080808",
+                      padding: "4px 10px",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "10px",
+                      color: "#aaa",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      transition: "border-color 0.1s",
+                    }}
                   >
                     <span>{item}</span>
                     <button
                       onClick={() => handleRemove(originalIndex)}
-                      className="ml-1 rounded p-2 text-muted-foreground hover:bg-primary hover:text-white transition-colors"
+                      onMouseEnter={() => setHoveredTrash(chipKey)}
+                      onMouseLeave={() => setHoveredTrash(null)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: hoveredTrash === chipKey ? "#ff3333" : "#555",
+                        cursor: "pointer",
+                        display: "flex",
+                        padding: "2px",
+                        transition: "color 0.1s",
+                      }}
                     >
-                      <Trash className="h-3.5 w-3.5" />
+                      <Trash style={{ width: "12px", height: "12px" }} />
                     </button>
                   </div>
                 );
@@ -191,27 +267,43 @@ function ConfigEditor({
           )}
         </div>
 
-        <div className="flex justify-end pt-4">
-          <Button
+        {/* Save button */}
+        <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "4px" }}>
+          <button
             onClick={onSave}
             disabled={isSaving}
-            className="brutal-border bg-green-500 text-white hover:bg-green-600 shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all font-black uppercase tracking-widest px-6"
+            style={{
+              border: "1px solid #ff8c00",
+              background: "rgba(255,140,0,0.1)",
+              color: "#ff8c00",
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "0.15em",
+              textTransform: "uppercase",
+              padding: "7px 20px",
+              cursor: isSaving ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              opacity: isSaving ? 0.6 : 1,
+            }}
           >
             {isSaving ? (
               <>
-                <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                <CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />
+                SAVING...
               </>
             ) : (
               <>
-                <FloppyDisk className="mr-2 h-4 w-4" />
-                Save Changes
+                <FloppyDisk style={{ width: "12px", height: "12px" }} />
+                SAVE CHANGES
               </>
             )}
-          </Button>
+          </button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -220,7 +312,7 @@ export default function SettingsPage() {
   const [originalConfig, setOriginalConfig] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState<string | null>(null);
-
+  const [backHovered, setBackHovered] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -275,7 +367,6 @@ export default function SettingsPage() {
     }
   };
 
-
   const hasUnsavedChanges = (key: string) => {
     const current = config[key] || [];
     const original = originalConfig[key] || [];
@@ -283,40 +374,63 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-3 sm:p-6">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+    <div style={{ minHeight: "100vh", background: "#000", padding: "16px 20px" }}>
+      <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+        {/* Page header */}
+        <div style={{ marginBottom: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <Link href="/">
+            <div
+              onMouseEnter={() => setBackHovered(true)}
+              onMouseLeave={() => setBackHovered(false)}
+              style={{
+                width: "32px",
+                height: "32px",
+                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: backHovered ? "#ff8c00" : "#555",
+                cursor: "pointer",
+                transition: "border-color 0.1s, color 0.1s",
+                flexShrink: 0,
+              }}
               title="Back to Dashboard"
             >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter leading-none">
-                Settings
-              </h1>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
-                Configure job search filters and alerts
-              </p>
+              <ArrowLeft style={{ width: "14px", height: "14px" }} />
+            </div>
+          </Link>
+          <div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em", color: "#ff8c00", textTransform: "uppercase" }}>
+              // SETTINGS
+            </div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: "3px" }}>
+              CONFIGURE JOB SEARCH FILTERS
             </div>
           </div>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <CircleNotch className="h-8 w-8 animate-spin text-cyan-400" />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
+            <CircleNotch style={{ width: "28px", height: "28px", color: "#ff8c00" }} className="animate-spin" />
           </div>
         ) : (
-          <div className="space-y-6">
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <ResumeManager />
 
             {CONFIG_SECTIONS.map((section) => (
-              <div key={section.key} className="relative">
+              <div key={section.key} style={{ position: "relative" }}>
                 {hasUnsavedChanges(section.key) && (
-                  <div className="absolute -left-2 top-4 h-2 w-2 rounded-full bg-yellow-500" title="Unsaved changes" />
+                  <div
+                    title="Unsaved changes"
+                    style={{
+                      width: "4px",
+                      height: "4px",
+                      background: "#ffd700",
+                      position: "absolute",
+                      left: "-8px",
+                      top: "14px",
+                    }}
+                  />
                 )}
                 <ConfigEditor
                   section={section}
@@ -334,8 +448,7 @@ export default function SettingsPage() {
       <Toaster
         position="bottom-right"
         toastOptions={{
-          className:
-            "rounded-none border-2 border-border bg-card text-foreground font-black tracking-tight shadow-[6px_6px_0px_0px_var(--border)]",
+          className: "rounded-none font-mono text-xs bg-[#080808] border border-[#333] text-[#f0f0f0]",
         }}
       />
     </div>

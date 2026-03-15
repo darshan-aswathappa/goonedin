@@ -143,6 +143,7 @@ export function useWebSocket({ enabled = true } = {}) {
             (message.data.company.length > 40 ? "..." : "");
           toast.success(`Blocked: ${companyPreview}`, {
             description: "Future jobs from this company will be hidden",
+            id: `blocked-${message.data.company}`,
           });
         } else if (message.type === "JOB_DISMISSED" && message.data) {
           removeJob(message.data.external_id);

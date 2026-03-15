@@ -25,6 +25,7 @@ export default function LogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [backHovered, setBackHovered] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -132,9 +133,9 @@ export default function LogsPage() {
     return date.toLocaleTimeString("en-US", { hour12: false });
   };
 
-  const getLogColor = (level: string, message: string) => {
-    if (level === "ERROR") return "text-red-400";
-    if (level === "WARNING") return "text-yellow-400";
+  const getLogColor = (level: string, message: string): string => {
+    if (level === "ERROR") return "#ff3333";
+    if (level === "WARNING") return "#ffd700";
 
     const msgLower = message.toLowerCase();
     if (
@@ -142,7 +143,7 @@ export default function LogsPage() {
       msgLower.includes("throttling") ||
       msgLower.includes("retry")
     ) {
-      return "text-yellow-400";
+      return "#ffd700";
     }
     if (
       msgLower.includes("successful") ||
@@ -151,7 +152,7 @@ export default function LogsPage() {
       msgLower.includes("established") ||
       msgLower.includes("new target")
     ) {
-      return "text-green-400";
+      return "#ff8c00";
     }
     if (
       msgLower.includes("scanning") ||
@@ -159,68 +160,210 @@ export default function LogsPage() {
       msgLower.includes("proxy") ||
       msgLower.includes("endpoint")
     ) {
-      return "text-cyan-400";
+      return "#00bfff";
     }
-    return "text-gray-400";
+    return "#555";
   };
 
   return (
-    <div className="h-screen bg-background p-4 sm:p-6 font-mono text-foreground flex flex-col">
-      <div className="max-w-5xl mx-auto flex flex-col flex-1 min-h-0">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+    <div
+      style={{
+        height: "100vh",
+        background: "#000",
+        padding: "0",
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      {/* Top bar */}
+      <div
+        style={{
+          height: "44px",
+          background: "#060606",
+          borderBottom: "1px solid #1c1c1c",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          flexShrink: 0,
+        }}
+      >
+        {/* Left: back button + title */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <Link href="/">
+            <div
+              onMouseEnter={() => setBackHovered(true)}
+              onMouseLeave={() => setBackHovered(false)}
+              style={{
+                width: "28px",
+                height: "28px",
+                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: backHovered ? "#ff8c00" : "#555",
+                cursor: "pointer",
+                transition: "border-color 0.1s, color 0.1s",
+              }}
               title="Back to Dashboard"
             >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black italic uppercase tracking-tighter leading-none">
-                System Logs
-              </h1>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
-                Real-time job extraction feed
-              </p>
+              <ArrowLeft style={{ width: "14px", height: "14px" }} />
             </div>
-          </div>
-          <div className="flex items-center gap-2 brutal-border bg-card px-4 py-2 shadow-[4px_4px_0px_0px_var(--border)]">
-            <span
-              className={`w-3 h-3 rounded-full ${
-                connected ? "bg-[#009063] animate-pulse" : "bg-[#D72638]"
-              }`}
-            />
-            <span className="text-xs font-black uppercase tracking-widest">
-              {connected ? "Live" : "Offline"}
-            </span>
+          </Link>
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.2em",
+                color: "#ff8c00",
+                textTransform: "uppercase",
+              }}
+            >
+              SYSTEM LOGS
+            </div>
+            <div
+              style={{
+                fontSize: "9px",
+                letterSpacing: "0.12em",
+                color: "#555",
+                marginTop: "1px",
+              }}
+            >
+              REAL-TIME JOB EXTRACTION FEED
+            </div>
           </div>
         </div>
 
-        <div
-          ref={scrollRef}
-          className="bg-card border-2 border-border shadow-[8px_8px_0px_0px_var(--border)] p-6 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-        >
-          {loading ? (
-            <p className="text-gray-500">Loading logs...</p>
-          ) : logs.length === 0 ? (
-            <p className="text-gray-500">No logs yet. Waiting for activity...</p>
-          ) : (
-            logs.map((log, idx) => (
-              <div key={idx} className="flex gap-2 py-0.5 text-sm">
-                <span className="text-gray-500 shrink-0">
-                  [{formatTime(log.timestamp)}]
-                </span>
-                <span className={`${getLogColor(log.level, log.message)} break-words break-all`}>
-                  {log.message}
-                </span>
-              </div>
-            ))
-          )}
-          <div className="mt-4 flex items-center gap-2 text-primary font-black animate-pulse text-xs">
-            <span className="w-2 h-2 bg-primary rounded-full" />
-            LIVE FEED ACTIVE
+        {/* Right: connection status */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              background: connected ? "#ff8c00" : "#ff3333",
+              display: "inline-block",
+            }}
+            className={connected ? "animate-live-pulse" : ""}
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "9px",
+              letterSpacing: "0.18em",
+              color: connected ? "#ff8c00" : "#ff3333",
+              textTransform: "uppercase",
+            }}
+          >
+            {connected ? "LIVE" : "OFFLINE"}
+          </span>
+        </div>
+      </div>
+
+      {/* Log panel */}
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          background: "#000",
+          overflowY: "auto",
+          padding: "12px 16px",
+        }}
+      >
+        {loading ? (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "9px",
+              color: "#555",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+            }}
+          >
+            LOADING LOGS...
           </div>
+        ) : logs.length === 0 ? (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "9px",
+              color: "#555",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+            }}
+          >
+            NO LOGS YET. WAITING FOR ACTIVITY...
+          </div>
+        ) : (
+          logs.map((log, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                gap: "12px",
+                padding: "2px 0",
+                lineHeight: 1.4,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  color: "#555",
+                  flexShrink: 0,
+                  letterSpacing: "0.05em",
+                }}
+              >
+                [{formatTime(log.timestamp)}]
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  color: getLogColor(log.level, log.message),
+                  wordBreak: "break-all",
+                }}
+              >
+                {log.message}
+              </span>
+            </div>
+          ))
+        )}
+
+        {/* Live feed indicator */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            marginTop: "8px",
+            paddingTop: "8px",
+            borderTop: "1px solid #1c1c1c",
+          }}
+        >
+          <span
+            style={{
+              width: "6px",
+              height: "6px",
+              background: "#ff8c00",
+              borderRadius: "50%",
+            }}
+            className="animate-live-pulse"
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "9px",
+              color: "#ff8c00",
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+            }}
+          >
+            LIVE FEED ACTIVE
+          </span>
         </div>
       </div>
     </div>

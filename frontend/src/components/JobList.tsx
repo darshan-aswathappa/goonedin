@@ -5,6 +5,7 @@ import { JobCard } from "./JobCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Briefcase, Lock, Gear, ArrowRight, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useState } from "react";
 
 interface JobListProps {
   jobs: Job[];
@@ -55,14 +56,137 @@ const DUMMY_JOBS: Job[] = [
 
 function JobCardSkeleton() {
   return (
-    <div className="brutal-border bg-card p-6 shadow-[4px_4px_0px_0px_var(--border)] space-y-4 h-full flex flex-col">
-      <div className="h-6 w-3/4 animate-pulse bg-muted brutal-border" />
-      <div className="h-4 w-1/2 animate-pulse bg-muted brutal-border opacity-50" />
-      <div className="pt-4 border-t-2 border-border space-y-2 mt-auto">
-        <div className="h-4 w-2/3 animate-pulse bg-muted brutal-border" />
-        <div className="h-4 w-1/3 animate-pulse bg-muted brutal-border" />
+    <div
+      className="h-full flex flex-col"
+      style={{
+        background: "#080808",
+        border: "1px solid #1c1c1c",
+        padding: "16px",
+        borderRadius: "2px",
+      }}
+    >
+      <div
+        className="animate-pulse"
+        style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "75%", marginBottom: "10px" }}
+      />
+      <div
+        className="animate-pulse"
+        style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "50%", opacity: 0.5, marginBottom: "16px" }}
+      />
+      <div style={{ borderTop: "1px solid #1c1c1c", paddingTop: "12px", marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+        <div
+          className="animate-pulse"
+          style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "66%" }}
+        />
+        <div
+          className="animate-pulse"
+          style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "33%" }}
+        />
       </div>
     </div>
+  );
+}
+
+function RetryButton({ onClick }: { onClick: () => void }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        border: "1px solid #ff3333",
+        background: hovered ? "rgba(255,51,51,0.18)" : "rgba(255,51,51,0.1)",
+        color: "#ff3333",
+        fontFamily: "var(--font-mono)",
+        fontSize: "10px",
+        fontWeight: 700,
+        letterSpacing: "0.15em",
+        textTransform: "uppercase" as const,
+        padding: "7px 16px",
+        cursor: "pointer",
+        width: "100%",
+        transition: "background 0.1s",
+        borderRadius: "2px",
+      }}
+    >
+      Retry
+    </button>
+  );
+}
+
+function ConfigureLink() {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Link href="/settings">
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          border: hovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
+          background: "#080808",
+          padding: "8px 14px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          transition: "border-color 0.1s",
+          borderRadius: "2px",
+        }}
+      >
+        <Gear
+          weight="bold"
+          className="h-4 w-4"
+          style={{ color: hovered ? "#ff8c00" : "#555" }}
+        />
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase" as const,
+            color: hovered ? "#ff8c00" : "#555",
+            transition: "color 0.1s",
+          }}
+        >
+          Configure keywords &amp; location
+        </span>
+        <ArrowRight
+          weight="bold"
+          className="h-4 w-4"
+          style={{ color: hovered ? "#ff8c00" : "#555" }}
+        />
+      </div>
+    </Link>
+  );
+}
+
+function CtaButton() {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Link href="/login" className="w-full">
+      <button
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          border: "1px solid #ff8c00",
+          background: hovered ? "rgba(255,140,0,0.18)" : "rgba(255,140,0,0.1)",
+          color: "#ff8c00",
+          fontFamily: "var(--font-mono)",
+          fontSize: "11px",
+          fontWeight: 700,
+          letterSpacing: "0.2em",
+          textTransform: "uppercase" as const,
+          padding: "10px",
+          width: "100%",
+          cursor: "pointer",
+          transition: "background 0.1s",
+          borderRadius: "2px",
+        }}
+      >
+        Get Started Free
+      </button>
+    </Link>
   );
 }
 
@@ -89,23 +213,51 @@ export function JobList({
   if (error && !isLocked) {
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
-        <div className="brutal-border bg-red-50 dark:bg-red-950/30 p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] mb-4 sm:mb-6 border-red-500 max-w-md w-full">
-          <WarningCircle weight="bold" className="h-8 w-8 sm:h-10 sm:w-10 text-red-500 mb-2 sm:mb-4" />
-          <h3 className="text-lg sm:text-2xl heading-brutal mb-2 text-red-700 dark:text-red-400">
+        <div
+          style={{
+            background: "#080808",
+            border: "1px solid rgba(255,51,51,0.4)",
+            padding: "20px",
+            maxWidth: "400px",
+            borderRadius: "2px",
+            width: "100%",
+          }}
+        >
+          <WarningCircle weight="bold" className="h-8 w-8 sm:h-10 sm:w-10 mb-2 sm:mb-4" style={{ color: "#ff3333" }} />
+          <h3
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "13px",
+              color: "#ff3333",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              marginBottom: "8px",
+            }}
+          >
             Couldn&apos;t Load Jobs
           </h3>
-          <p className="font-bold text-muted-foreground mb-2 break-words text-xs sm:text-sm">
+          <p
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              color: "#555",
+              marginBottom: "8px",
+              wordBreak: "break-word",
+            }}
+          >
             {error}
           </p>
-          <p className="font-bold text-muted-foreground mb-4 sm:mb-6 text-xs sm:text-sm">Try refreshing or check your connection.</p>
-          {onRetry && (
-            <button
-              onClick={onRetry}
-              className="brutal-border px-4 sm:px-6 py-2 sm:py-3 font-bold text-sm sm:text-base bg-red-600 text-white hover:bg-red-700 transition-colors w-full"
-            >
-              Retry
-            </button>
-          )}
+          <p
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "10px",
+              color: "#555",
+              marginBottom: "16px",
+            }}
+          >
+            Try refreshing or check your connection.
+          </p>
+          {onRetry && <RetryButton onClick={onRetry} />}
         </div>
       </div>
     );
@@ -115,24 +267,47 @@ export function JobList({
     return (
       <div className="flex flex-col items-center justify-center py-8 sm:py-16 px-3 text-center">
         <div className="relative mb-4 sm:mb-6">
-          <div className="brutal-border bg-card p-3 sm:p-6 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] relative z-10">
-            <Briefcase weight="bold" className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
+          <div
+            style={{
+              background: "#080808",
+              border: "1px solid #1c1c1c",
+              padding: "12px 24px",
+              position: "relative",
+              zIndex: 10,
+              borderRadius: "2px",
+            }}
+          >
+            <Briefcase weight="bold" className="h-8 w-8 sm:h-12 sm:w-12" style={{ color: "#333" }} />
           </div>
-          <div className="absolute inset-[-6px] border-2 border-primary/40 animate-scan-ring pointer-events-none" />
+          <div
+            className="absolute inset-[-6px] animate-scan-ring pointer-events-none"
+            style={{ border: "1px solid rgba(255,140,0,0.4)" }}
+          />
         </div>
-        <h3 className="text-base sm:text-2xl heading-brutal mb-1 sm:mb-2 max-w-xs">
+        <h3
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "11px",
+            letterSpacing: "0.08em",
+            color: "#aaa",
+            marginBottom: "6px",
+            maxWidth: "280px",
+          }}
+        >
           {emptyMessage}
         </h3>
-        <p className="font-bold text-muted-foreground text-xs sm:text-sm mb-6">
+        <p
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "9px",
+            color: "#555",
+            marginBottom: "24px",
+            letterSpacing: "0.05em",
+          }}
+        >
           Streaming live — new extractions appear automatically.
         </p>
-        <Link href="/settings">
-          <div className="brutal-border bg-card px-4 py-2.5 shadow-[2px_2px_0px_0px_var(--border)] brutal-btn-hover flex items-center gap-2">
-            <Gear weight="bold" className="h-4 w-4 text-primary" />
-            <span className="font-black uppercase italic text-sm tracking-tight">Configure keywords &amp; location</span>
-            <ArrowRight weight="bold" className="h-4 w-4 text-muted-foreground" />
-          </div>
-        </Link>
+        <ConfigureLink />
       </div>
     );
   }
@@ -157,23 +332,50 @@ export function JobList({
 
       {isLocked && (
         <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px] p-3 sm:p-0">
-          <div className="brutal-border bg-card p-4 sm:p-10 shadow-[4px_4px_0px_0px_var(--border)] sm:shadow-[8px_8px_0px_0px_var(--border)] flex flex-col items-center gap-3 sm:gap-6 max-w-sm text-center w-full">
-            <div className="brutal-border bg-primary p-3 sm:p-4 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)]">
-              <Lock weight="fill" className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
+          <div
+            style={{
+              background: "#080808",
+              border: "1px solid #1c1c1c",
+              padding: "24px 32px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "16px",
+              maxWidth: "360px",
+              textAlign: "center",
+              width: "100%",
+              borderRadius: "2px",
+            }}
+          >
+            <div style={{ background: "#ff8c00", padding: "10px", borderRadius: "2px" }}>
+              <Lock weight="fill" className="h-7 w-7 sm:h-10 sm:w-10" style={{ color: "#000" }} />
             </div>
-            <div className="space-y-1 sm:space-y-2">
-              <h3 className="text-lg sm:text-3xl heading-brutal leading-tight">
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <h3
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  color: "#ff8c00",
+                  fontSize: "14px",
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                }}
+              >
                 Create an Account
               </h3>
-              <p className="font-bold text-muted-foreground leading-tight text-xs sm:text-base">
+              <p
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  color: "#555",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1.6,
+                }}
+              >
                 Sign up free to see all jobs and get real-time alerts.
               </p>
             </div>
-            <Link href="/login" className="w-full">
-              <button className="w-full brutal-border bg-primary text-white py-2.5 sm:py-4 font-black uppercase italic text-sm sm:text-xl brutal-btn-hover">
-                Get Started Free
-              </button>
-            </Link>
+            <CtaButton />
           </div>
         </div>
       )}

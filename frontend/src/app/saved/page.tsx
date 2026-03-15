@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CaretLeft, BookmarkSimple, CircleNotch, ArrowLeft } from "@phosphor-icons/react";
+import { BookmarkSimple, CircleNotch, ArrowLeft } from "@phosphor-icons/react";
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobList } from "@/components/JobList";
 import { getAuthHeaders } from "@/hooks/useAuth";
@@ -12,6 +12,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export default function SavedJobsPage() {
   const [savedJobs, setSavedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [backHovered, setBackHovered] = useState(false);
   const storeSavedJobIds = useJobsStore((state) => state.savedJobIds);
   const setSavedJobIds = useJobsStore((state) => state.setSavedJobIds);
 
@@ -24,7 +25,7 @@ export default function SavedJobsPage() {
         const data = await response.json();
         const jobs: Job[] = data.jobs || [];
         setSavedJobs(jobs);
-        setSavedJobIds(jobs.map(j => j.external_id));
+        setSavedJobIds(jobs.map((j) => j.external_id));
       }
     } catch (error) {
       console.error("Failed to fetch saved jobs:", error);
@@ -37,49 +38,121 @@ export default function SavedJobsPage() {
     fetchSavedJobs();
   }, []);
 
-  const displayJobs = savedJobs.filter((job) => storeSavedJobIds.has(job.external_id));
+  const displayJobs = savedJobs.filter((job) =>
+    storeSavedJobIds.has(job.external_id)
+  );
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="brutal-border flex h-10 w-10 items-center justify-center bg-card hover:bg-muted transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-              title="Back to Dashboard"
+    <div style={{ minHeight: "100vh", background: "#000000" }}>
+      <header
+        style={{
+          height: "44px",
+          background: "#060606",
+          borderBottom: "1px solid #1c1c1c",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 16px",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <Link href="/">
+            <div
+              onMouseEnter={() => setBackHovered(true)}
+              onMouseLeave={() => setBackHovered(false)}
+              style={{
+                width: "28px",
+                height: "28px",
+                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: backHovered ? "#ff8c00" : "#555555",
+                cursor: "pointer",
+                transition: "border-color 0.1s, color 0.1s",
+              }}
             >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter leading-none">
-                Saved Jobs
-              </h1>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
-                Your personal career shortlist
-              </p>
+              <ArrowLeft style={{ width: "14px", height: "14px" }} />
             </div>
-          </div>
-          
-          <div className="brutal-border bg-card px-4 py-2 shadow-[4px_4px_0px_0px_var(--border)] flex items-center gap-2">
-            <BookmarkSimple weight="fill" className="h-5 w-5 text-[#009063]" />
-            <span className="font-black text-sm uppercase tracking-tighter">
-              {displayJobs.length} Saved
-            </span>
+          </Link>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.2em",
+                color: "#ff8c00",
+                textTransform: "uppercase",
+              }}
+            >
+              SAVED JOBS
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "9px",
+                letterSpacing: "0.12em",
+                color: "#555555",
+                marginTop: "1px",
+              }}
+            >
+              YOUR PERSONAL CAREER SHORTLIST
+            </div>
           </div>
         </div>
 
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "9px",
+            color: "#ffd700",
+            border: "1px solid rgba(255,215,0,0.3)",
+            padding: "3px 10px",
+            letterSpacing: "0.1em",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+        >
+          <BookmarkSimple
+            weight="fill"
+            style={{ width: "12px", height: "12px" }}
+          />
+          <span>{displayJobs.length} SAVED</span>
+        </div>
+      </header>
+
+      <main style={{ padding: "16px" }}>
         {loading ? (
-          <div className="flex justify-center p-24">
-            <CircleNotch weight="bold" className="h-12 w-12 animate-spin text-[#F15152]" />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "60px 0",
+            }}
+          >
+            <CircleNotch
+              weight="bold"
+              style={{
+                width: "32px",
+                height: "32px",
+                color: "#ff8c00",
+                animation: "spin 1s linear infinite",
+              }}
+              className="animate-spin"
+            />
           </div>
         ) : (
-          <JobList 
-            jobs={displayJobs} 
-            emptyMessage="Zero saves. Go bookmark some jobs!" 
+          <JobList
+            jobs={displayJobs}
+            emptyMessage="Zero saves. Go bookmark some jobs!"
           />
         )}
-      </div>
+      </main>
     </div>
   );
 }

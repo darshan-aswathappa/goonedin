@@ -16,14 +16,9 @@ import {
   X,
 } from "@phosphor-icons/react";
 import { useDropzone } from "react-dropzone";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -64,6 +59,15 @@ export function ResumeManager() {
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
 
+  // Hover states
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [hoveredDeleteId, setHoveredDeleteId] = useState<string | null>(null);
+  const [hoveredRemoveId, setHoveredRemoveId] = useState<string | null>(null);
+  const [uploadBtnHovered, setUploadBtnHovered] = useState(false);
+  const [cancelBtnHovered, setCancelBtnHovered] = useState(false);
+  const [deleteBtnHovered, setDeleteBtnHovered] = useState(false);
+  const [closeDialogHovered, setCloseDialogHovered] = useState(false);
+
   const fetchResumes = useCallback(async () => {
     try {
       const headers = await getAuthHeaders();
@@ -90,14 +94,14 @@ export function ResumeManager() {
 
     const interval = setInterval(() => {
       fetchResumes();
-    }, 10000); // poll every 10s
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [resumes, fetchResumes]);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const pdfFiles = acceptedFiles.filter(file => file.type === "application/pdf");
-    
+
     if (pdfFiles.length === 0) {
       toast.error("Only PDF files are allowed");
       return;
@@ -120,12 +124,12 @@ export function ResumeManager() {
 
     const headers = await getAuthHeaders();
     let successCount = 0;
-    
+
     for (let i = 0; i < stagedFiles.length; i++) {
       const { file, name } = stagedFiles[i];
       const formData = new FormData();
       formData.append("file", file);
-      
+
       const finalName = name.toLowerCase().endsWith('.pdf') ? name.slice(0, -4) + '.pdf' : `${name}.pdf`;
       formData.append("filename", finalName);
 
@@ -150,7 +154,7 @@ export function ResumeManager() {
         console.error(`Error uploading ${file.name}:`, error);
         toast.error(`Error uploading ${file.name}`);
       }
-      
+
       setUploadProgress(((i + 1) / stagedFiles.length) * 100);
     }
 
@@ -246,30 +250,30 @@ export function ResumeManager() {
     switch (status) {
       case "processing":
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
-            <CircleNotch className="h-3 w-3 animate-spin" />
-            <span>Analyzing…</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,215,0,0.3)", background: "rgba(255,215,0,0.05)", color: "#ffd700", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <CircleNotch style={{ width: "10px", height: "10px" }} className="animate-spin" />
+            <span>ANALYZING</span>
           </div>
         );
       case "completed":
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
-            <Brain className="h-3 w-3" />
-            <span>AI Ready</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,140,0,0.3)", background: "rgba(255,140,0,0.05)", color: "#ff8c00", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <Brain style={{ width: "10px", height: "10px" }} />
+            <span>AI READY</span>
           </div>
         );
       case "failed":
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300">
-            <Warning className="h-3 w-3" />
-            <span>Failed</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,51,51,0.3)", background: "rgba(255,51,51,0.05)", color: "#ff3333", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <Warning style={{ width: "10px", height: "10px" }} />
+            <span>FAILED</span>
           </div>
         );
       default:
         return (
-          <div className="flex items-center gap-1.5 brutal-badge bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300">
-            <CheckCircle className="h-3 w-3" />
-            <span>Ready</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,140,0,0.3)", background: "rgba(255,140,0,0.05)", color: "#ff8c00", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            <CheckCircle style={{ width: "10px", height: "10px" }} />
+            <span>READY</span>
           </div>
         );
     }
@@ -277,126 +281,179 @@ export function ResumeManager() {
 
   return (
     <>
-      <Card className="brutal-border rounded-none bg-card shadow-[8px_8px_0px_0px_var(--border)] overflow-hidden">
-        <CardHeader className="pb-4 border-b-2 border-border bg-card">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center brutal-border bg-primary text-white shadow-[2px_2px_0px_0px_var(--border)]">
-              <FileText className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-xl font-black italic uppercase tracking-tighter leading-none">Resume Management</CardTitle>
-              <CardDescription className="text-xs font-black uppercase tracking-widest text-muted-foreground mt-1">
-                Upload PDF resumes. We'll automatically extract your skills, education, and experience.
-              </CardDescription>
-            </div>
+      {/* Main card */}
+      <div style={{ background: "#080808", border: "1px solid #1c1c1c", borderRadius: "2px" }}>
+        {/* Panel header */}
+        <div style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ width: "22px", height: "22px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FileText style={{ width: "12px", height: "12px", color: "#000" }} />
           </div>
-        </CardHeader>
-        <CardContent className="space-y-8 pt-6">
+          <div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>// RESUME MANAGEMENT</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "2px" }}>Upload PDF resumes for AI skill extraction</div>
+          </div>
+        </div>
+
+        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Dropzone */}
           <div
             {...getRootProps()}
-            className={`relative flex flex-col items-center justify-center brutal-border border-dashed p-6 sm:p-12 text-center transition-all duration-200 ${
-              isDragActive
-                ? "bg-primary/10 border-primary"
-                : "bg-muted border-border hover:bg-muted/80"
-            } ${isUploading ? "pointer-events-none opacity-60" : "cursor-pointer"}`}
+            style={{
+              border: isDragActive ? "1px solid #ff8c00" : "1px dashed #1c1c1c",
+              background: isDragActive ? "rgba(255,140,0,0.05)" : "#000",
+              padding: "32px 16px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              cursor: isUploading ? "not-allowed" : "pointer",
+              opacity: isUploading ? 0.6 : 1,
+              transition: "border-color 0.15s",
+              position: "relative",
+            }}
           >
             <input {...getInputProps()} />
-            
-            <div className="mb-4 brutal-border bg-primary p-4 shadow-[4px_4px_0px_0px_var(--border)]">
-              <CloudArrowUp className="h-8 w-8 text-white" />
+            <div style={{ width: "36px", height: "36px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
+              <CloudArrowUp style={{ width: "18px", height: "18px", color: "#000" }} />
             </div>
-            <h3 className="mb-2 text-lg font-black italic uppercase tracking-tighter leading-none">
-              {isDragActive ? "Drop your resume here" : "Drag and drop your resume"}
-            </h3>
-            <p className="brutal-badge bg-card text-muted-foreground mt-2 border-dashed shadow-none">PDF only, up to 10MB per file</p>
-
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, color: "#f0f0f0", letterSpacing: "0.08em", marginBottom: "6px" }}>
+              {isDragActive ? "DROP RESUME HERE" : "DRAG & DROP RESUME"}
+            </div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.1em", border: "1px solid #1c1c1c", padding: "2px 8px" }}>
+              PDF ONLY · 10MB MAX
+            </div>
             {isUploading && (
-              <div className="absolute inset-x-8 bottom-4 flex flex-col items-center gap-2">
-                <Progress value={uploadProgress} className="h-2 w-full brutal-border bg-muted overflow-hidden" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">{Math.round(uploadProgress)}%</span>
+              <div style={{ position: "absolute", bottom: "8px", left: "16px", right: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                <div style={{ height: "2px", background: "#1c1c1c", width: "100%" }}>
+                  <div style={{ height: "100%", background: "#ff8c00", width: `${uploadProgress}%`, transition: "width 0.3s" }} />
+                </div>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#ff8c00", textAlign: "center", letterSpacing: "0.1em" }}>{Math.round(uploadProgress)}%</span>
               </div>
             )}
           </div>
 
+          {/* Staged files */}
           {stagedFiles.length > 0 && (
-            <div className="brutal-border bg-muted/30 p-6 space-y-6">
-              <h4 className="text-sm font-black italic uppercase tracking-tight">Staged for Upload</h4>
-              <div className="space-y-4">
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
+                // STAGED FOR UPLOAD
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {stagedFiles.map((staged, index) => (
-                  <div key={staged.id} className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="flex flex-1 items-center gap-3 brutal-border bg-card px-4 py-3 shadow-[2px_2px_0px_0px_var(--border)]">
-                      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                      <input 
-                        type="text" 
+                  <div key={staged.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div style={{ background: "#0a0a0a", border: "1px solid #1c1c1c", padding: "8px 12px", display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+                      <FileText style={{ width: "12px", height: "12px", color: "#555", flexShrink: 0 }} />
+                      <input
+                        type="text"
                         value={staged.name}
                         onChange={(e) => {
                           const newStaged = [...stagedFiles];
                           newStaged[index].name = e.target.value;
                           setStagedFiles(newStaged);
                         }}
-                        className="w-full bg-transparent text-sm font-bold focus:outline-none"
+                        style={{ background: "transparent", border: "none", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "11px", flex: 1, outline: "none" }}
                         disabled={isUploading}
                       />
-                      <span className="brutal-badge bg-muted text-muted-foreground">.pdf</span>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", border: "1px solid #1c1c1c", padding: "1px 6px" }}>.pdf</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
+                    <button
                       onClick={() => setStagedFiles(prev => prev.filter(s => s.id !== staged.id))}
-                      className="brutal-border bg-card text-foreground hover:bg-red-500 hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none sm:shrink-0 h-11 w-11 w-full sm:w-auto font-bold"
+                      onMouseEnter={() => setHoveredRemoveId(staged.id)}
+                      onMouseLeave={() => setHoveredRemoveId(null)}
                       disabled={isUploading}
+                      style={{
+                        border: hoveredRemoveId === staged.id ? "1px solid #ff3333" : "1px solid #1c1c1c",
+                        background: "transparent",
+                        color: hoveredRemoveId === staged.id ? "#ff3333" : "#555",
+                        padding: "6px",
+                        cursor: isUploading ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "border-color 0.1s, color 0.1s",
+                      }}
                     >
-                      <Trash className="h-5 w-5" />
-                    </Button>
+                      <Trash style={{ width: "14px", height: "14px" }} />
+                    </button>
                   </div>
                 ))}
               </div>
-              
-              <div className="mt-4 flex justify-end">
-                <Button
-                  onClick={handleUpload}
-                  disabled={isUploading}
-                  className="w-full brutal-border rounded-none bg-primary text-primary-foreground hover:bg-primary/90 shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all font-black italic uppercase tracking-widest px-8 py-6 h-auto sm:w-auto"
-                >
-                  {isUploading ? (
-                    <CircleNotch className="mr-3 h-5 w-5 animate-spin" />
-                  ) : (
-                    <CloudArrowUp className="mr-3 h-5 w-5" />
-                  )}
-                  Upload and Analyze ({stagedFiles.length} resume{stagedFiles.length !== 1 ? 's' : ''})
-                </Button>
-              </div>
+
+              <button
+                onClick={handleUpload}
+                disabled={isUploading}
+                onMouseEnter={() => setUploadBtnHovered(true)}
+                onMouseLeave={() => setUploadBtnHovered(false)}
+                style={{
+                  border: "1px solid #ff8c00",
+                  background: uploadBtnHovered ? "rgba(255,140,0,0.2)" : "rgba(255,140,0,0.1)",
+                  color: "#ff8c00",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  padding: "10px 20px",
+                  cursor: isUploading ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  width: "100%",
+                  opacity: isUploading ? 0.6 : 1,
+                  transition: "background 0.1s",
+                }}
+              >
+                {isUploading ? (
+                  <CircleNotch style={{ width: "14px", height: "14px" }} className="animate-spin" />
+                ) : (
+                  <CloudArrowUp style={{ width: "14px", height: "14px" }} />
+                )}
+                UPLOAD AND ANALYZE ({stagedFiles.length} RESUME{stagedFiles.length !== 1 ? "S" : ""})
+              </button>
             </div>
           )}
 
-          <div>
-            <h4 className="mb-4 text-sm font-black italic uppercase tracking-tight pl-1">
-              Uploaded Resumes ({resumes.length})
-            </h4>
-            
+          {/* Resume list */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
+              // UPLOADED RESUMES ({resumes.length})
+            </div>
+
             {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <CircleNotch className="h-8 w-8 animate-spin text-primary" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 0" }}>
+                <CircleNotch style={{ width: "20px", height: "20px", color: "#ff8c00" }} className="animate-spin" />
               </div>
             ) : resumes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center brutal-border bg-muted/30 py-12 text-muted-foreground border-dashed">
-                <Warning className="mb-3 h-8 w-8 opacity-40" />
-                <p className="text-sm font-bold uppercase tracking-widest">No resumes yet. Upload your PDF to get started.</p>
+              <div style={{ background: "#000", border: "1px dashed #1c1c1c", padding: "32px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.1em", textTransform: "uppercase" }}>NO RESUMES YET — UPLOAD YOUR PDF TO GET STARTED</span>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "8px" }}>
                 {resumes.map((resume) => (
                   <div
                     key={resume.id}
                     onClick={() => handleViewAnalysis(resume)}
-                    className="group flex cursor-pointer flex-col justify-between brutal-border bg-card p-5 min-h-[88px] transition-all shadow-[4px_4px_0px_0px_var(--border)] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)]"
+                    onMouseEnter={() => setHoveredId(resume.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    style={{
+                      background: "#000",
+                      border: hoveredId === resume.id ? "1px solid #333" : "1px solid #1c1c1c",
+                      padding: "12px 14px",
+                      cursor: "pointer",
+                      transition: "border-color 0.1s",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                    }}
                   >
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3 overflow-hidden min-w-0">
-                        <div className="flex h-8 w-8 items-center justify-center brutal-border bg-muted shrink-0 shadow-[1px_1px_0px_0px_var(--border)]">
-                          <FileText className="h-4 w-4 text-primary" />
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden", minWidth: 0 }}>
+                        <div style={{ width: "28px", height: "28px", background: "#080808", border: "1px solid #1c1c1c", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <FileText style={{ width: "14px", height: "14px", color: "#ff8c00" }} />
                         </div>
-                        <span className="truncate text-sm font-black uppercase tracking-tight min-w-0">
+                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "#f0f0f0", textTransform: "uppercase", letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {resume.filename}
                         </span>
                       </div>
@@ -405,15 +462,31 @@ export function ResumeManager() {
                           e.stopPropagation();
                           openDeleteDialog(resume);
                         }}
-                        className="p-1.5 text-muted-foreground hover:bg-primary hover:text-white transition-all brutal-border shadow-[1px_1px_0px_0px_var(--border)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px]"
+                        onMouseEnter={() => setHoveredDeleteId(resume.id)}
+                        onMouseLeave={() => setHoveredDeleteId(null)}
+                        style={{
+                          background: "transparent",
+                          border: hoveredDeleteId === resume.id ? "1px solid #ff3333" : "1px solid #1c1c1c",
+                          color: hoveredDeleteId === resume.id ? "#ff3333" : "#555",
+                          padding: "4px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          transition: "border-color 0.1s, color 0.1s",
+                        }}
                         title="Delete resume"
                       >
-                        <Trash className="h-4 w-4" />
+                        <Trash style={{ width: "12px", height: "12px" }} />
                       </button>
                     </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span suppressHydrationWarning className="brutal-badge bg-muted text-muted-foreground">
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span
+                        suppressHydrationWarning
+                        style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", border: "1px solid #1c1c1c", padding: "1px 6px", letterSpacing: "0.05em" }}
+                      >
                         {(() => {
                           try {
                             return formatDistanceToNow(new Date(resume.uploaded_at), { addSuffix: true });
@@ -429,79 +502,93 @@ export function ResumeManager() {
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
+      {/* Analysis Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent showCloseButton={false} className="max-w-2xl bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] max-h-[85vh] overflow-y-auto p-0 gap-0 focus:outline-none">
-          <DialogHeader className="p-6 bg-foreground text-background space-y-1 relative">
-            <DialogTitle className="flex items-center gap-2 text-2xl font-black italic uppercase tracking-tighter">
-              <Brain className="h-6 w-6 text-primary" />
-              AI Resume Analysis
-            </DialogTitle>
-            <p className="text-background/70 font-bold text-sm">
-              {selectedResume?.filename}
-            </p>
+        <DialogContent
+          showCloseButton={false}
+          className="max-w-2xl rounded-none max-h-[85vh] overflow-y-auto p-0 gap-0"
+          style={{ background: "#060606", border: "1px solid #333", boxShadow: "none", borderRadius: "2px" }}
+        >
+          <DialogTitle className="sr-only">AI Resume Analysis</DialogTitle>
+          {/* Header bar */}
+          <div style={{ background: "#080808", borderBottom: "1px solid #1c1c1c", padding: "12px 16px", position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
+                // AI RESUME ANALYSIS
+              </div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "3px" }}>
+                {selectedResume?.filename}
+              </div>
+            </div>
             <button
               onClick={() => setDialogOpen(false)}
-              className="absolute right-4 top-4 brutal-border bg-card p-3 text-foreground hover:bg-primary hover:text-white transition-all shadow-[2px_2px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none focus:outline-none"
+              onMouseEnter={() => setCloseDialogHovered(true)}
+              onMouseLeave={() => setCloseDialogHovered(false)}
+              style={{
+                background: "transparent",
+                border: closeDialogHovered ? "1px solid #ff3333" : "1px solid #1c1c1c",
+                color: closeDialogHovered ? "#ff3333" : "#555",
+                padding: "4px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "border-color 0.1s, color 0.1s",
+              }}
             >
-              <X className="h-5 w-5" />
+              <X style={{ width: "14px", height: "14px" }} />
             </button>
-          </DialogHeader>
+          </div>
 
-          <div className="p-4 sm:p-10">
+          {/* Content area */}
+          <div style={{ background: "#000", padding: "16px" }}>
             {isLoadingAnalysis ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <CircleNotch className="mb-6 h-12 w-12 animate-spin text-primary" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Analyzing your resume...</p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: "16px" }}>
+                <CircleNotch style={{ width: "28px", height: "28px", color: "#ff8c00" }} className="animate-spin" />
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#ff8c00", letterSpacing: "0.18em", textTransform: "uppercase" }}>ANALYZING RESUME_</span>
               </div>
             ) : analysisStatus === "processing" ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-8 brutal-border bg-muted p-6 shadow-[8px_8px_0px_0px_var(--border)]">
-                  <CircleNotch className="h-12 w-12 animate-spin text-primary" />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", textAlign: "center", gap: "12px" }}>
+                <CircleNotch style={{ width: "28px", height: "28px", color: "#ff8c00" }} className="animate-spin" />
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#aaa", letterSpacing: "0.05em", maxWidth: "320px", lineHeight: 1.6 }}>
+                  RESUME ANALYSIS IN PROGRESS. THIS USUALLY TAKES 15–30 SECONDS. YOU CAN CLOSE THIS AND CHECK BACK SHORTLY.
                 </div>
-                <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">Resume Analysis in Progress</h3>
-                <p className="text-sm font-bold text-muted-foreground leading-tight max-w-sm">
-                  Analyzing skills, education, and experience. This usually takes 15–30 seconds.
-                  <br /><br />
-                  <span className="text-[10px] uppercase tracking-widest opacity-60">You can close this and check back shortly.</span>
-                </p>
               </div>
             ) : analysisStatus === "failed" ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="mb-8 brutal-border bg-destructive/10 dark:bg-destructive/20 p-6 shadow-[8px_8px_0px_0px_var(--border)]">
-                  <Warning className="h-12 w-12 text-destructive" />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", textAlign: "center", gap: "12px" }}>
+                <Warning style={{ width: "28px", height: "28px", color: "#ff3333" }} />
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#ff3333", letterSpacing: "0.05em" }}>
+                  ANALYSIS FAILED. TRY UPLOADING AGAIN.
                 </div>
-                <h3 className="mb-2 text-2xl font-black italic uppercase tracking-tighter">We Couldn't Analyze This Resume</h3>
-                <p className="text-sm font-bold text-muted-foreground leading-tight">
-                  Try uploading again. If the problem persists, make sure your PDF is readable.
-                </p>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.08em" }}>
+                  MAKE SURE YOUR PDF IS READABLE AND NOT SCANNED.
+                </div>
               </div>
             ) : analysis ? (
-              <div className="space-y-6 sm:space-y-12">
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 {analysis.summary && (
-                  <div className="brutal-border bg-muted p-8 shadow-[8px_8px_0px_0px_var(--border)]">
-                    <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-primary bg-card w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Sparkle className="h-6 w-6" />
-                      Professional Summary
+                  <div style={{ marginBottom: "0" }}>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px" }}>
+                      // PROFESSIONAL SUMMARY
                     </div>
-                    <p className="text-base font-bold leading-relaxed">{analysis.summary}</p>
+                    <div style={{ background: "#080808", border: "1px solid #1c1c1c", padding: "12px 16px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "#aaa", lineHeight: 1.6 }}>
+                      {analysis.summary}
+                    </div>
                   </div>
                 )}
 
                 {analysis.education && analysis.education.length > 0 && (
                   <div>
-                    <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <GraduationCap className="h-6 w-6 text-primary" />
-                      Education
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <GraduationCap style={{ width: "10px", height: "10px" }} />
+                      // EDUCATION
                     </div>
-                    <div className="space-y-4">
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                       {analysis.education.map((item, i) => (
-                        <div
-                          key={i}
-                          className="brutal-border bg-card px-6 py-4 text-sm font-bold shadow-[4px_4px_0px_0px_var(--border)] hover:bg-muted transition-colors"
-                        >
+                        <div key={i} style={{ background: "#080808", border: "1px solid #1c1c1c", padding: "8px 12px", fontFamily: "var(--font-mono)", fontSize: "10px", color: "#aaa" }}>
                           {item}
                         </div>
                       ))}
@@ -511,16 +598,13 @@ export function ResumeManager() {
 
                 {analysis.certifications && analysis.certifications.length > 0 && (
                   <div>
-                    <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Medal className="h-6 w-6 text-primary" />
-                      Certifications
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Medal style={{ width: "10px", height: "10px" }} />
+                      // CERTIFICATIONS
                     </div>
-                    <div className="flex flex-wrap gap-4">
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                       {analysis.certifications.map((cert, i) => (
-                        <div
-                          key={i}
-                          className="brutal-border bg-card px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--border)] hover:bg-muted transition-colors"
-                        >
+                        <div key={i} style={{ border: "1px solid #333", background: "#080808", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px" }}>
                           {cert}
                         </div>
                       ))}
@@ -530,15 +614,17 @@ export function ResumeManager() {
 
                 {analysis.skills && analysis.skills.length > 0 && (
                   <div>
-                    <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Code className="h-6 w-6 text-primary" />
-                      Skills
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Code style={{ width: "10px", height: "10px" }} />
+                      // SKILLS
                     </div>
-                    <div className="flex flex-wrap gap-4">
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                       {analysis.skills.map((skill, i) => (
                         <div
                           key={i}
-                          className="brutal-border bg-primary text-primary-foreground px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--border)] hover:bg-foreground hover:text-background transition-all"
+                          style={{ border: "1px solid #333", background: "#080808", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "default" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#ff8c00"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#333"; }}
                         >
                           {skill}
                         </div>
@@ -549,15 +635,17 @@ export function ResumeManager() {
 
                 {analysis.project_keywords && analysis.project_keywords.length > 0 && (
                   <div>
-                    <div className="mb-6 flex items-center gap-3 text-lg font-black italic uppercase tracking-tighter text-foreground bg-muted w-fit px-4 py-1.5 brutal-border shadow-[4px_4px_0px_0px_var(--border)]">
-                      <Sparkle className="h-6 w-6 text-primary" />
-                      Experience Keywords
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Sparkle style={{ width: "10px", height: "10px" }} />
+                      // EXPERIENCE KEYWORDS
                     </div>
-                    <div className="flex flex-wrap gap-4">
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                       {analysis.project_keywords.map((kw, i) => (
                         <div
                           key={i}
-                          className="brutal-border bg-muted px-4 py-2 text-xs font-black uppercase tracking-widest shadow-[4px_4px_0px_0px_var(--border)] hover:bg-card transition-colors"
+                          style={{ border: "1px solid #333", background: "#080808", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "default" }}
+                          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#ffd700"; }}
+                          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#333"; }}
                         >
                           {kw}
                         </div>
@@ -567,15 +655,16 @@ export function ResumeManager() {
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 border-dashed brutal-border bg-muted/30">
-                <Warning className="mb-4 h-12 w-12 text-muted-foreground opacity-40" />
-                <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Analysis not ready yet. Please check back in a moment.</p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: "8px" }}>
+                <Warning style={{ width: "20px", height: "20px", color: "#555" }} />
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.1em", textTransform: "uppercase" }}>ANALYSIS NOT READY YET. PLEASE CHECK BACK IN A MOMENT.</span>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* Delete confirmation Dialog */}
       <Dialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -587,46 +676,83 @@ export function ResumeManager() {
       >
         <DialogContent
           showCloseButton={false}
-          className="max-w-md bg-card text-foreground border-2 border-border rounded-none shadow-[8px_8px_0px_0px_var(--border)] p-0 gap-0"
+          className="max-w-md rounded-none p-0 gap-0"
+          style={{ background: "#060606", border: "1px solid #333", boxShadow: "none", borderRadius: "2px" }}
         >
-          <DialogHeader className="p-6 border-b-2 border-border bg-destructive/10 dark:bg-destructive/20 space-y-2 text-left">
-            <DialogTitle className="flex items-center gap-2 text-xl font-black italic uppercase tracking-tighter">
-              <Warning className="h-5 w-5 text-destructive" />
-              Delete Resume
-            </DialogTitle>
-            <DialogDescription className="text-sm font-bold text-foreground leading-tight">
-              This will permanently remove <span className="font-black">{resumeToDelete?.filename}</span> and its AI analysis.
-            </DialogDescription>
-          </DialogHeader>
+          <DialogTitle className="sr-only">Delete Resume</DialogTitle>
+          {/* Header */}
+          <div style={{ background: "#080808", borderBottom: "1px solid rgba(255,51,51,0.3)", padding: "12px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+              <Warning style={{ width: "12px", height: "12px", color: "#ff3333" }} />
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff3333", textTransform: "uppercase" }}>
+                // DELETE RESUME
+              </div>
+            </div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#aaa", lineHeight: 1.5 }}>
+              This will permanently remove <span style={{ color: "#f0f0f0", fontWeight: 700 }}>{resumeToDelete?.filename}</span> and its AI analysis.
+            </div>
+          </div>
 
-          <div className="flex items-center justify-end gap-3 p-6">
-            <Button
+          {/* Footer */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", padding: "12px 16px" }}>
+            <button
               type="button"
-              variant="outline"
               onClick={() => {
                 setDeleteDialogOpen(false);
                 setResumeToDelete(null);
               }}
               disabled={isDeletingResume}
-              className="brutal-border rounded-none bg-card text-foreground font-black italic uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-muted active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+              onMouseEnter={() => setCancelBtnHovered(true)}
+              onMouseLeave={() => setCancelBtnHovered(false)}
+              style={{
+                border: cancelBtnHovered ? "1px solid #333" : "1px solid #1c1c1c",
+                background: "transparent",
+                color: cancelBtnHovered ? "#aaa" : "#555",
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                padding: "7px 16px",
+                cursor: isDeletingResume ? "not-allowed" : "pointer",
+                transition: "border-color 0.1s, color 0.1s",
+              }}
             >
-              Cancel
-            </Button>
-            <Button
+              CANCEL
+            </button>
+            <button
               type="button"
               onClick={handleDeleteConfirm}
               disabled={!resumeToDelete || isDeletingResume}
-              className="brutal-border rounded-none bg-destructive text-white font-black italic uppercase tracking-widest shadow-[2px_2px_0px_0px_var(--border)] hover:bg-destructive/90 active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
+              onMouseEnter={() => setDeleteBtnHovered(true)}
+              onMouseLeave={() => setDeleteBtnHovered(false)}
+              style={{
+                border: "1px solid #ff3333",
+                background: deleteBtnHovered ? "rgba(255,51,51,0.2)" : "rgba(255,51,51,0.1)",
+                color: "#ff3333",
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                padding: "7px 16px",
+                cursor: (!resumeToDelete || isDeletingResume) ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                opacity: (!resumeToDelete || isDeletingResume) ? 0.6 : 1,
+                transition: "background 0.1s",
+              }}
             >
               {isDeletingResume ? (
                 <>
-                  <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  <CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />
+                  DELETING...
                 </>
               ) : (
-                "Delete"
+                "DELETE"
               )}
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

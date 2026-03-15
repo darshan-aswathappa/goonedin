@@ -1,43 +1,56 @@
 "use client";
 
 import { useJobsStore } from "@/store/jobs";
-import { 
-  Broadcast, 
-  Prohibit, 
-  CircleNotch 
+import {
+  Broadcast,
+  Prohibit,
+  CircleNotch,
 } from "@phosphor-icons/react";
 
 export function ConnectionStatus() {
   const connectionStatus = useJobsStore((state) => state.connectionStatus);
 
+  const isConnected = connectionStatus === "connected";
+  const isConnecting = connectionStatus === "connecting";
+
   return (
     <div
       role="status"
-      aria-label={connectionStatus === "connected" ? "Connected" : connectionStatus === "connecting" ? "Updating" : "Disconnected"}
-      className={`flex items-center gap-1.5 brutal-border px-2 sm:px-3 py-1 font-black text-[9px] sm:text-[10px] uppercase tracking-widest brutal-shadow-md h-10 sm:h-[42px] ${
-        connectionStatus === "connected"
-          ? "bg-green-50 text-green-700 dark:bg-green-700/20 dark:text-green-400"
-          : connectionStatus === "connecting"
-          ? "bg-sidebar-accent text-primary"
-          : "bg-red-50 text-destructive dark:bg-red-950/30"
-      }`}
+      aria-label={isConnected ? "Connected" : isConnecting ? "Reconnecting" : "Disconnected"}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        border: `1px solid ${isConnected ? "#ff8c00" : isConnecting ? "#1c1c1c" : "rgba(255,51,51,0.4)"}`,
+        background: isConnected ? "rgba(255,140,0,0.08)" : isConnecting ? "transparent" : "rgba(255,51,51,0.05)",
+        padding: "0 10px",
+        height: "32px",
+        fontFamily: "var(--font-mono)",
+        fontSize: "9px",
+        fontWeight: 600,
+        letterSpacing: "0.15em",
+        textTransform: "uppercase",
+        color: isConnected ? "#ff8c00" : isConnecting ? "#555" : "#ff3333",
+        flexShrink: 0,
+        transition: "border-color 0.2s, color 0.2s",
+      }}
     >
-      {connectionStatus === "connected" && (
+      {isConnected && (
         <>
-          <Broadcast weight="bold" className="h-3.5 w-3.5 shrink-0 animate-live-pulse" />
+          <Broadcast weight="bold" style={{ width: "12px", height: "12px", flexShrink: 0 }} className="animate-live-pulse" />
           <span>Live</span>
         </>
       )}
-      {connectionStatus === "connecting" && (
+      {isConnecting && (
         <>
-          <CircleNotch weight="bold" className="h-3.5 w-3.5 shrink-0 animate-spin" />
+          <CircleNotch weight="bold" style={{ width: "12px", height: "12px", flexShrink: 0 }} className="animate-spin" />
           <span className="hidden sm:inline">Reconnecting</span>
           <span className="sm:hidden">Sync</span>
         </>
       )}
       {connectionStatus === "disconnected" && (
         <>
-          <Prohibit weight="bold" className="h-3.5 w-3.5 shrink-0" />
+          <Prohibit weight="bold" style={{ width: "12px", height: "12px", flexShrink: 0 }} />
           <span className="hidden sm:inline">Disconnected</span>
           <span className="sm:hidden">Off</span>
         </>

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Timer } from "@phosphor-icons/react";
+import { Timer, CircleNotch } from "@phosphor-icons/react";
 
 interface ScrapeCountdownProps {
   nextScrapeAt: string | null;
   label?: string;
 }
 
-export function ScrapeCountdown({ nextScrapeAt, label = "Next update in" }: ScrapeCountdownProps) {
+export function ScrapeCountdown({ nextScrapeAt, label = "NEXT UPDATE IN" }: ScrapeCountdownProps) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   useEffect(() => {
@@ -35,13 +35,26 @@ export function ScrapeCountdown({ nextScrapeAt, label = "Next update in" }: Scra
   const isActive = secondsLeft === 0;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 brutal-border text-xs font-black uppercase tracking-wider shadow-[1px_1px_0px_0px_var(--border)] ${
-      isActive
-        ? "bg-green-200 dark:bg-green-900/50 text-green-800 dark:text-green-300"
-        : "bg-muted text-muted-foreground"
-    }`}>
-      <Timer weight="bold" className={`h-3.5 w-3.5 ${isActive ? "animate-spin" : ""}`} />
-      {isActive ? "Checking now..." : `${label} ${display}`}
+    <span
+      className="inline-flex items-center gap-1.5"
+      style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: "9px",
+        fontWeight: 600,
+        letterSpacing: "0.15em",
+        textTransform: "uppercase",
+        border: `1px solid ${isActive ? "rgba(74,222,128,0.3)" : "#1c1c1c"}`,
+        background: isActive ? "rgba(74,222,128,0.06)" : "#080808",
+        color: isActive ? "#4ade80" : "#555",
+        padding: "2px 8px",
+      }}
+    >
+      {isActive ? (
+        <CircleNotch weight="bold" style={{ width: "10px", height: "10px", flexShrink: 0 }} className="animate-spin" />
+      ) : (
+        <Timer weight="bold" style={{ width: "10px", height: "10px", flexShrink: 0 }} />
+      )}
+      {isActive ? "CHECKING NOW..." : `${label} ${display}`}
     </span>
   );
 }

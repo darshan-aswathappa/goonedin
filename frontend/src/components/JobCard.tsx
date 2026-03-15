@@ -39,18 +39,22 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [animateSave, setAnimateSave] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
-  
+  const [cardHovered, setCardHovered] = useState(false);
+  const [saveHovered, setSaveHovered] = useState(false);
+  const [dismissHovered, setDismissHovered] = useState(false);
+  const [blockHovered, setBlockHovered] = useState(false);
+  const [applyHovered, setApplyHovered] = useState(false);
+
   const removeJob = useJobsStore((state) => state.removeJob);
   const savedJobIds = useJobsStore((state) => state.savedJobIds);
   const addSavedJobId = useJobsStore((state) => state.addSavedJobId);
   const removeSavedJobId = useJobsStore((state) => state.removeSavedJobId);
-  
+
   const isSaved = savedJobIds.has(job.external_id);
   const isAnyActionInFlight = isSaving || isDismissing || isBlocking;
-  
+
   const formatSalary = (salary: string) => {
     if (!salary) return salary;
-    // Extract part after colon if it exists: "Location: $range" -> "$range"
     const parts = salary.split(":");
     const range = parts.length > 1 ? parts[1].trim() : parts[0].trim();
     return range;
@@ -59,7 +63,6 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   const formatVisa = (visa: string) => {
     if (!visa) return visa;
     const vLower = visa.toLowerCase();
-    // If it mentions "without visa sponsorship" or "no sponsorship"
     if (
       (vLower.includes("without") && vLower.includes("sponsorship")) ||
       vLower.includes("not eligible") ||
@@ -101,7 +104,6 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
       });
 
       clearTimeout(timeoutId);
-      // WebSocket will broadcast the block and show the toast
     } catch {
       // Timeout or network error — WebSocket broadcast handles UI update
     } finally {
@@ -196,48 +198,140 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
     <>
       <div
         onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
-        className={`group relative brutal-border brutal-shadow bg-card p-2 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
+        onMouseEnter={() => setCardHovered(true)}
+        onMouseLeave={() => setCardHovered(false)}
+        className={`group relative h-full flex flex-col ${
           isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
         } ${isExiting ? "animate-card-exit" : ""}`}
+        style={{
+          background: "#080808",
+          border: cardHovered ? "1px solid #333" : "1px solid #1c1c1c",
+          borderRadius: "2px",
+          padding: "14px",
+          transition: "border-color 0.1s",
+        }}
       >
         {isBlockFlash && (
-          <div className="absolute inset-0 bg-red-500/25 animate-block-flash pointer-events-none z-20" />
+          <div
+            className="absolute inset-0 animate-block-flash pointer-events-none z-20"
+            style={{ background: "rgba(255,51,51,0.15)" }}
+          />
         )}
 
+        {/* Source badge */}
         <div
-          className="absolute top-0 right-0 brutal-border border-t-0 border-r-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider brutal-badge bg-primary text-primary-foreground"
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            fontFamily: "var(--font-mono)",
+            fontSize: "8px",
+            fontWeight: 600,
+            letterSpacing: "0.18em",
+            textTransform: "uppercase",
+            color: "#ff8c00",
+            background: "#080808",
+            border: "1px solid #1c1c1c",
+            borderTop: "none",
+            borderRight: "none",
+            padding: "3px 8px",
+          }}
         >
           {job.source}
         </div>
 
-        <div className="flex flex-col h-full space-y-1">
-          <div className="space-y-0.5 pr-10 sm:pr-12 min-w-0">
-            <h3 className="text-sm sm:text-xl heading-brutal leading-tight line-clamp-3 sm:line-clamp-2 break-words">
+        <div className="flex flex-col h-full space-y-3">
+          <div className="space-y-1.5 pr-10 sm:pr-12 min-w-0">
+            <h3
+              className="font-mono font-semibold leading-tight line-clamp-3 sm:line-clamp-2 break-words"
+              style={{ fontSize: "13px", color: "#f0f0f0", letterSpacing: "0.01em" }}
+            >
               {job.title}
             </h3>
-            <div className="flex items-center gap-2 font-bold text-xs sm:text-sm min-w-0">
-              <Buildings weight="bold" className="h-4 w-4 shrink-0" />
-              <span className="truncate">{job.company}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Buildings
+                weight="bold"
+                className="h-4 w-4 shrink-0"
+                style={{ color: "#555" }}
+              />
+              <span
+                className="truncate"
+                style={{
+                  fontSize: "11px",
+                  fontFamily: "var(--font-mono)",
+                  color: "#aaaaaa",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {job.company}
+              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-0.5 border-t border-border pt-1">
-            <div className="flex items-center gap-2 text-xs font-medium min-w-0">
-              <MapPin weight="bold" className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate mono-data">{job.location}</span>
+          <div
+            className="grid grid-cols-1 gap-2 pt-2"
+            style={{ borderTop: "1px solid #1c1c1c" }}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <MapPin
+                weight="bold"
+                className="h-3.5 w-3.5 shrink-0"
+                style={{ color: "#555" }}
+              />
+              <span
+                className="truncate"
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  color: "#555",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {job.location}
+              </span>
             </div>
 
             {postedAt && (
-              <div className="flex items-center gap-2 text-xs font-medium min-w-0">
-                <Clock weight="bold" className="h-3.5 w-3.5 shrink-0" />
-                <span className="whitespace-nowrap mono-data">{postedAt}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <Clock
+                  weight="bold"
+                  className="h-3.5 w-3.5 shrink-0"
+                  style={{ color: "#555" }}
+                />
+                <span
+                  className="whitespace-nowrap"
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10px",
+                    color: "#555",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  {postedAt}
+                </span>
               </div>
             )}
 
             {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
-              <div className="flex items-center gap-2 text-xs font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40 px-1.5 py-0.5 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+              <div
+                style={{
+                  border: "1px solid #1c1c1c",
+                  background: "rgba(255, 215, 0, 0.05)",
+                  color: "#ffd700",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  width: "fit-content",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                }}
+              >
                 <CurrencyDollar weight="bold" className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate mono-data">{formatSalary(job.salary)}</span>
+                <span className="truncate">{formatSalary(job.salary)}</span>
               </div>
             )}
 
@@ -246,94 +340,194 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
               return (
-                <div className="flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 brutal-border w-fit max-w-full overflow-hidden shadow-[1px_1px_0px_0px_var(--border)]">
+                <div
+                  style={{
+                    border: "1px solid rgba(255,51,51,0.3)",
+                    background: "rgba(255,51,51,0.05)",
+                    color: "#ff3333",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    padding: "2px 8px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    width: "fit-content",
+                    maxWidth: "100%",
+                    overflow: "hidden",
+                  }}
+                >
                   <Globe weight="bold" className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate mono-data">{formatted}</span>
+                  <span className="truncate">{formatted}</span>
                 </div>
               );
             })()}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-1 pt-1 mt-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 mt-auto">
             <TooltipProvider>
-            <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleToggleSave}
-                    disabled={isAnyActionInFlight}
-                    aria-label={isSaved ? "Unsave job" : "Save job"}
-                    title={isSaved ? "Unsave" : "Save"}
-                    className={`brutal-border p-2 hover:bg-muted transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 ${
-                      isSaved ? "bg-primary text-white" : "bg-card text-foreground"
-                    }`}
+              <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
+                {/* Save button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleToggleSave}
+                      disabled={isAnyActionInFlight}
+                      aria-label={isSaved ? "Unsave job" : "Save job"}
+                      title={isSaved ? "Unsave" : "Save"}
+                      onMouseEnter={() => setSaveHovered(true)}
+                      onMouseLeave={() => setSaveHovered(false)}
+                      className="flex-1 sm:flex-none disabled:opacity-50"
+                      style={{
+                        border: isSaved
+                          ? "1px solid #ffd700"
+                          : saveHovered
+                          ? "1px solid #ffd700"
+                          : "1px solid #1c1c1c",
+                        background: isSaved ? "rgba(255,215,0,0.08)" : "transparent",
+                        color: isSaved ? "#ffd700" : saveHovered ? "#ffd700" : "#555",
+                        padding: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: "36px",
+                        minWidth: "36px",
+                        transition: "border-color 0.1s, color 0.1s",
+                        borderRadius: "2px",
+                      }}
+                    >
+                      {isSaving ? (
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                      ) : (
+                        <BookmarkSimple
+                          weight={isSaved ? "fill" : "bold"}
+                          className={`h-4 w-4 sm:h-5 sm:w-5 ${animateSave ? "animate-save-pop" : ""}`}
+                        />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className="rounded-none font-mono text-[10px] hidden sm:block"
+                    style={{ background: "#080808", border: "1px solid #333", color: "#aaa" }}
                   >
-                    {isSaving ? (
-                      <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                    ) : (
-                      <BookmarkSimple
-                        weight={isSaved ? "fill" : "bold"}
-                        className={`h-4 w-4 sm:h-5 sm:w-5 ${animateSave ? "animate-save-pop" : ""}`}
-                      />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
-                  <p>{isSaved ? "Unsave" : "Save"}</p>
-                </TooltipContent>
-              </Tooltip>
+                    <p>{isSaved ? "Unsave" : "Save"}</p>
+                  </TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleDismissJob}
-                    disabled={isAnyActionInFlight}
-                    aria-label="Dismiss job"
-                    title="Dismiss"
-                    className="brutal-border p-2 bg-card text-foreground hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                {/* Dismiss button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleDismissJob}
+                      disabled={isAnyActionInFlight}
+                      aria-label="Dismiss job"
+                      title="Dismiss"
+                      onMouseEnter={() => setDismissHovered(true)}
+                      onMouseLeave={() => setDismissHovered(false)}
+                      className="flex-1 sm:flex-none disabled:opacity-50"
+                      style={{
+                        border: dismissHovered ? "1px solid #ff3333" : "1px solid #1c1c1c",
+                        background: "transparent",
+                        color: dismissHovered ? "#ff3333" : "#555",
+                        padding: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: "36px",
+                        minWidth: "36px",
+                        transition: "border-color 0.1s, color 0.1s",
+                        borderRadius: "2px",
+                      }}
+                    >
+                      {isDismissing ? (
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                      ) : (
+                        <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className="rounded-none font-mono text-[10px] hidden sm:block"
+                    style={{ background: "#080808", border: "1px solid #333", color: "#aaa" }}
                   >
-                    {isDismissing ? (
-                      <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                    ) : (
-                      <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
-                  <p>Dismiss</p>
-                </TooltipContent>
-              </Tooltip>
+                    <p>Dismiss</p>
+                  </TooltipContent>
+                </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleBlockCompany}
-                    disabled={isAnyActionInFlight}
-                    aria-label="Block company"
-                    title="Block"
-                    className="brutal-border p-2 bg-card text-foreground hover:bg-foreground hover:text-background transition-colors flex-1 sm:flex-none flex items-center justify-center disabled:opacity-50 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
+                {/* Block button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleBlockCompany}
+                      disabled={isAnyActionInFlight}
+                      aria-label="Block company"
+                      title="Block"
+                      onMouseEnter={() => setBlockHovered(true)}
+                      onMouseLeave={() => setBlockHovered(false)}
+                      className="flex-1 sm:flex-none disabled:opacity-50"
+                      style={{
+                        border: blockHovered ? "1px solid #ff3333" : "1px solid #1c1c1c",
+                        background: "transparent",
+                        color: blockHovered ? "#ff3333" : "#555",
+                        padding: "6px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: "36px",
+                        minWidth: "36px",
+                        transition: "border-color 0.1s, color 0.1s",
+                        borderRadius: "2px",
+                      }}
+                    >
+                      {isBlocking ? (
+                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                      ) : (
+                        <ThumbsDown weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    className="rounded-none font-mono text-[10px] hidden sm:block"
+                    style={{ background: "#080808", border: "1px solid #333", color: "#aaa" }}
                   >
-                    {isBlocking ? (
-                      <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
-                    ) : (
-                      <ThumbsDown weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="brutal-border brutal-shadow rounded-none bg-card text-foreground font-bold hidden sm:block">
-                  <p>Block Company</p>
-                </TooltipContent>
-              </Tooltip>
-
-            </div>
+                    <p>Block Company</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </TooltipProvider>
 
+            {/* Apply button */}
             <a
               href={job.url}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="brutal-border bg-primary text-primary-foreground px-2.5 sm:px-4 py-1.5 sm:py-2 font-black text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-2 brutal-btn-hover uppercase w-full sm:w-auto"
+              onMouseEnter={() => setApplyHovered(true)}
+              onMouseLeave={() => setApplyHovered(false)}
+              className="w-full sm:w-auto"
+              style={{
+                border: "1px solid #ff8c00",
+                background: applyHovered ? "rgba(255,140,0,0.18)" : "rgba(255,140,0,0.1)",
+                color: "#ff8c00",
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                fontWeight: 700,
+                letterSpacing: "0.15em",
+                textTransform: "uppercase",
+                padding: "6px 14px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                transition: "background 0.1s, border-color 0.1s",
+                borderRadius: "2px",
+              }}
             >
               Apply
               <ArrowSquareOut weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
