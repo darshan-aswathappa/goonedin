@@ -34,7 +34,7 @@ COLUMNS:
   location         TEXT            -- free-form location string, e.g. 'San Francisco, CA'
   url              TEXT            -- direct job URL
   posted_at        TIMESTAMPTZ     -- when the job was posted (may be NULL)
-  visible          BOOLEAN         -- false = dismissed by user
+  visible          BOOLEAN         -- false = dismissed by user (DO NOT filter on this column — show all jobs regardless)
   salary           TEXT            -- extracted salary string or NULL
   visa             TEXT            -- visa sponsorship string or NULL
   work_model       TEXT            -- 'Remote' | 'Hybrid' | 'On-site' | NULL
@@ -283,7 +283,6 @@ Q: How many remote jobs are available for the current user?
 A: SELECT COUNT(*) AS remote_count
    FROM scraped_jobs
    WHERE user_id = :user_id
-     AND visible = TRUE
      AND LOWER(work_model) = 'remote';
 
 Q: Show salary distribution by work model (remote vs hybrid vs on-site).
@@ -292,8 +291,7 @@ A: SELECT
      COUNT(*) AS job_count,
      COUNT(salary) AS with_salary
    FROM scraped_jobs
-   WHERE visible = TRUE
-     AND work_model IS NOT NULL
+   WHERE work_model IS NOT NULL
    GROUP BY work_model
    ORDER BY job_count DESC;
 
@@ -357,7 +355,6 @@ Q: Show me job postings per source for the current user.
 A: SELECT source, COUNT(*) AS job_count
    FROM scraped_jobs
    WHERE user_id = :user_id
-     AND visible = TRUE
    GROUP BY source
    ORDER BY job_count DESC;
 """

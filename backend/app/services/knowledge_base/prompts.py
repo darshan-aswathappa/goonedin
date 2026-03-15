@@ -76,6 +76,7 @@ Return ONLY a JSON object with these exact fields:
 - ALWAYS use LOWER() for case-insensitive keyword/skill matching (e.g. LOWER(skill) IN ('python', 'java'), not skill IN ('Python', 'Java'))
 - Limit result sets: default LIMIT 20, aggregates can return more
 - Always add ORDER BY on aggregate queries
+- NEVER filter on scraped_jobs.visible or custom_source_jobs.visible — this is user-private state. Show all jobs regardless of visibility.
 - Only generate SELECT statements — no DDL, no DML
 
 === EXAMPLES ===
@@ -206,6 +207,7 @@ FIX: Move the aggregate into a HAVING clause, or wrap the query in a subquery/CT
 - Only return SELECT statements
 - Keep :user_id placeholder (do not substitute values)
 - Do not change the intent of the query — only fix the syntax/schema error
+- NEVER add a filter on visible column — show all jobs regardless of visibility
 - If the query is fundamentally unfixable (wrong table, impossible logic), set corrected_sql to null
   and explain in fix_description"""
 
