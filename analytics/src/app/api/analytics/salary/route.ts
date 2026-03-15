@@ -20,12 +20,18 @@ export async function GET() {
       : (overviewRes.data as { total: number })?.total;
 
     // Expand grouped salary strings back into individual rows for aggregateSalary
-    const rows = (salaryRes.data as { salary: string; count: number }[]).flatMap((r) =>
-      Array.from({ length: Number(r.count) }, (_, i) => ({
-        external_id: `${r.salary}-${i}`,
-        salary: r.salary,
-      }))
-    );
+    // Cap expansion to prevent memory issues with unexpectedly large counts
+    const MAX_EXPANSION = 50_000;
+    let expanded = 0;
+    const rows: { external_id: string; salary: string }[] = [];
+    for (const r of salaryRes.data as { salary: string; count: number }[]) {
+      const count = Math.min(Number(r.count) || 0, MAX_EXPANSION - expanded);
+      if (count <= 0) break;
+      for (let i = 0; i < count; i++) {
+        rows.push({ external_id: `${r.salary}-${i}`, salary: r.salary });
+      }
+      expanded += count;
+    }
 
     const result = aggregateSalary(rows, totalJobs);
     return NextResponse.json(result);

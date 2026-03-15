@@ -101,7 +101,7 @@ export default function VisaStats({ data, sponsorshipRate, total }: Props) {
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--text-dim)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "120px" }}>
                 {d.label}
               </span>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "var(--muted)" }}>

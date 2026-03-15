@@ -46,9 +46,11 @@ export default function JobVolumeChart({ data: initialData }: Props) {
     try {
       const params = new URLSearchParams({ days: String(days) });
       const res = await fetch(`/api/analytics/timeline?${params}`);
-      if (!res.ok) throw new Error("fetch failed");
+      if (!res.ok) throw new Error(`fetch failed: ${res.status}`);
       const json = await res.json();
-      setData(json.timeline ?? []);
+      if (Array.isArray(json.timeline)) {
+        setData(json.timeline);
+      }
     } catch {
       // keep current data on error
     } finally {

@@ -9,7 +9,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
     const days = Math.min(Math.max(Number(searchParams.get("days")) || 30, 1), 365);
-    const source = searchParams.get("source") || "";
+    const rawSource = searchParams.get("source") || "";
+    // Sanitize source param — only allow alphanumeric, spaces, hyphens, underscores
+    const source = /^[a-zA-Z0-9 _-]{0,50}$/.test(rawSource) ? rawSource : "";
 
     const sb = createServerClient();
 

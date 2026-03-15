@@ -234,6 +234,18 @@ body {
   50% { opacity: 0.8; }
 }
 
+/* ── Reduced motion ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Bubble map pop-in */
 @keyframes bubble-pop {
   from { transform: scale(0); opacity: 0; }
@@ -391,4 +403,45 @@ body {
   color: var(--muted);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* ── Responsive breakpoints ──────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    height: auto !important;
+  }
+  .two-col-grid {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+  }
+  .two-col-grid > * {
+    min-height: 240px;
+  }
+  .three-col-grid {
+    grid-template-columns: 1fr 1fr !important;
+    height: auto !important;
+  }
+  .three-col-grid > * {
+    min-height: 240px;
+  }
+  .seniority-grid {
+    grid-template-columns: 1fr 1fr !important;
+    height: auto !important;
+  }
+  .seniority-grid > * {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .three-col-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .seniority-grid {
+    grid-template-columns: 1fr !important;
+  }
 }

@@ -42,9 +42,13 @@ export default function BootSequence() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const seen = localStorage.getItem(STORAGE_KEY);
-    if (!seen) {
-      setVisible(true);
+    try {
+      const seen = localStorage.getItem(STORAGE_KEY);
+      if (!seen) {
+        setVisible(true);
+      }
+    } catch {
+      // localStorage unavailable (private browsing) — skip boot sequence
     }
   }, []);
 
@@ -71,7 +75,11 @@ export default function BootSequence() {
   }, [visible]);
 
   const dismiss = useCallback(() => {
-    localStorage.setItem(STORAGE_KEY, "1");
+    try {
+      localStorage.setItem(STORAGE_KEY, "1");
+    } catch {
+      // localStorage unavailable — dismiss anyway
+    }
     setVisible(false);
   }, []);
 

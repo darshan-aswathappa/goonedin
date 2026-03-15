@@ -35,19 +35,21 @@ export default function TimeDistributionChart({ fallbackData }: Props) {
 
   useEffect(() => {
     fetch("/api/analytics/hourly-by-day")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) return null;
+        return r.json();
+      })
       .then((d) => {
-        if (d.hourlyByDay) setHourlyByDay(d.hourlyByDay);
+        if (d?.hourlyByDay) setHourlyByDay(d.hourlyByDay);
       })
       .catch(() => {});
   }, []);
 
   const data = hourlyByDay?.[selectedDay] ?? fallbackData;
-  const max = Math.max(...data.map((d) => d.count), 1);
-  const peak = data.reduce(
-    (best, d) => (d.count > best.count ? d : best),
-    data[0] ?? { hour: 0, count: 0 }
-  );
+  const max = data.length > 0 ? Math.max(...data.map((d) => d.count), 1) : 1;
+  const peak = data.length > 0
+    ? data.reduce((best, d) => (d.count > best.count ? d : best), data[0])
+    : { hour: 0, count: 0 };
 
   const chartData = data.map((d) => ({
     hour: d.hour,

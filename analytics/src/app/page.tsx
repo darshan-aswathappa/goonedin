@@ -27,6 +27,7 @@ import BootSequence from "@/components/BootSequence";
 import PanelHint from "@/components/PanelHint";
 import EmptyPanel from "@/components/EmptyPanel";
 import SectionGuide from "@/components/SectionGuide";
+import SafePanel from "@/components/SafePanel";
 
 export const revalidate = 60;
 
@@ -175,6 +176,7 @@ export default async function DashboardPage() {
         >
           {/* Row 1: KPI Cards */}
           <div
+            className="kpi-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(5, 1fr)",
@@ -232,7 +234,9 @@ export default async function DashboardPage() {
             }}
           >
             {(timeline?.timeline ?? []).length > 0 ? (
-              <JobVolumeChart data={timeline?.timeline ?? []} />
+              <SafePanel title="Job Volume">
+                <JobVolumeChart data={timeline?.timeline ?? []} />
+              </SafePanel>
             ) : (
               <EmptyPanel
                 title="Job Volume"
@@ -246,6 +250,7 @@ export default async function DashboardPage() {
 
           {/* Row 3: Companies + Locations */}
           <div
+            className="two-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -263,7 +268,9 @@ export default async function DashboardPage() {
               />
             )}
             {(locations?.locations ?? []).length > 0 ? (
-              <LocationChart data={locations?.locations ?? []} />
+              <SafePanel title="Locations">
+                <LocationChart data={locations?.locations ?? []} />
+              </SafePanel>
             ) : (
               <EmptyPanel
                 title="Locations"
@@ -277,6 +284,7 @@ export default async function DashboardPage() {
 
           {/* Row 4: Skills + Good-to-Have + Heatmap */}
           <div
+            className="three-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr 1fr",
@@ -302,11 +310,14 @@ export default async function DashboardPage() {
                 suggestion="Nice-to-have skills that appear frequently but aren't hard requirements."
               />
             )}
-            <PostingHeatmap data={companies?.hourlyDistribution ?? []} />
+            <SafePanel title="24h Posting Activity">
+              <PostingHeatmap data={companies?.hourlyDistribution ?? []} />
+            </SafePanel>
           </div>
 
           {/* Row 5: Soft Skills + Skill Co-occurrence */}
           <div
+            className="two-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 2fr",
@@ -361,6 +372,7 @@ export default async function DashboardPage() {
 
           {/* Row 6: Seniority + Weekday + Time Distribution */}
           <div
+            className="seniority-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "300px 1fr 1fr",
@@ -389,11 +401,14 @@ export default async function DashboardPage() {
                 suggestion="Which days of the week have the most job postings."
               />
             )}
-            <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
+            <SafePanel title="Posting Times">
+              <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
+            </SafePanel>
           </div>
 
           {/* Row 6b: Experience Demand */}
           <div
+            className="two-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -430,6 +445,7 @@ export default async function DashboardPage() {
 
           {/* Row 7: Visa + Salary by Location */}
           <div
+            className="two-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
@@ -465,6 +481,7 @@ export default async function DashboardPage() {
 
           {/* Row 8: Salary + Title Keywords */}
           <div
+            className="two-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 2fr",
@@ -501,6 +518,7 @@ export default async function DashboardPage() {
 
           {/* Row 9: Queue Health + Intel Panel */}
           <div
+            className="two-col-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 2fr",

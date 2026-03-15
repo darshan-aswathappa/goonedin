@@ -244,13 +244,14 @@ export default function LocationChart({ data }: Props) {
           }}
         >
           {[
-            { label: "+", action: handleZoomIn },
-            { label: "\u2013", action: handleZoomOut },
-            { label: "\u25CB", action: handleReset },
-          ].map(({ label, action }) => (
+            { label: "+", action: handleZoomIn, ariaLabel: "Zoom in" },
+            { label: "\u2013", action: handleZoomOut, ariaLabel: "Zoom out" },
+            { label: "\u25CB", action: handleReset, ariaLabel: "Reset zoom" },
+          ].map(({ label, action, ariaLabel }) => (
             <button
               key={label}
               onClick={action}
+              aria-label={ariaLabel}
               className="ghost-btn"
               style={{
                 width: 22,
