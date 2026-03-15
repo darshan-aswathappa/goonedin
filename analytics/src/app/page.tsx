@@ -559,7 +559,7 @@ export default async function DashboardPage() {
             letterSpacing: "0.1em",
           }}
         >
-          <span>GOONEDIN ANALYTICS · MARKET INTELLIGENCE TERMINAL</span>
+          <span>HIREFEED ANALYTICS · MARKET INTELLIGENCE TERMINAL</span>
           <span>UNIQUE JOBS · AUTO-REFRESHES EVERY 60S</span>
         </footer>
       </div>

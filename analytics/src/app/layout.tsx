@@ -9,7 +9,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GoOneIn Analytics",
+  title: "HireFeed Analytics",
   description: "Real-time job market intelligence dashboard",
 };
 

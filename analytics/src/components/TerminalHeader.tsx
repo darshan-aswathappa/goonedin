@@ -62,7 +62,7 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
             color: "var(--teal)",
           }}
         >
-          GOONEDIN
+          HIREFEED
         </span>
         <span
           style={{

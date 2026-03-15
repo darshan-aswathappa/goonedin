@@ -65,7 +65,7 @@ export default function LoginPage() {
       <div className="border-b border-[#1E1E1E] px-5 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 bg-[#FF6E00]" />
-          <span className="text-[#FF6E00] text-[11px] font-bold tracking-[0.22em] uppercase">GOONEDIN</span>
+          <span className="text-[#FF6E00] text-[11px] font-bold tracking-[0.22em] uppercase">HIREFEED</span>
           <span className="text-[#2A2A2A] text-xs mx-1">│</span>
           <span className="text-[#444] text-[10px] tracking-[0.15em] uppercase">Job Intelligence Platform</span>
         </div>
@@ -218,7 +218,7 @@ export default function LoginPage() {
       {/* Bottom status bar */}
       <div className="border-t border-[#111] px-5 py-1.5 flex items-center justify-between shrink-0">
         <span className="text-[#222] text-[9px] tracking-[0.18em] uppercase">Auth via Supabase</span>
-        <span className="text-[#222] text-[9px] tracking-[0.18em] uppercase">© 2025 GoonedIn</span>
+        <span className="text-[#222] text-[9px] tracking-[0.18em] uppercase">© 2025 HireFeed</span>
       </div>
     </div>
   );

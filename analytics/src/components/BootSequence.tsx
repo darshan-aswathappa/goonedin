@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-const STORAGE_KEY = "goonedin-boot-seen";
+const STORAGE_KEY = "hirefeed-boot-seen";
 
 const BOOT_LINES = [
-  { text: "GOONEDIN ANALYTICS v2.0", delay: 0, color: "var(--teal)" },
+  { text: "HIREFEED ANALYTICS v2.0", delay: 0, color: "var(--teal)" },
   { text: "Initializing market intelligence terminal...", delay: 200, color: "var(--muted)" },
   { text: "", delay: 400, color: "" },
   { text: "[OK] Connected to job pipeline", delay: 500, color: "var(--green)" },

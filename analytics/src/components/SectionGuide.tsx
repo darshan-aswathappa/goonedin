@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "goonedin-section-guides-dismissed";
+const STORAGE_KEY = "hirefeed-section-guides-dismissed";
 
 interface Props {
   label: string;

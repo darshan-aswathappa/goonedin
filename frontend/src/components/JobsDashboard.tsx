@@ -192,7 +192,7 @@ export function JobsDashboard() {
                 className="font-mono font-bold tracking-[0.2em] uppercase"
                 style={{ fontSize: "11px", color: "#ff8c00" }}
               >
-                GOONEDIN
+                HIREFEED
               </span>
               <span
                 className="font-mono uppercase tracking-[0.12em]"

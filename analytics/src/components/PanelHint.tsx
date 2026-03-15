@@ -7,7 +7,7 @@ interface Props {
   hint: string;
 }
 
-const STORAGE_PREFIX = "goonedin-hint-";
+const STORAGE_PREFIX = "hirefeed-hint-";
 
 export default function PanelHint({ id, hint }: Props) {
   const [dismissed, setDismissed] = useState(true);

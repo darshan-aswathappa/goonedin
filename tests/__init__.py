@@ -1,1 +1,1 @@
-# Tests module for goonedin
+# Tests module for hirefeed

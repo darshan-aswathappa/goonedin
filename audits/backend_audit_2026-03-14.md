@@ -1,4 +1,4 @@
-# GoOneIn Backend Architecture Audit
+# HireFeed Backend Architecture Audit
 **Date:** 2026-03-14
 **Auditor:** Backend Architect (Claude)
 **Scope:** Full backend — FastAPI app, scrapers, queue workers, WebSocket, resume service, database layer
@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-GoOneIn is a real-time job tracking platform with a FastAPI backend, Supabase (PostgreSQL), multiple scrapers (LinkedIn, GitHub, MathWorks, Jobright, custom ATS), a DeepSeek AI analysis pipeline, and a WebSocket delivery layer. The core architecture is sound for a single-developer project at its current scale — the queue-based deduplication, per-user scraper lifecycle, and layered caching approach are well-reasoned. Several historical bugs (cache upsert, sequential processing, reconnect debounce) have been found and fixed, which is a positive signal.
+HireFeed is a real-time job tracking platform with a FastAPI backend, Supabase (PostgreSQL), multiple scrapers (LinkedIn, GitHub, MathWorks, Jobright, custom ATS), a DeepSeek AI analysis pipeline, and a WebSocket delivery layer. The core architecture is sound for a single-developer project at its current scale — the queue-based deduplication, per-user scraper lifecycle, and layered caching approach are well-reasoned. Several historical bugs (cache upsert, sequential processing, reconnect debounce) have been found and fixed, which is a positive signal.
 
 However, the audit found **three critical security issues** that must be addressed before any production deployment with real users, along with several high-priority reliability and scalability concerns that will cause problems as user count grows.
 

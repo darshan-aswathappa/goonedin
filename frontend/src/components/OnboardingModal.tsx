@@ -15,7 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 
-const ONBOARDING_KEY = "goonedin-onboarding-v1";
+const ONBOARDING_KEY = "hirefeed-onboarding-v1";
 
 interface OnboardingModalProps {
   userEmail?: string;
@@ -58,7 +58,7 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
         <div className="border-b border-[#1E1E1E] px-4 py-2.5 flex items-center justify-between bg-[#080808]">
           <div className="flex items-center gap-2.5">
             <Terminal weight="bold" className="h-3.5 w-3.5 text-[#FF6E00]" />
-            <span className="text-[#FF6E00] text-[10px] font-bold tracking-[0.22em] uppercase">GOONEDIN</span>
+            <span className="text-[#FF6E00] text-[10px] font-bold tracking-[0.22em] uppercase">HIREFEED</span>
             <span className="text-[#222] text-xs mx-0.5">│</span>
             <span className="text-[#444] text-[9px] tracking-[0.18em] uppercase">System Initialization</span>
           </div>
@@ -128,7 +128,7 @@ function StepWelcome({ userEmail }: { userEmail?: string }) {
       <div>
         <p className="text-[#FF6E00] text-[9px] tracking-[0.25em] uppercase mb-1.5">SYSTEM BOOT</p>
         <h2 className="text-lg font-bold uppercase tracking-tight text-white leading-tight mb-2">
-          Welcome to GoonedIn
+          Welcome to HireFeed
         </h2>
         {userEmail && (
           <p className="text-[9px] text-[#3A3A3A] tracking-[0.2em] uppercase mb-3">
