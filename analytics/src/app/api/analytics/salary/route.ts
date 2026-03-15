@@ -7,18 +7,27 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const sb = createServerClient();
-    const { data, error } = await sb.rpc("analytics_salary_strings");
-    if (error) throw error;
+
+    // Fetch salary strings and total unique job count in parallel
+    const [salaryRes, overviewRes] = await Promise.all([
+      sb.rpc("analytics_salary_strings"),
+      sb.rpc("analytics_overview"),
+    ]);
+    if (salaryRes.error) throw salaryRes.error;
+
+    const totalJobs = overviewRes.error
+      ? undefined
+      : (overviewRes.data as { total: number })?.total;
 
     // Expand grouped salary strings back into individual rows for aggregateSalary
-    const rows = (data as { salary: string; count: number }[]).flatMap((r) =>
+    const rows = (salaryRes.data as { salary: string; count: number }[]).flatMap((r) =>
       Array.from({ length: Number(r.count) }, (_, i) => ({
         external_id: `${r.salary}-${i}`,
         salary: r.salary,
       }))
     );
 
-    const result = aggregateSalary(rows);
+    const result = aggregateSalary(rows, totalJobs);
     return NextResponse.json(result);
   } catch (err) {
     console.error("[analytics/salary]", err);

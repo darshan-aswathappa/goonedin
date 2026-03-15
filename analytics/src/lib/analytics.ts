@@ -128,7 +128,8 @@ const SALARY_BUCKETS = [
 ];
 
 export function aggregateSalary(
-  rows: { salary?: string | null; external_id: string }[]
+  rows: { salary?: string | null; external_id: string }[],
+  totalJobs?: number
 ): SalaryResult {
   const counts = Array(SALARY_BUCKETS.length).fill(0);
   let listedCount = 0;
@@ -181,7 +182,7 @@ export function aggregateSalary(
         : Math.round(sorted[mid]);
   }
 
-  const total = listedCount + unlistedCount;
+  const total = totalJobs ?? (listedCount + unlistedCount);
   const listedRate = total > 0 ? Math.round((listedCount / total) * 100) : 0;
 
   return { buckets, listedCount, unlistedCount, listedRate, medianEstimate };
@@ -403,7 +404,7 @@ export function fillDateRange(
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     result.push({ day: key, count: map.get(key) ?? 0 });
   }
 
