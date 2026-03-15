@@ -78,7 +78,7 @@ export default function WeekdayChart({ data, peakDay }: Props) {
               tickLine={false}
               width={30}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
             <Bar dataKey="count" radius={[2, 2, 0, 0]} animationDuration={600}>
               {data.map((entry, i) => (
                 <Cell

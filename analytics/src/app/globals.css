@@ -187,6 +187,8 @@ body {
 /* Recharts overrides */
 .recharts-tooltip-wrapper {
   outline: none !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 .recharts-default-tooltip {

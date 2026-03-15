@@ -14,6 +14,7 @@ import { OnboardingModal } from "./OnboardingModal";
 import { LocationFilterInput } from "./LocationFilterInput";
 import { ScrapeCountdown } from "./ScrapeCountdown";
 import { ErrorBanner } from "./ErrorBanner";
+import { AnalyticsPanel } from "./AnalyticsPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuth, getAuthHeaders } from "@/hooks/useAuth";
@@ -352,6 +353,7 @@ export function JobsDashboard() {
           )}
 
           <TabsContent value="all" className="mt-0">
+            {jobs.length > 0 && <AnalyticsPanel jobs={jobs} />}
             <JobList
               jobs={jobs}
               emptyMessage="No jobs yet. We're searching now—check back soon."

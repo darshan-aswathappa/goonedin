@@ -160,7 +160,7 @@ export default function SalaryChart({
                 tickLine={false}
                 width={72}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Bar dataKey="count" radius={[0, 2, 2, 0]} animationDuration={600}>
                 {buckets.map((entry, i) => (
                   <Cell
