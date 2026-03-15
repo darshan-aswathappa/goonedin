@@ -51,7 +51,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 import Link from "next/link";
 
 const TAB_BASE =
-  "brutal-border rounded-none px-2 sm:px-4 py-2 sm:py-3 heading-brutal text-xs sm:text-sm shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0";
+  "brutal-border rounded-none px-2 sm:px-3 py-1 sm:py-1.5 heading-brutal text-xs sm:text-sm shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] brutal-btn-hover whitespace-nowrap shrink-0";
 
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
@@ -173,8 +173,8 @@ export function JobsDashboard() {
   return (
     <div className="min-h-screen bg-background text-foreground font-medium transition-colors duration-300">
       <header className="brutal-border border-t-0 border-l-0 border-r-0 bg-card sticky top-0 z-40">
-        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
-          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="container mx-auto px-2 sm:px-3 py-1 sm:py-1.5">
+          <div className="flex flex-col gap-1.5 sm:gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="brutal-border bg-primary p-1.5 sm:p-2 shadow-[2px_2px_0px_0px_var(--border)]">
                 <Briefcase weight="fill" className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -241,7 +241,7 @@ export function JobsDashboard() {
 
       {user && <OnboardingModal userEmail={user.email} />}
 
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3">
         {!user && <CompanyTicker />}
 
         {apiError && (
@@ -253,10 +253,10 @@ export function JobsDashboard() {
           />
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-6 sm:mt-8" : "w-full"}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-2 sm:mt-3" : "w-full"}>
           {user && (
-            <div className="relative flex items-center gap-1 sm:gap-3 w-full mb-6 sm:mb-10">
-              <TabsList className="flex flex-nowrap h-auto gap-0.5 sm:gap-2 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-1 sm:pb-2">
+            <div className="relative flex items-center gap-1 sm:gap-2 w-full mb-2 sm:mb-3">
+              <TabsList className="flex flex-nowrap h-auto gap-0.5 sm:gap-1 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full pb-0.5 sm:pb-1">
                 <TabsTrigger
                 value="all"
                 className={`${TAB_BASE} data-[state=active]:bg-primary data-[state=active]:text-white`}
@@ -344,7 +344,7 @@ export function JobsDashboard() {
 
               </TabsList>
 
-              <div className="shrink-0 pb-1 sm:pb-2">
+              <div className="shrink-0 pb-0.5 sm:pb-1">
                 <AddJobSourceModal onSuccess={(id: string) => setActiveTab(id)} />
               </div>
               <div className="pointer-events-none absolute right-8 top-0 h-full w-10 bg-gradient-to-l from-background to-transparent md:hidden" aria-hidden="true" />
@@ -362,8 +362,8 @@ export function JobsDashboard() {
           </TabsContent>
 
           <TabsContent value="location" className="mt-0">
-            <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-border border-dotted sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-0.5 sm:gap-1">
+            <div className="flex flex-col gap-1 sm:gap-2 mb-2 sm:mb-3 pb-1 sm:pb-2 border-b-4 border-border border-dotted sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-0.5">
                 <span className="font-black uppercase tracking-tighter text-base sm:text-xl">
                   {locationFilterNormalized?.full_name || "Location Filter"}
                 </span>
@@ -389,7 +389,7 @@ export function JobsDashboard() {
 
           <TabsContent value="linkedin" className="mt-0">
             {nextLinkedinScrape && (
-              <div className="mb-4">
+              <div className="mb-1.5">
                 <ScrapeCountdown nextScrapeAt={nextLinkedinScrape} />
               </div>
             )}
@@ -434,8 +434,8 @@ export function JobsDashboard() {
             const progressPercent = status === "pending" ? 10 : status === "fetching" ? 40 : status === "parsing" ? 75 : 100;
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
-                <div className="flex flex-col gap-2 sm:gap-3 mb-4 sm:mb-6 pb-2 sm:pb-3 border-b-4 border-border border-dotted sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-col gap-0.5 sm:gap-1">
+                <div className="flex flex-col gap-1 sm:gap-2 mb-2 sm:mb-3 pb-1 sm:pb-2 border-b-4 border-border border-dotted sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-0.5">
                      <span className="font-black uppercase tracking-tighter text-base sm:text-xl">{source.name}</span>
                      <span className="font-bold text-xs text-muted-foreground flex gap-1 sm:gap-2 flex-wrap">
                         <span className="brutal-badge bg-yellow-100 dark:bg-yellow-900/50 text-foreground">{source.interval_minutes}m</span>
@@ -468,7 +468,7 @@ export function JobsDashboard() {
                 </div>
 
                 {(isProcessing || isError) && (
-                  <div className={`brutal-border mb-4 sm:mb-6 p-3 sm:p-4 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] ${
+                  <div className={`brutal-border mb-2 sm:mb-3 p-2 sm:p-3 shadow-[2px_2px_0px_0px_var(--border)] sm:shadow-[4px_4px_0px_0px_var(--border)] ${
                     isError ? "bg-destructive/10 dark:bg-destructive/20 border-destructive" : "bg-card"
                   }`}>
                     <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">

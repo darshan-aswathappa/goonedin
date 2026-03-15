@@ -196,7 +196,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
     <>
       <div
         onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
-        className={`group relative brutal-border brutal-shadow bg-card p-3 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
+        className={`group relative brutal-border brutal-shadow bg-card p-2 transition-all duration-100 hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0px_0px_var(--border)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[2px_2px_0px_0px_var(--border)] h-full flex flex-col ${
           isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
         } ${isExiting ? "animate-card-exit" : ""}`}
       >
@@ -210,7 +210,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
           {job.source}
         </div>
 
-        <div className="flex flex-col h-full space-y-1.5 sm:space-y-2">
+        <div className="flex flex-col h-full space-y-1">
           <div className="space-y-0.5 pr-10 sm:pr-12 min-w-0">
             <h3 className="text-sm sm:text-xl heading-brutal leading-tight line-clamp-3 sm:line-clamp-2 break-words">
               {job.title}
@@ -221,7 +221,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-1 border-t border-border pt-1.5">
+          <div className="grid grid-cols-1 gap-0.5 border-t border-border pt-1">
             <div className="flex items-center gap-2 text-xs font-medium min-w-0">
               <MapPin weight="bold" className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate mono-data">{job.location}</span>
@@ -254,7 +254,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
             })()}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 sm:gap-2 pt-1.5 mt-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-1 pt-1 mt-auto">
             <TooltipProvider>
             <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
               <Tooltip>
