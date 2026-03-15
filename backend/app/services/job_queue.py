@@ -3,6 +3,11 @@ Job analysis cache and queue management using Supabase tables.
 
 This centralizes AI analysis at the job description level (by external_id),
 avoiding duplicate DeepSeek API calls when multiple users see the same job.
+
+Embedding hook:
+  write_analysis_to_cache() calls knowledge_base_service.embed_text() after
+  a successful cache write.  Embedding failure is non-fatal — it is logged
+  and silently skipped so a transient OpenAI error never blocks job analysis.
 """
 
 import asyncio
@@ -68,7 +73,13 @@ async def write_analysis_to_cache(
     salary: Optional[str],
     visa: Optional[str],
 ) -> bool:
-    """Write (or create) cache entry with completed analysis results."""
+    """Write (or create) cache entry with completed analysis results.
+
+    After a successful Supabase upsert, attempts to generate and store an
+    embedding for the job via knowledge_base_service.  Embedding failure is
+    intentionally non-fatal — it is logged at WARNING level and silently
+    skipped so a transient OpenAI error never blocks job analysis delivery.
+    """
     try:
         logger.info(f"[CacheWrite] Starting write_analysis_to_cache for {external_id}")
         row = {
@@ -87,6 +98,52 @@ async def write_analysis_to_cache(
             .execute()
         )
         logger.info(f"[CacheWrite] Successfully wrote cache for {external_id}. Result: {result}")
+
+        # ---- Embedding: non-blocking, non-fatal ----
+        # Import here (not at module top) to avoid a circular import at cold start,
+        # because knowledge_base_service itself imports from config which imports
+        # nothing from services.  The lazy import is also guarded by a try/except
+        # so a missing OPENAI_API_KEY or import error is fully silent.
+        try:
+            from app.services.knowledge_base_service import (
+                build_job_embedding_text,
+                embed_text,
+            )
+            from app.core.config import get_settings
+            _settings = get_settings()
+            if _settings.OPENAI_API_KEY:
+                embed_record = {
+                    "external_id": external_id,
+                    "job_url": job_url,
+                    "analysis": json.dumps(analysis) if analysis else None,
+                    "salary": salary,
+                    "visa": visa,
+                }
+                text = build_job_embedding_text(embed_record)
+                if text.strip():
+                    vector = await embed_text(text)
+                    if vector is not None:
+                        # Write embedding back via direct Supabase upsert.
+                        # We store the vector as a JSON array string; pgvector
+                        # accepts text input cast to vector type.
+                        import json as _json
+                        vector_str = _json.dumps(vector)
+                        await asyncio.to_thread(
+                            lambda: supabase.table("job_analysis_cache")
+                            .update({"embedding": vector_str})
+                            .eq("external_id", external_id)
+                            .execute()
+                        )
+                        logger.debug(
+                            f"[CacheWrite] Embedding stored for {external_id} "
+                            f"({len(vector)} dims)"
+                        )
+        except Exception as embed_err:
+            # Non-fatal — analysis is already persisted above
+            logger.warning(
+                f"[CacheWrite] Embedding failed for {external_id} (non-fatal): {embed_err}"
+            )
+
         return True
     except Exception as e:
         logger.error(f"[CacheWrite] write_analysis_to_cache FAILED for {external_id}: {e}", exc_info=True)

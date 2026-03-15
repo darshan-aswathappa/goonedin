@@ -243,6 +243,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          <div data-section="who-where" />
           <SectionGuide label="WHO & WHERE" description="Top employers and geographic hotspots" />
 
           {/* Row 3: Companies + Locations */}
@@ -277,6 +278,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          <div data-section="skills" />
           <SectionGuide label="SKILLS" description="Technical skills, nice-to-haves, and posting patterns" />
 
           {/* Row 4: Skills + Good-to-Have + Heatmap */}
@@ -474,6 +476,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          <div data-section="compensation" />
           <SectionGuide label="COMPENSATION" description="Salary ranges and title keyword analysis" />
 
           {/* Row 8: Salary + Title Keywords */}
@@ -511,6 +514,7 @@ export default async function DashboardPage() {
             )}
           </div>
 
+          <div data-section="system" />
           <SectionGuide label="SYSTEM" description="Pipeline health and AI-generated market insights" />
 
           {/* Row 9: Queue Health + Intel Panel */}

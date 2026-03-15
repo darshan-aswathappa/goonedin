@@ -76,7 +76,7 @@ export function LocationFilterInput() {
         onChange={(e) => setInput(e.target.value)}
         placeholder={locationFilterLocation || "Location"}
         title="Search location (e.g., CA, Massachusetts, NYC, 10001)"
-        className="brutal-border w-full pl-7 sm:pl-9 pr-7 sm:pr-9 py-1.5 sm:py-2.5 text-xs sm:text-sm font-bold bg-card shadow-[1px_1px_0px_0px_var(--border)] sm:shadow-[2px_2px_0px_0px_var(--border)] focus:outline-none placeholder:text-muted-foreground/60 focus:shadow-none h-9 sm:h-auto"
+        className="border border-border w-full pl-7 sm:pl-9 pr-7 sm:pr-9 py-1.5 sm:py-2.5 text-xs sm:text-sm font-bold bg-card focus:outline-none focus:border-[#ff8c00] placeholder:text-muted-foreground/60 transition-colors h-9 sm:h-auto"
         disabled={loading}
       />
       {locationFilterLocation && (

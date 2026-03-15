@@ -95,8 +95,32 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
         )}
       </div>
 
-      {/* Right: Clock + Refresh */}
+      {/* Right: Shortcuts + Clock + Refresh */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px", justifyContent: "flex-end" }}>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "8px",
+            color: "var(--muted)",
+            border: "1px solid var(--border)",
+            padding: "2px 6px",
+            letterSpacing: "0.08em",
+          }}
+        >
+          / COMMANDS
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "8px",
+            color: "var(--muted)",
+            border: "1px solid var(--border)",
+            padding: "2px 6px",
+            letterSpacing: "0.08em",
+          }}
+        >
+          \u2318J AI
+        </span>
         {onRefresh && (
           <button
             onClick={onRefresh}

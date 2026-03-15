@@ -66,6 +66,7 @@ from app.services.resume_analyzer import enqueue_resume_analysis, process_resume
 from app.services.job_analyzer import run_job_analysis
 from app.services.job_queue import get_cache_entry, create_cache_entry, enqueue_job
 from app.services.job_queue_worker import process_job_analysis_queue
+from app.api.knowledge_base import router as kb_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
@@ -135,6 +136,10 @@ async def lifespan(app: FastAPI):
     # Job analysis queue processor task (global, handles all users)
     job_queue_task = asyncio.create_task(process_job_analysis_queue(supabase))
 
+    # Start knowledge base embedding backfill (runs in background, non-blocking)
+    from app.services.knowledge_base_service import backfill_embeddings, close_pool
+    asyncio.create_task(backfill_embeddings(supabase))
+
     try:
         contexts = await load_all_users()
         for ctx in contexts:
@@ -158,6 +163,9 @@ async def lifespan(app: FastAPI):
         if ctx.location_task and not ctx.location_task.done():
             ctx.location_task.cancel()
 
+    # Gracefully close the asyncpg read-only pool used by the knowledge base
+    await close_pool()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -175,6 +183,7 @@ app.add_middleware(
 )
 
 app.include_router(websocket.router)
+app.include_router(kb_router)
 
 @app.get("/api/health")
 async def health():

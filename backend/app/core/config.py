@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     # --- QUEUE WORKER ---
     ANALYSIS_WORKER_CONCURRENCY: int = int(os.getenv("ANALYSIS_WORKER_CONCURRENCY", "3"))
 
+    # --- KNOWLEDGE BASE / AI QUERY ---
+    # OpenAI key for text-embedding-3-small (DeepSeek does not offer embeddings)
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    # asyncpg DSN for the read-only Postgres role used by the AI query layer.
+    # Format: postgresql+asyncpg://role:password@host:port/dbname
+    AI_READONLY_DB_URL: str = os.getenv("AI_READONLY_DB_URL", "")
+    # Max rows the AI SQL layer is allowed to return per query (safety cap)
+    KB_SQL_ROW_LIMIT: int = int(os.getenv("KB_SQL_ROW_LIMIT", "500"))
+    # TTL in seconds for the in-process embedding cache
+    KB_EMBED_CACHE_TTL: int = int(os.getenv("KB_EMBED_CACHE_TTL", "3600"))
+
     class Config:
         case_sensitive = True
         env_file = ".env"
