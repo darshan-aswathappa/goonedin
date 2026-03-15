@@ -85,8 +85,8 @@ export default function BootSequence() {
 
   useEffect(() => {
     if (!visible) return;
-    const handler = () => {
-      if (visibleLines >= BOOT_LINES.length) {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape" || visibleLines >= BOOT_LINES.length) {
         dismiss();
       }
     };

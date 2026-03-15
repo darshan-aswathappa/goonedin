@@ -24,7 +24,6 @@ import ExperienceDistribution from "@/components/ExperienceDistribution";
 import SalaryByLocationChart from "@/components/SalaryByLocationChart";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
 import BootSequence from "@/components/BootSequence";
-import PanelHint from "@/components/PanelHint";
 import EmptyPanel from "@/components/EmptyPanel";
 import SectionGuide from "@/components/SectionGuide";
 import SafePanel from "@/components/SafePanel";
@@ -148,8 +147,6 @@ export default async function DashboardPage() {
   ]);
 
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
-
-  const hasJobs = (overview?.total ?? 0) > 0;
 
   return (
     <>
@@ -557,7 +554,7 @@ export default async function DashboardPage() {
             justifyContent: "space-between",
             alignItems: "center",
             fontFamily: "var(--font-mono)",
-            fontSize: "8px",
+            fontSize: "9px",
             color: "var(--muted)",
             letterSpacing: "0.1em",
           }}

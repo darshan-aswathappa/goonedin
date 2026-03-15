@@ -331,6 +331,16 @@ body {
   color: var(--muted);
 }
 
+.filter-btn:hover:not([data-active="true"]) {
+  color: var(--text-dim);
+  border-color: var(--border-bright);
+}
+
+.filter-btn:focus-visible {
+  outline: 1px solid var(--teal);
+  outline-offset: 1px;
+}
+
 .filter-btn[data-active="true"] {
   background: var(--teal-dim);
   color: var(--teal);
@@ -354,6 +364,11 @@ body {
 .ghost-btn:hover {
   color: var(--teal);
   border-color: var(--teal);
+}
+
+.ghost-btn:focus-visible {
+  outline: 1px solid var(--teal);
+  outline-offset: 1px;
 }
 
 /* ── Stat callout (QueueHealth, VisaStats, SalaryChart) ──────────── */

@@ -73,7 +73,7 @@ export default function SalaryByLocationChart({ cities }: Props) {
                     accentColor="var(--green)"
                     formatLabel={(p) => p?.city ?? ""}
                     formatValue={(_, p) =>
-                      `$${p?.median?.toLocaleString()} median\nn=${p?.count} jobs`
+                      `$${p?.median?.toLocaleString()} median · n=${p?.count} jobs`
                     }
                   />
                 }
