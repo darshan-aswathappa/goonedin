@@ -11,7 +11,8 @@ export async function GET() {
     const { data: cacheRows, error } = await sb
       .from("job_analysis_cache")
       .select("external_id, analysis")
-      .eq("analysis_status", "completed");
+      .eq("analysis_status", "completed")
+      .limit(50000);
 
     if (error) throw error;
 

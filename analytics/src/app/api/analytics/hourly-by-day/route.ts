@@ -17,7 +17,8 @@ export async function GET() {
       // Try a direct query approach
       const { data: fallbackData, error: fallbackError } = await sb
         .from("scraped_jobs")
-        .select("created_at");
+        .select("created_at")
+        .limit(50000);
 
       if (fallbackError) throw fallbackError;
 
