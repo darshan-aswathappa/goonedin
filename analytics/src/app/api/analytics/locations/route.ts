@@ -27,8 +27,7 @@ export async function GET() {
 
     const locations = Object.entries(freq)
       .map(([city, count]) => ({ city, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15);
+      .sort((a, b) => b.count - a.count);
 
     return NextResponse.json({ locations });
   } catch (err) {

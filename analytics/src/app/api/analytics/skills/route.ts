@@ -64,8 +64,7 @@ export async function GET() {
     }
     const softSkills = Object.entries(softFreq)
       .map(([skill, count]) => ({ skill, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15);
+      .sort((a, b) => b.count - a.count);
 
     const cooccurrencePairs = cooccRes.error
       ? []
