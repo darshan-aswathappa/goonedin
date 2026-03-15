@@ -20,6 +20,10 @@ import QueueHealth from "@/components/QueueHealth";
 import SkillCooccurrence from "@/components/SkillCooccurrence";
 import TimeDistributionChart from "@/components/TimeDistributionChart";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
+import BootSequence from "@/components/BootSequence";
+import PanelHint from "@/components/PanelHint";
+import EmptyPanel from "@/components/EmptyPanel";
+import SectionGuide from "@/components/SectionGuide";
 
 export const revalidate = 60;
 
@@ -121,8 +125,11 @@ export default async function DashboardPage() {
 
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
 
+  const hasJobs = (overview?.total ?? 0) > 0;
+
   return (
     <>
+      <BootSequence />
       <ScanlineOverlay />
       <div
         style={{
@@ -190,6 +197,8 @@ export default async function DashboardPage() {
             />
           </div>
 
+          <SectionGuide label="VOLUME" description="How many jobs are being posted over time" />
+
           {/* Row 2: Volume + Sources */}
           <div
             style={{
@@ -199,8 +208,18 @@ export default async function DashboardPage() {
               height: "240px",
             }}
           >
-            <JobVolumeChart data={timeline?.timeline ?? []} />
+            {(timeline?.timeline ?? []).length > 0 ? (
+              <JobVolumeChart data={timeline?.timeline ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Job Volume"
+                message="Awaiting timeline data"
+                suggestion="This chart shows daily job posting volume with 7/14/30/90-day range filters."
+              />
+            )}
           </div>
+
+          <SectionGuide label="WHO & WHERE" description="Top employers and geographic hotspots" />
 
           {/* Row 3: Companies + Locations */}
           <div
@@ -211,9 +230,27 @@ export default async function DashboardPage() {
               height: "300px",
             }}
           >
-            <CompanyLeaderboard data={companies?.topCompanies ?? []} />
-            <LocationChart data={locations?.locations ?? []} />
+            {(companies?.topCompanies ?? []).length > 0 ? (
+              <CompanyLeaderboard data={companies?.topCompanies ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Top Companies"
+                message="No company data yet"
+                suggestion="Shows which employers post the most jobs. Requires AI analysis."
+              />
+            )}
+            {(locations?.locations ?? []).length > 0 ? (
+              <LocationChart data={locations?.locations ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Locations"
+                message="No location data yet"
+                suggestion="Geographic distribution of job postings. Populated from AI analysis."
+              />
+            )}
           </div>
+
+          <SectionGuide label="SKILLS" description="Technical skills, nice-to-haves, and posting patterns" />
 
           {/* Row 4: Skills + Good-to-Have + Heatmap */}
           <div
@@ -224,8 +261,24 @@ export default async function DashboardPage() {
               height: "280px",
             }}
           >
-            <SkillsFrequency data={skills?.techSkills ?? []} />
-            <GoodToHavePanel data={skills?.goodToHave ?? []} />
+            {(skills?.techSkills ?? []).length > 0 ? (
+              <SkillsFrequency data={skills?.techSkills ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Technical Skills"
+                message="No skill data yet"
+                suggestion="Top programming languages, frameworks, and tools extracted from job descriptions."
+              />
+            )}
+            {(skills?.goodToHave ?? []).length > 0 ? (
+              <GoodToHavePanel data={skills?.goodToHave ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Good to Have"
+                message="No data yet"
+                suggestion="Nice-to-have skills that appear frequently but aren't hard requirements."
+              />
+            )}
             <PostingHeatmap data={companies?.hourlyDistribution ?? []} />
           </div>
 
@@ -238,9 +291,27 @@ export default async function DashboardPage() {
               height: "280px",
             }}
           >
-            <SoftSkillsPanel data={skills?.softSkills ?? []} />
-            <SkillCooccurrence data={skills?.cooccurrencePairs ?? []} />
+            {(skills?.softSkills ?? []).length > 0 ? (
+              <SoftSkillsPanel data={skills?.softSkills ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Soft Skills"
+                message="No data yet"
+                suggestion="Communication, leadership, and other soft skills from job descriptions."
+              />
+            )}
+            {(skills?.cooccurrencePairs ?? []).length > 0 ? (
+              <SkillCooccurrence data={skills?.cooccurrencePairs ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Skill Co-occurrence"
+                message="No data yet"
+                suggestion="Shows which skills are commonly requested together in the same posting."
+              />
+            )}
           </div>
+
+          <SectionGuide label="TIMING & LEVELS" description="Seniority distribution and when jobs get posted" />
 
           {/* Row 6: Seniority + Weekday + Time Distribution */}
           <div
@@ -251,13 +322,31 @@ export default async function DashboardPage() {
               height: "240px",
             }}
           >
-            <SeniorityChart data={seniority?.seniority ?? []} />
-            <WeekdayChart
-              data={weekday?.weekday ?? []}
-              peakDay={weekday?.peakDay ?? null}
-            />
+            {(seniority?.seniority ?? []).length > 0 ? (
+              <SeniorityChart data={seniority?.seniority ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Seniority"
+                message="No data yet"
+                suggestion="Entry, mid, senior, and lead-level role distribution."
+              />
+            )}
+            {(weekday?.weekday ?? []).length > 0 ? (
+              <WeekdayChart
+                data={weekday?.weekday ?? []}
+                peakDay={weekday?.peakDay ?? null}
+              />
+            ) : (
+              <EmptyPanel
+                title="Posting Days"
+                message="No data yet"
+                suggestion="Which days of the week have the most job postings."
+              />
+            )}
             <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
           </div>
+
+          <SectionGuide label="VISA & FUNCTIONS" description="Sponsorship rates and job function breakdown" />
 
           {/* Row 7: Visa + Job Functions */}
           <div
@@ -268,13 +357,31 @@ export default async function DashboardPage() {
               height: "260px",
             }}
           >
-            <VisaStats
-              data={visa?.visa ?? []}
-              sponsorshipRate={visa?.sponsorshipRate ?? 0}
-              total={visa?.total ?? 0}
-            />
-            <JobFunctionsChart data={seniority?.jobFunctions ?? []} />
+            {(visa?.visa ?? []).length > 0 ? (
+              <VisaStats
+                data={visa?.visa ?? []}
+                sponsorshipRate={visa?.sponsorshipRate ?? 0}
+                total={visa?.total ?? 0}
+              />
+            ) : (
+              <EmptyPanel
+                title="Visa Sponsorship"
+                message="No visa data yet"
+                suggestion="Shows the proportion of jobs offering H-1B or other visa sponsorship."
+              />
+            )}
+            {(seniority?.jobFunctions ?? []).length > 0 ? (
+              <JobFunctionsChart data={seniority?.jobFunctions ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Job Functions"
+                message="No data yet"
+                suggestion="Engineering, product, design, and other function distribution."
+              />
+            )}
           </div>
+
+          <SectionGuide label="COMPENSATION" description="Salary ranges and title keyword analysis" />
 
           {/* Row 8: Salary + Title Keywords */}
           <div
@@ -285,14 +392,32 @@ export default async function DashboardPage() {
               height: "260px",
             }}
           >
-            <SalaryChart
-              buckets={salary?.buckets ?? []}
-              listedRate={salary?.listedRate ?? 0}
-              listedCount={salary?.listedCount ?? 0}
-              medianEstimate={salary?.medianEstimate ?? null}
-            />
-            <TitleKeywordsPanel data={seniority?.titleKeywords ?? []} />
+            {(salary?.buckets ?? []).length > 0 ? (
+              <SalaryChart
+                buckets={salary?.buckets ?? []}
+                listedRate={salary?.listedRate ?? 0}
+                listedCount={salary?.listedCount ?? 0}
+                medianEstimate={salary?.medianEstimate ?? null}
+              />
+            ) : (
+              <EmptyPanel
+                title="Salary Ranges"
+                message="No salary data yet"
+                suggestion="Salary distribution buckets. Only available for postings that disclose compensation."
+              />
+            )}
+            {(seniority?.titleKeywords ?? []).length > 0 ? (
+              <TitleKeywordsPanel data={seniority?.titleKeywords ?? []} />
+            ) : (
+              <EmptyPanel
+                title="Title Keywords"
+                message="No data yet"
+                suggestion="Most common words in job titles across all postings."
+              />
+            )}
           </div>
+
+          <SectionGuide label="SYSTEM" description="Pipeline health and AI-generated market insights" />
 
           {/* Row 9: Queue Health + Intel Panel */}
           <div
