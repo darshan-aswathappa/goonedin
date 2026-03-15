@@ -33,3 +33,4 @@ openai>=1.0.0
 
 curl_cffi
 asyncpg
+sqlglot>=18.0.0

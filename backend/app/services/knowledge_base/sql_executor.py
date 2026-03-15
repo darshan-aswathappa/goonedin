@@ -13,7 +13,8 @@ Handles:
 SECURITY MODEL:
   The database does most of the heavy lifting:
     - ai_kb_reader role has SELECT-only on safe tables, nothing on PII tables
-    - ai_kb_reader has BYPASSRLS so aggregate queries work
+    - ai_kb_reader has explicit RLS policies (migration 007) for SELECT on safe tables
+      (BYPASSRLS is ignored by Supabase for non-superuser roles)
     - All mutations fail at the privilege level before reaching this code
   This Python layer is defense-in-depth, not the primary control.
 
@@ -46,9 +47,10 @@ settings = get_settings()
 # ---------------------------------------------------------------------------
 
 # Maximum rows returned to the LLM. Prevents token blowout.
-# The HNSW similarity search hard-caps at 50 inside the RPC function.
-# For raw SQL the wrapper enforces this at the Python level too.
-MAX_RESULT_ROWS = 50
+# Reads from KB_SQL_ROW_LIMIT in config (default 500).
+# The HNSW similarity search hard-caps at 50 inside the RPC function;
+# for raw SQL the wrapper enforces the configured limit at the Python level.
+MAX_RESULT_ROWS = settings.KB_SQL_ROW_LIMIT
 
 # Hard query timeout enforced both server-side (SET LOCAL statement_timeout)
 # and client-side (asyncio.wait_for). The server-side timeout fires first
@@ -227,8 +229,8 @@ def _validate_sql_ast(sql: str) -> None:
         if statement is None:
             continue
 
-        # Only SELECT and CTE-backed SELECT are allowed
-        if not isinstance(statement, (exp.Select, exp.With)):
+        # Only SELECT, CTE-backed SELECT, and UNION queries are allowed
+        if not isinstance(statement, (exp.Select, exp.With, exp.Union)):
             raise SQLSecurityError(
                 f"Only SELECT statements are allowed. Got: {type(statement).__name__}"
             )
@@ -244,9 +246,13 @@ def _validate_sql_ast(sql: str) -> None:
         # Walk the full AST and check for any DML/DDL node types
         forbidden_node_types = (
             exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create,
-            exp.AlterTable, exp.Grant, exp.Revoke, exp.Command,
-            exp.Truncate,
+            exp.Grant, exp.Command,
         )
+        # Add optional types that vary across sqlglot versions
+        for attr_name in ("AlterTable", "Alter", "Revoke", "Truncate"):
+            cls = getattr(exp, attr_name, None)
+            if cls:
+                forbidden_node_types = (*forbidden_node_types, cls)
         for node in statement.walk():
             if isinstance(node, forbidden_node_types):
                 raise SQLSecurityError(
@@ -258,10 +264,26 @@ def _validate_sql_ast(sql: str) -> None:
 def validate_sql_security(sql: str) -> None:
     """
     Full security validation pipeline. Call this before any database interaction.
+    Layer 0: length + structural checks (instant)
     Layer 1: regex pre-filter (fast)
     Layer 2: sqlglot AST check (authoritative)
     Layer 3: database role privileges (enforced by PostgreSQL, final backstop)
     """
+    # --- Layer 0: Length cap ---
+    if len(sql) > 4096:
+        raise SQLSecurityError("Query exceeds maximum length of 4096 characters")
+
+    # --- Layer 0: Multi-statement / comment injection ---
+    stripped = sql.strip().rstrip(";")
+    if ";" in stripped:
+        raise SQLSecurityError(
+            "Multiple statements (semicolons) are not permitted"
+        )
+    if "--" in sql or "/*" in sql:
+        raise SQLSecurityError(
+            "SQL comments (-- or /* */) are not permitted in queries"
+        )
+
     _validate_sql_regex(sql)
     _validate_sql_ast(sql)
 
@@ -442,19 +464,22 @@ async def execute_query(
         if _needs_role_switch():
             await conn.execute("SET ROLE ai_kb_reader")
 
-        # --- Layer 5 (server-side): Statement timeout ---
-        # SET LOCAL scopes the timeout to this transaction only.
-        # Even if the client disconnects, PostgreSQL enforces the timeout.
-        await conn.execute(
-            f"SET LOCAL statement_timeout = '{QUERY_TIMEOUT_MS}'"
-        )
+        # Supabase installs pgvector in the 'extensions' schema
+        await conn.execute("SET search_path TO public, extensions")
 
+        # --- Layer 5 (server-side): Statement timeout ---
+        # SET LOCAL only works inside a transaction block. We use an explicit
+        # transaction so the timeout is scoped and auto-resets on commit/rollback.
         # --- Execute ---
         try:
-            rows = await asyncio.wait_for(
-                conn.fetch(positional_sql, *positional_values),
-                timeout=timeout,
-            )
+            async with conn.transaction():
+                await conn.execute(
+                    f"SET LOCAL statement_timeout = '{QUERY_TIMEOUT_MS}'"
+                )
+                rows = await asyncio.wait_for(
+                    conn.fetch(positional_sql, *positional_values),
+                    timeout=timeout,
+                )
         except asyncio.TimeoutError:
             raise SQLExecutionError(
                 f"Query timed out after {timeout}s",
@@ -465,12 +490,12 @@ async def execute_query(
             # This fires when the LLM tries to read a PII table that isn't
             # granted to ai_kb_reader. Treat as security violation.
             raise SQLSecurityError(
-                f"Query was blocked by database role privileges: {e}. "
+                f"Query was blocked by database role privileges. "
                 f"The table referenced may contain PII and is not accessible."
             )
         except asyncpg.PostgresError as e:
             raise SQLExecutionError(
-                f"PostgreSQL error: {e}",
+                "Query failed due to a database error",
                 original_sql=sql,
                 pg_error=str(e),
             )
@@ -570,13 +595,17 @@ async def execute_rpc(
         conn = await asyncio.wait_for(asyncpg.connect(dsn=dsn), timeout=5.0)
         if _needs_role_switch():
             await conn.execute("SET ROLE ai_kb_reader")
-        await conn.execute(f"SET LOCAL statement_timeout = '{QUERY_TIMEOUT_MS}'")
+        await conn.execute("SET search_path TO public, extensions")
 
         try:
-            rows = await asyncio.wait_for(
-                conn.fetch(call_sql, *positional_values),
-                timeout=timeout,
-            )
+            async with conn.transaction():
+                await conn.execute(
+                    f"SET LOCAL statement_timeout = '{QUERY_TIMEOUT_MS}'"
+                )
+                rows = await asyncio.wait_for(
+                    conn.fetch(call_sql, *positional_values),
+                    timeout=timeout,
+                )
         except asyncio.TimeoutError:
             raise SQLExecutionError(
                 f"RPC call timed out after {timeout}s",
@@ -585,7 +614,7 @@ async def execute_rpc(
             )
         except asyncpg.PostgresError as e:
             raise SQLExecutionError(
-                f"RPC error in {function_name}: {e}",
+                "RPC call failed due to a database error",
                 original_sql=call_sql,
                 pg_error=str(e),
             )

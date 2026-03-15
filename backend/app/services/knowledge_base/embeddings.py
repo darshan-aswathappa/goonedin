@@ -2,50 +2,13 @@
 pgvector semantic search layer for the GoOneIn knowledge base.
 
 Architecture decisions:
-  - Embedding model: text-embedding-3-small (OpenAI) via DeepSeek-compatible endpoint,
-    OR a local sentence-transformers model as fallback.
+  - Embedding model: text-embedding-3-small (OpenAI), 1536 dimensions.
   - We embed: title + summary + must_have_keywords + good_to_have_keywords per job.
     This gives the richest semantic surface without noise from raw job descriptions.
-  - Storage: pgvector extension in Supabase (job_embeddings table — see migration below).
-  - Retrieval: cosine similarity, top-K with configurable threshold.
+  - Storage: pgvector `embedding` column on `job_analysis_cache` table (migration 001).
+  - Index: HNSW with cosine distance (migration 001) — incremental, no re-indexing.
+  - Retrieval: `search_jobs_by_embedding` RPC (migration 005), cosine similarity, top-K.
   - Hybrid queries: vector results are filtered post-retrieval by SQL predicates.
-
-Required Supabase migration (run once):
-    CREATE EXTENSION IF NOT EXISTS vector;
-
-    CREATE TABLE job_embeddings (
-        external_id     TEXT PRIMARY KEY REFERENCES job_analysis_cache(external_id),
-        embedding       vector(1536),         -- matches text-embedding-3-small dimensions
-        embedded_text   TEXT,                 -- the text that was embedded (for debugging)
-        embedded_at     TIMESTAMPTZ DEFAULT NOW()
-    );
-
-    CREATE INDEX ON job_embeddings USING ivfflat (embedding vector_cosine_ops)
-        WITH (lists = 100);
-
-    -- Function for similarity search (called from Python)
-    CREATE OR REPLACE FUNCTION match_job_embeddings(
-        query_embedding  vector(1536),
-        match_threshold  float,
-        match_count      int
-    )
-    RETURNS TABLE (
-        external_id  TEXT,
-        similarity   float
-    )
-    LANGUAGE plpgsql
-    AS $$
-    BEGIN
-        RETURN QUERY
-        SELECT
-            je.external_id,
-            1 - (je.embedding <=> query_embedding) AS similarity
-        FROM job_embeddings je
-        WHERE 1 - (je.embedding <=> query_embedding) > match_threshold
-        ORDER BY je.embedding <=> query_embedding
-        LIMIT match_count;
-    END;
-    $$;
 """
 
 import asyncio
@@ -197,18 +160,17 @@ async def upsert_job_embedding(
     embedded_text: str,
 ) -> bool:
     """
-    Upsert a job embedding into the job_embeddings table.
-    Uses Supabase's REST API (supabase-py) since we don't need asyncpg here.
+    Store embedding on the job_analysis_cache row (migration 001 adds the column).
+    Uses Supabase's REST API (supabase-py).
     """
     try:
-        row = {
-            "external_id": external_id,
-            "embedding": embedding,  # supabase-py handles vector serialization
-            "embedded_text": embedded_text[:1000],  # Store truncated for debugging
-        }
         await asyncio.to_thread(
-            lambda: supabase.table("job_embeddings")
-            .upsert(row, on_conflict="external_id")
+            lambda: supabase.table("job_analysis_cache")
+            .update({
+                "embedding": embedding,
+                "embedding_generated_at": "now()",
+            })
+            .eq("external_id", external_id)
             .execute()
         )
         return True
@@ -305,14 +267,14 @@ async def search_similar_jobs(
         logger.error("[Embeddings] Could not embed query text — returning empty results")
         return []
 
-    # Step 2: call the RPC function for cosine similarity search
+    # Step 2: call the search_jobs_by_embedding RPC (migration 005)
     try:
         rpc_result = await asyncio.to_thread(
             lambda: supabase.rpc(
-                "match_job_embeddings",
+                "search_jobs_by_embedding",
                 {
                     "query_embedding": query_embedding,
-                    "match_threshold": similarity_threshold,
+                    "similarity_threshold": similarity_threshold,
                     "match_count": top_k,
                 },
             ).execute()
@@ -325,23 +287,12 @@ async def search_similar_jobs(
     if not matched:
         return []
 
-    # Step 3: fetch job details for the matching external_ids
+    # The RPC already returns enriched data (external_id, job_url, salary, visa, summary, must_have, similarity).
+    # We only need to fetch title/company from scraped_jobs for display.
     external_ids = [m["external_id"] for m in matched]
-    similarity_map = {m["external_id"]: m["similarity"] for m in matched}
-
-    try:
-        cache_resp = await asyncio.to_thread(
-            lambda: supabase.table("job_analysis_cache")
-            .select("external_id, job_url, analysis, salary, visa, analyzed_at")
-            .in_("external_id", external_ids)
-            .execute()
-        )
-        cache_rows = {r["external_id"]: r for r in (cache_resp.data or [])}
-    except Exception as e:
-        logger.error(f"[Embeddings] Failed to fetch cache rows after vector search: {e}")
-        cache_rows = {}
 
     # Fetch titles/companies from scraped_jobs (one representative row per external_id)
+    job_rows: dict[str, dict] = {}
     try:
         job_resp = await asyncio.to_thread(
             lambda: supabase.table("scraped_jobs")
@@ -349,45 +300,39 @@ async def search_similar_jobs(
             .in_("external_id", external_ids)
             .execute()
         )
-        # Keep one row per external_id (multiple users may have the same job)
-        job_rows: dict[str, dict] = {}
         for r in (job_resp.data or []):
             eid = r["external_id"]
             if eid not in job_rows:
                 job_rows[eid] = r
     except Exception as e:
         logger.error(f"[Embeddings] Failed to fetch job details after vector search: {e}")
-        job_rows = {}
 
-    # Step 4: assemble enriched results
+    # Assemble enriched results
     results = []
-    for eid in external_ids:
-        cache = cache_rows.get(eid, {})
+    for m in matched:
+        eid = m["external_id"]
         job = job_rows.get(eid, {})
-        analysis = cache.get("analysis") or {}
-        if isinstance(analysis, str):
+        must_have = m.get("must_have") or []
+        if isinstance(must_have, str):
             try:
-                analysis = json.loads(analysis)
+                must_have = json.loads(must_have)
             except Exception:
-                analysis = {}
+                must_have = []
 
         results.append({
             "external_id": eid,
-            "similarity": round(similarity_map.get(eid, 0.0), 4),
+            "similarity": round(m.get("similarity", 0.0), 4),
             "title": job.get("title", "Unknown"),
             "company": job.get("company", "Unknown"),
             "location": job.get("location", ""),
             "source": job.get("source", ""),
-            "url": cache.get("job_url", ""),
-            "salary": cache.get("salary"),
-            "visa": cache.get("visa"),
-            "summary": analysis.get("summary", ""),
-            "must_have_keywords": analysis.get("must_have_keywords", []),
-            "good_to_have_keywords": analysis.get("good_to_have_keywords", []),
+            "url": m.get("job_url", ""),
+            "salary": m.get("salary"),
+            "visa": m.get("visa"),
+            "summary": m.get("summary", ""),
+            "must_have_keywords": must_have,
         })
 
-    # Sort by similarity descending (RPC already sorts, but re-sort after enrichment)
-    results.sort(key=lambda x: x["similarity"], reverse=True)
     return results
 
 

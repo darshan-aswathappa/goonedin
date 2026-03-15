@@ -140,6 +140,9 @@ async def lifespan(app: FastAPI):
     from app.services.knowledge_base_service import backfill_embeddings, close_pool
     asyncio.create_task(backfill_embeddings(supabase))
 
+    from app.services.knowledge_base.conversation_memory import start_cleanup_task
+    start_cleanup_task()
+
     try:
         contexts = await load_all_users()
         for ctx in contexts:

@@ -2,9 +2,9 @@
 Knowledge Base API Router.
 
 Endpoints:
-  POST   /knowledge-base/query                 — main SSE streaming query endpoint
-  GET    /knowledge-base/sessions/{session_id} — fetch conversation history
-  DELETE /knowledge-base/sessions/{session_id} — clear session
+  POST   /knowledge-base/query                 - main SSE streaming query endpoint
+  GET    /knowledge-base/sessions/{session_id} - fetch conversation history
+  DELETE /knowledge-base/sessions/{session_id} - clear session
 
 Streaming design:
   The POST endpoint uses FastAPI StreamingResponse with media_type="text/event-stream".
@@ -21,37 +21,33 @@ Streaming design:
   GET-only and cannot carry a JSON request body).
 
 Auth:
-  All endpoints use Depends(get_current_user) — the same Supabase JWT pattern
+  All endpoints use Depends(get_current_user) - the same Supabase JWT pattern
   as every other protected endpoint in main.py.
 """
 
 from __future__ import annotations
 
 import logging
+import uuid
 from typing import AsyncIterator
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
 from app.core.auth import get_current_user
+from app.core.user_manager import get_supabase_client
 from app.models.knowledge_base import (
     ConversationTurn,
     KBQueryRequest,
-    QueryPlan,
-    QueryStrategy,
     SSEEvent,
     SSEEventType,
     SessionResponse,
 )
-from app.services.ai_orchestrator import (
-    append_turn,
-    classify_and_plan,
-    create_session,
+from app.services.knowledge_base.orchestrator import ask
+from app.services.knowledge_base.conversation_memory import (
+    get_session,
+    get_or_create_session,
     delete_session,
-    execute_plan,
-    get_session_turns,
-    synthesize_answer,
-    _sessions,
 )
 
 logger = logging.getLogger("KnowledgeBaseAPI")
@@ -72,6 +68,18 @@ def _sse_line(event: SSEEvent) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Phase-to-status message mapping
+# ---------------------------------------------------------------------------
+
+_PHASE_MESSAGES: dict[str, str] = {
+    "classifying": "Classifying your question...",
+    "querying": "Querying the database...",
+    "responding": "Generating answer...",
+    "synthesizing": "Synthesising answer...",
+}
+
+
+# ---------------------------------------------------------------------------
 # Core streaming generator
 # ---------------------------------------------------------------------------
 
@@ -80,85 +88,63 @@ async def _query_stream(
     user: dict,
 ) -> AsyncIterator[str]:
     """
-    Async generator that drives the full query pipeline and yields SSE lines.
+    Async generator that calls the orchestrator's ask() and translates
+    its events into SSE lines the frontend expects.
 
-    Steps:
-      1. Resolve or create session
-      2. classify_and_plan() → QueryPlan
-      3. execute_plan()       → raw data dict   (SQL + vector results)
-      4. synthesize_answer()  → streamed tokens
-      5. Persist turns to session history
+    Orchestrator events -> Frontend SSE events:
+      phase   -> SSEEvent(type=STATUS, message=...)
+      chunk   -> SSEEvent(type=CHUNK, text=...)
+      done    -> SSEEvent(type=DONE, session_id=..., rows_returned=..., query_plan=...)
+      error   -> SSEEvent(type=ERROR, message=...)
     """
-    # ---- Session management ----
-    session_id = request.session_id or create_session()
-    history = get_session_turns(session_id)
+    # Session management
+    session_id = request.session_id or str(uuid.uuid4())
+    user_id = user["user_id"]
+    supabase = get_supabase_client()
 
-    # ---- Step 1: classify ----
-    yield _sse_line(SSEEvent(type=SSEEventType.STATUS, message="Classifying your question..."))
+    # Ensure session exists in conversation memory
+    get_or_create_session(session_id, user_id)
 
-    plan: QueryPlan = await classify_and_plan(request.message, history)
-    logger.info(
-        f"[KB] user={user['user_id'][:8]} strategy={plan.strategy} "
-        f"rationale={plan.rationale!r}"
-    )
+    # Stream events from orchestrator and translate
+    async for event in ask(session_id=session_id, question=request.message, user_id=user_id, supabase=supabase):
+        event_type = event.get("type")
 
-    # ---- Chitchat fast path — skip DB entirely ----
-    if plan.strategy == QueryStrategy.CHITCHAT:
-        yield _sse_line(SSEEvent(type=SSEEventType.STATUS, message="Generating answer..."))
+        if event_type == "phase":
+            phase = event.get("phase", "")
+            # Build a human-readable status message
+            message = _PHASE_MESSAGES.get(phase, f"{phase.capitalize()}...")
 
-        full_answer: list[str] = []
-        async for token in synthesize_answer(request.message, {}, history):
-            full_answer.append(token)
-            yield _sse_line(SSEEvent(type=SSEEventType.CHUNK, text=token))
+            # Enrich querying message with query type
+            if phase == "querying":
+                query_type = event.get("query_type", "")
+                if query_type == "vector":
+                    message = "Running semantic search..."
+                elif query_type == "hybrid":
+                    message = "Querying the database and running semantic search..."
 
-        answer_text = "".join(full_answer)
-        append_turn(session_id, "user", request.message)
-        append_turn(session_id, "assistant", answer_text)
+            yield _sse_line(SSEEvent(type=SSEEventType.STATUS, message=message))
 
-        yield _sse_line(SSEEvent(
-            type=SSEEventType.DONE,
-            session_id=session_id,
-            rows_returned=0,
-            query_plan=plan.model_dump(exclude_none=True),
-        ))
-        return
+        elif event_type == "chunk":
+            yield _sse_line(SSEEvent(type=SSEEventType.CHUNK, text=event.get("content", "")))
 
-    # ---- Step 2: status events before DB call ----
-    if plan.strategy in (QueryStrategy.SQL_ONLY, QueryStrategy.HYBRID):
-        yield _sse_line(SSEEvent(type=SSEEventType.STATUS, message="Querying the database..."))
-    if plan.strategy in (QueryStrategy.VECTOR_ONLY, QueryStrategy.HYBRID):
-        yield _sse_line(SSEEvent(type=SSEEventType.STATUS, message="Running semantic search..."))
+        elif event_type == "done":
+            yield _sse_line(SSEEvent(
+                type=SSEEventType.DONE,
+                session_id=session_id,
+                rows_returned=event.get("rows_returned"),
+                query_plan={
+                    "query_type": event.get("query_type", "unknown"),
+                    "elapsed_ms": event.get("elapsed_ms"),
+                    "sql_query": event.get("sql_query"),
+                    "sql_time_ms": event.get("sql_time_ms"),
+                },
+            ))
 
-    # ---- Step 3: execute plan ----
-    data = await execute_plan(plan, request.message)
-
-    rows = data.get("rows_returned", 0)
-    if rows:
-        yield _sse_line(SSEEvent(
-            type=SSEEventType.STATUS,
-            message=f"Found {rows} result{'s' if rows != 1 else ''}. Synthesising answer...",
-        ))
-    else:
-        yield _sse_line(SSEEvent(type=SSEEventType.STATUS, message="Synthesising answer..."))
-
-    # ---- Step 4: streaming synthesis ----
-    full_answer = []
-    async for token in synthesize_answer(request.message, data, history):
-        full_answer.append(token)
-        yield _sse_line(SSEEvent(type=SSEEventType.CHUNK, text=token))
-
-    answer_text = "".join(full_answer)
-
-    # ---- Step 5: persist conversation turns ----
-    append_turn(session_id, "user", request.message)
-    append_turn(session_id, "assistant", answer_text)
-
-    yield _sse_line(SSEEvent(
-        type=SSEEventType.DONE,
-        session_id=session_id,
-        rows_returned=rows,
-        query_plan=plan.model_dump(exclude_none=True),
-    ))
+        elif event_type == "error":
+            yield _sse_line(SSEEvent(
+                type=SSEEventType.ERROR,
+                message=event.get("message", "An unexpected error occurred."),
+            ))
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +218,7 @@ async def query_knowledge_base(
 # ---------------------------------------------------------------------------
 
 @router.get("/sessions/{session_id}", response_model=SessionResponse)
-async def get_session(
+async def get_session_endpoint(
     session_id: str,
     user: dict = Depends(get_current_user),
 ) -> SessionResponse:
@@ -242,11 +228,14 @@ async def get_session(
     Sessions live in-process (no DB persistence in this version).
     Returns 404 if the session does not exist or has been evicted.
     """
-    turns = get_session_turns(session_id)
-    # get_session_turns returns [] for both "empty but live" and "non-existent"
-    # so we check the raw dict to distinguish the two cases.
-    if not turns and session_id not in _sessions:
+    session = get_session(session_id)
+    if session is None or session.get("user_id") != user["user_id"]:
         raise HTTPException(status_code=404, detail="Session not found or expired")
+
+    turns = [
+        ConversationTurn(role=t["role"], content=t["content"])
+        for t in session.get("turns", [])
+    ]
     return SessionResponse(session_id=session_id, turns=turns)
 
 
@@ -262,7 +251,10 @@ async def clear_session(
     """
     Delete a session and its conversation history.
 
-    Idempotent — returns 204 even if the session did not exist or had already
+    Idempotent - returns 204 even if the session did not exist or had already
     been auto-evicted by the TTL.
     """
+    session = get_session(session_id)
+    if session is not None and session.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
     delete_session(session_id)

@@ -129,37 +129,6 @@
   .dark .brutal-shadow {
     box-shadow: none;
   }
-  .dark .brutal-shadow-sm {
-    box-shadow: none;
-  }
-  .dark .brutal-shadow-md {
-    box-shadow: none;
-  }
-  .dark .brutal-shadow-responsive {
-    box-shadow: none;
-  }
-  .dark .icon-btn {
-    box-shadow: none;
-  }
-
-  /* ── Active panel border (orange) ────────────────────────────── */
-  .panel-active {
-    border-color: var(--border-active, #d95f00) !important;
-  }
-
-  /* ── Terminal typography ─────────────────────────────────────── */
-  .mono-data {
-    font-family: var(--font-mono);
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
-  }
-  .terminal-label {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
 
   .brutal-btn-hover {
     transition: all 0.1s ease-in-out;
@@ -171,21 +140,6 @@
   .brutal-btn-hover:active {
     transform: translate(2px, 2px);
     box-shadow: 0px 0px 0px 0px var(--border);
-  }
-  .animate-marquee {
-    animation: marquee 30s linear infinite;
-  }
-  .brutal-badge {
-    border: 2px solid var(--border);
-    font-weight: 900;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: 10px;
-    padding: 0.125rem 0.5rem;
-    box-shadow: 1px 1px 0px 0px var(--border);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
   .job-card-grid {
     display: grid;
@@ -221,50 +175,6 @@
       gap: 0.5rem;
     }
   }
-  /* ── Brutal typography ──────────────────────────────────────── */
-  .heading-brutal {
-    font-weight: 900;
-    text-transform: uppercase;
-    font-style: italic;
-    letter-spacing: -0.05em;
-  }
-
-  /* ── Shadow scale ────────────────────────────────────────────── */
-  .brutal-shadow-sm {
-    box-shadow: 1px 1px 0px 0px var(--border);
-  }
-  .brutal-shadow-md {
-    box-shadow: 2px 2px 0px 0px var(--border);
-  }
-  /* Responsive: 1px on mobile, 2px on sm+ */
-  .brutal-shadow-responsive {
-    box-shadow: 1px 1px 0px 0px var(--border);
-  }
-  @media (min-width: 640px) {
-    .brutal-shadow-responsive {
-      box-shadow: 2px 2px 0px 0px var(--border);
-    }
-  }
-
-  /* ── Icon button — square, touch-friendly, responsive ─────── */
-  .icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.375rem;          /* p-1.5 */
-    height: 2.75rem;            /* 44px touch target */
-    width: 2.75rem;
-    box-shadow: 1px 1px 0px 0px var(--border);
-  }
-  @media (min-width: 640px) {
-    .icon-btn {
-      padding: 0.5rem;          /* p-2 */
-      height: 42px;
-      width: 42px;
-      box-shadow: 2px 2px 0px 0px var(--border);
-    }
-  }
-
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -330,11 +240,6 @@
       animation: none !important;
     }
   }
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
 }
 
 @keyframes job-enter {

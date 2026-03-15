@@ -303,7 +303,7 @@ async def _synthesize_stream(
 
     except Exception as e:
         logger.error(f"[Orchestrator] Synthesizer stream failed: {e}")
-        yield f"\n[Error generating response: {e}]"
+        yield "\n[Error generating response. Please try again.]"
 
 
 async def _synthesize_chitchat(question: str) -> str:
@@ -392,6 +392,9 @@ async def ask(
     yield {"type": "phase", "phase": "querying", "query_type": query_type}
 
     data_context_parts: list[str] = []
+    total_rows_returned = 0
+    executed_sql: Optional[str] = None
+    sql_time_ms: Optional[int] = None
 
     # Build params dict
     params: dict[str, Any] = {}
@@ -402,7 +405,10 @@ async def ask(
     if query_type in ("sql", "hybrid"):
         sql = classification.get("sql")
         if sql:
+            sql_start = time.monotonic()
             rows, final_sql, error_msg = await _execute_with_retry(sql, params, question)
+            sql_time_ms = int((time.monotonic() - sql_start) * 1000)
+            executed_sql = final_sql
 
             if error_msg:
                 data_context_parts.append(f"SQL EXECUTION FAILED: {error_msg}")
@@ -413,6 +419,7 @@ async def ask(
                     f"Query: {final_sql}"
                 )
             else:
+                total_rows_returned += len(rows)
                 data_context_parts.append(format_results_for_llm(rows, final_sql))
         else:
             data_context_parts.append("No SQL was generated for this query.")
@@ -422,6 +429,7 @@ async def ask(
         vector_query = classification.get("vector_query")
         if vector_query:
             vector_results = await search_similar_jobs(vector_query, supabase)
+            total_rows_returned += len(vector_results)
             data_context_parts.append(format_vector_results_for_llm(vector_results))
         else:
             data_context_parts.append("No vector query was generated.")
@@ -448,6 +456,9 @@ async def ask(
         "type": "done",
         "elapsed_ms": elapsed_ms,
         "query_type": query_type,
+        "rows_returned": total_rows_returned,
+        "sql_query": executed_sql,
+        "sql_time_ms": sql_time_ms,
     }
 
     logger.info(

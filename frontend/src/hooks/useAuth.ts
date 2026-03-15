@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -19,7 +17,6 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
       setUser(session?.user ?? null);
     });
 
@@ -31,11 +28,11 @@ export function useAuth() {
     window.location.href = "/login";
   };
 
-  return { user, session, loading, signOut };
+  return { user, loading, signOut };
 }
 
 /** Returns the current access token (refreshed automatically by Supabase). */
-export async function getAccessToken(): Promise<string | null> {
+async function getAccessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
   return data.session?.access_token ?? null;
 }

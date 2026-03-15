@@ -26,13 +26,16 @@ Before writing raw SQL, check if one of these pre-built helpers answers the ques
 They are faster, pre-blocked-company-filtered, and already optimized.
 
 MATERIALIZED VIEWS (instant reads, refreshed after each analysis batch):
-  mv_skill_frequency         → columns: skill TEXT, skill_type TEXT ('must_have'|'good_to_have'), job_count BIGINT
-  mv_company_hiring_stats    → columns: company, total_jobs, source_count, sources TEXT[], location_count,
-                                        locations TEXT[], visa_mention_pct NUMERIC, salary_mention_pct NUMERIC,
-                                        first_seen_at, last_seen_at, jobs_last_30d BIGINT
-  mv_salary_distribution     → columns: bucket TEXT, bucket_order INT, job_count BIGINT, avg_salary_low NUMERIC,
-                                        min_salary INT, max_salary INT, sample_raw_salaries TEXT[]
-  Buckets: under_60k | 60k_80k | 80k_100k | 100k_120k | 120k_150k | 150k_180k | 180k_220k | 220k_plus | unparseable
+  mv_skill_frequency         → columns: skill TEXT, skill_type TEXT ('must_have'|'nice_to_have'),
+                                        job_count BIGINT
+  mv_company_hiring_stats    → columns: company TEXT, total_jobs BIGINT, source_count BIGINT,
+                                        sources TEXT[], location_count BIGINT, locations TEXT[],
+                                        visa_mention_pct NUMERIC, salary_mention_pct NUMERIC,
+                                        first_seen_at TIMESTAMPTZ, last_seen_at TIMESTAMPTZ,
+                                        jobs_last_30d BIGINT
+  mv_salary_distribution     → columns: bucket TEXT, bucket_order INT, job_count BIGINT,
+                                        avg_salary_low NUMERIC, min_salary INT, max_salary INT,
+                                        sample_raw_salaries TEXT[]
 
 RPC FUNCTIONS (call via SELECT * FROM function_name(...)):
   analytics_overview()                      → jsonb with total, uniqueCompanies, analyzed, jobs30d, avgJobsPerDay
@@ -54,11 +57,12 @@ RPC FUNCTIONS (call via SELECT * FROM function_name(...)):
   get_job_detail(p_external_id TEXT)        → TABLE with full analysis fields unpacked
 
 EXAMPLES USING FAST PATH:
-  Q: Top skills?          → SELECT * FROM mv_skill_frequency WHERE skill_type = 'must_have' ORDER BY job_count DESC LIMIT 20;
+  Q: Top skills?          → SELECT skill, job_count FROM mv_skill_frequency WHERE skill_type = 'must_have' ORDER BY job_count DESC LIMIT 20;
   Q: Companies hiring?    → SELECT company, total_jobs, jobs_last_30d FROM mv_company_hiring_stats ORDER BY total_jobs DESC LIMIT 20;
   Q: Salary breakdown?    → SELECT bucket, job_count FROM mv_salary_distribution ORDER BY bucket_order;
   Q: Jobs with Python?    → SELECT * FROM search_jobs_by_keywords(ARRAY['Python'], 20, false);
   Q: Overview stats?      → SELECT * FROM analytics_overview();
+  Q: Python vs Java?      → SELECT skill, job_count FROM mv_skill_frequency WHERE skill_type = 'must_have' AND skill IN ('python', 'java') ORDER BY job_count DESC;
 
 ---
 
@@ -195,7 +199,11 @@ CRITICAL JSONB RULES — violating these produces SQL errors:
       OR analysis->'good_to_have_keywords' ? 'Python')
   7. NEVER use analysis->>'must_have_keywords' to get an array — that returns
      a text representation, not an array you can query into.
-  8. For case-insensitive keyword search across both arrays:
+  8. ALWAYS use case-insensitive matching when comparing keywords:
+     WRONG:  kw IN ('Python', 'Java')     — misses 'python', 'PYTHON'
+     RIGHT:  LOWER(kw) IN ('python', 'java')
+     RIGHT on MV: LOWER(skill) IN ('python', 'java')
+  9. For case-insensitive keyword search across both arrays:
      EXISTS (
        SELECT 1 FROM jsonb_array_elements_text(
          COALESCE(analysis->'must_have_keywords', '[]'::jsonb) ||
@@ -314,6 +322,13 @@ A: SELECT COUNT(*) AS python_jobs
    WHERE analysis_status = 'completed'
      AND analysis->'must_have_keywords' ? 'Python';
 
+Q: Python vs Java — which skill appears more in job descriptions?
+A: SELECT skill, job_count
+   FROM mv_skill_frequency
+   WHERE skill_type = 'must_have'
+     AND skill IN ('python', 'java')
+   ORDER BY job_count DESC;
+
 Q: What percentage of jobs analyzed today offer visa sponsorship?
 A: SELECT
      ROUND(
@@ -358,8 +373,8 @@ Tables available (PostgreSQL/Supabase):
 
 MATERIALIZED VIEWS (use these first — faster, pre-filtered):
 - mv_skill_frequency(skill, skill_type, job_count)
-- mv_company_hiring_stats(company, total_jobs, visa_mention_pct, salary_mention_pct, jobs_last_30d)
-- mv_salary_distribution(bucket, bucket_order, job_count, avg_salary_low)
+- mv_company_hiring_stats(company, total_jobs, source_count, sources, location_count, locations, visa_mention_pct, salary_mention_pct, first_seen_at, last_seen_at, jobs_last_30d)
+- mv_salary_distribution(bucket, bucket_order, job_count, avg_salary_low, min_salary, max_salary, sample_raw_salaries)
 
 RPC FUNCTIONS (SELECT * FROM func()):
 - analytics_overview(), analytics_tech_skills(), analytics_good_to_have()

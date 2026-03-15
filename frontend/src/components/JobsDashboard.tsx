@@ -7,7 +7,6 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
 import { JobList } from "./JobList";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { CompanyTicker } from "./CompanyTicker";
 import { AddJobSourceModal } from "./AddJobSourceModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { LocationFilterInput } from "./LocationFilterInput";
@@ -36,6 +35,7 @@ import {
   Code,
   MagnifyingGlass,
   Monitor,
+  DotsThreeVertical,
 } from "@phosphor-icons/react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,7 +95,20 @@ export function JobsDashboard() {
   );
 
   const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const prevJobCountRef = useRef(jobs.length);
+
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [moreMenuOpen]);
   const [countBumpKey, setCountBumpKey] = useState(0);
   useEffect(() => {
     if (jobs.length > prevJobCountRef.current) {
@@ -248,56 +261,73 @@ export function JobsDashboard() {
                 </div>
               </Link>
 
-              <Link href="/settings" title="Settings">
-                <div
+              {/* More menu: Settings, Keywords, Logs */}
+              <div ref={moreMenuRef} style={{ position: "relative" }}>
+                <button
+                  onClick={() => setMoreMenuOpen((v) => !v)}
+                  title="More"
                   className="flex items-center justify-center cursor-pointer transition-colors"
                   style={{
                     width: "32px",
                     height: "32px",
-                    border: "1px solid #1c1c1c",
+                    border: `1px solid ${moreMenuOpen ? "#ff8c00" : "#1c1c1c"}`,
                     background: "transparent",
-                    color: "#555",
+                    color: moreMenuOpen ? "#ff8c00" : "#555",
                   }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#ff8c00"; (e.currentTarget as HTMLDivElement).style.borderColor = "#ff8c00"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#555"; (e.currentTarget as HTMLDivElement).style.borderColor = "#1c1c1c"; }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ff8c00"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff8c00"; }}
+                  onMouseLeave={(e) => {
+                    if (!moreMenuOpen) {
+                      (e.currentTarget as HTMLButtonElement).style.color = "#555";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c";
+                    }
+                  }}
                 >
-                  <Gear weight="bold" className="h-3.5 w-3.5" />
-                </div>
-              </Link>
+                  <DotsThreeVertical weight="bold" className="h-3.5 w-3.5" />
+                </button>
 
-              <Link href="/keyword-matcher" title="Keywords">
-                <div
-                  className="flex items-center justify-center cursor-pointer transition-colors"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    border: "1px solid #1c1c1c",
-                    background: "transparent",
-                    color: "#555",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#ff8c00"; (e.currentTarget as HTMLDivElement).style.borderColor = "#ff8c00"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#555"; (e.currentTarget as HTMLDivElement).style.borderColor = "#1c1c1c"; }}
-                >
-                  <Tag weight="bold" className="h-3.5 w-3.5" />
-                </div>
-              </Link>
-
-              <Link href="/logs" title="Logs">
-                <div
-                  className="flex items-center justify-center cursor-pointer transition-colors"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    border: "1px solid #1c1c1c",
-                    background: "transparent",
-                    color: "#555",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#ff8c00"; (e.currentTarget as HTMLDivElement).style.borderColor = "#ff8c00"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#555"; (e.currentTarget as HTMLDivElement).style.borderColor = "#1c1c1c"; }}
-                >
-                  <TerminalWindow weight="bold" className="h-3.5 w-3.5" />
-                </div>
-              </Link>
+                {moreMenuOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: 0,
+                      top: "calc(100% + 4px)",
+                      background: "#0d0d0d",
+                      border: "1px solid #2a2a2a",
+                      minWidth: "130px",
+                      zIndex: 50,
+                    }}
+                  >
+                    {[
+                      { href: "/settings", icon: <Gear weight="bold" className="h-3 w-3" />, label: "SETTINGS" },
+                      { href: "/keyword-matcher", icon: <Tag weight="bold" className="h-3 w-3" />, label: "KEYWORDS" },
+                      { href: "/logs", icon: <TerminalWindow weight="bold" className="h-3 w-3" />, label: "LOGS" },
+                    ].map(({ href, icon, label }) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setMoreMenuOpen(false)}
+                        className="flex items-center gap-2 w-full transition-colors"
+                        style={{
+                          padding: "8px 12px",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "9px",
+                          fontWeight: 600,
+                          letterSpacing: "0.12em",
+                          color: "#666",
+                          borderBottom: "1px solid #1c1c1c",
+                          textDecoration: "none",
+                          display: "flex",
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#ff8c00"; (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,140,0,0.05)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#666"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
+                      >
+                        {icon}
+                        <span>{label}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <ConnectionStatus />
 
@@ -325,8 +355,6 @@ export function JobsDashboard() {
       {user && <OnboardingModal userEmail={user.email} />}
 
       <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3">
-        {!user && <CompanyTicker />}
-
         {apiError && (
           <ErrorBanner
             error={apiError}
@@ -359,37 +387,45 @@ export function JobsDashboard() {
                   </div>
                 </TabsTrigger>
 
-                <TabsTrigger value="linkedin" className={TAB_BASE}>
-                  <div className="flex items-center gap-1.5">
-                    <LinkedinLogo weight="bold" className="h-3 w-3" />
-                    <span>LINKEDIN</span>
-                    <span style={{ color: "#555" }}>({linkedinJobs.length})</span>
-                  </div>
-                </TabsTrigger>
+                {(linkedinJobs.length > 0 || activeTab === "linkedin") && (
+                  <TabsTrigger value="linkedin" className={TAB_BASE}>
+                    <div className="flex items-center gap-1.5">
+                      <LinkedinLogo weight="bold" className="h-3 w-3" />
+                      <span>LINKEDIN</span>
+                      <span style={{ color: "#555" }}>({linkedinJobs.length})</span>
+                    </div>
+                  </TabsTrigger>
+                )}
 
-                <TabsTrigger value="jobright" className={TAB_BASE}>
-                  <div className="flex items-center gap-1.5">
-                    <Briefcase weight="bold" className="h-3 w-3" />
-                    <span>JOBRIGHT</span>
-                    <span style={{ color: "#555" }}>({jobrightJobs.length})</span>
-                  </div>
-                </TabsTrigger>
+                {(jobrightJobs.length > 0 || activeTab === "jobright") && (
+                  <TabsTrigger value="jobright" className={TAB_BASE}>
+                    <div className="flex items-center gap-1.5">
+                      <Briefcase weight="bold" className="h-3 w-3" />
+                      <span>JOBRIGHT</span>
+                      <span style={{ color: "#555" }}>({jobrightJobs.length})</span>
+                    </div>
+                  </TabsTrigger>
+                )}
 
-                <TabsTrigger value="mathworks" className={TAB_BASE}>
-                  <div className="flex items-center gap-1.5">
-                    <Buildings weight="bold" className="h-3 w-3" />
-                    <span>MATHWORKS</span>
-                    <span style={{ color: "#555" }}>({mathworksJobs.length})</span>
-                  </div>
-                </TabsTrigger>
+                {(mathworksJobs.length > 0 || activeTab === "mathworks") && (
+                  <TabsTrigger value="mathworks" className={TAB_BASE}>
+                    <div className="flex items-center gap-1.5">
+                      <Buildings weight="bold" className="h-3 w-3" />
+                      <span>MATHWORKS</span>
+                      <span style={{ color: "#555" }}>({mathworksJobs.length})</span>
+                    </div>
+                  </TabsTrigger>
+                )}
 
-                <TabsTrigger value="github" className={TAB_BASE}>
-                  <div className="flex items-center gap-1.5">
-                    <GithubLogo weight="bold" className="h-3 w-3" />
-                    <span>GITHUB</span>
-                    <span style={{ color: "#555" }}>({githubJobs.length})</span>
-                  </div>
-                </TabsTrigger>
+                {(githubJobs.length > 0 || activeTab === "github") && (
+                  <TabsTrigger value="github" className={TAB_BASE}>
+                    <div className="flex items-center gap-1.5">
+                      <GithubLogo weight="bold" className="h-3 w-3" />
+                      <span>GITHUB</span>
+                      <span style={{ color: "#555" }}>({githubJobs.length})</span>
+                    </div>
+                  </TabsTrigger>
+                )}
 
                 {customSources.map((source) => {
                   const sourceJobs = jobs.filter((j) => j.source === source.name);

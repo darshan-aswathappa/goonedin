@@ -110,12 +110,20 @@ async def _get_pool() -> Optional[asyncpg.Pool]:
             dsn = settings.AI_READONLY_DB_URL.replace(
                 "postgresql+asyncpg://", "postgresql://"
             )
+            async def _init_conn(conn):
+                # Supabase installs pgvector in the 'extensions' schema.
+                # Without this, `::vector` casts fail with "type vector does not exist".
+                await conn.execute(
+                    "SET search_path TO public, extensions"
+                )
+
             _pool = await asyncpg.create_pool(
                 dsn=dsn,
                 min_size=1,
                 max_size=5,
                 command_timeout=15,         # per-query timeout in seconds
                 statement_cache_size=0,     # safe default for pgbouncer compat
+                init=_init_conn,
             )
             logger.info("[KB] asyncpg read-only pool created")
         except Exception as exc:
@@ -428,11 +436,6 @@ async def backfill_embeddings(supabase: Any) -> None:
     total_embedded = 0
     total_failed = 0
 
-    pool = await _get_pool()
-    if pool is None:
-        logger.error("[KB] Backfill aborted — no asyncpg pool")
-        return
-
     while True:
         try:
             # Fetch a page of un-embedded completed jobs from Supabase
@@ -466,21 +469,16 @@ async def backfill_embeddings(supabase: Any) -> None:
                     total_failed += 1
                     continue
 
-                # Write via asyncpg UPDATE (bypasses Supabase row-level security
-                # because we use the service-role-equivalent read-write connection).
-                # Note: the backfill uses a direct asyncpg UPDATE even though the
-                # pool is configured as read-only for AI queries — the backfill
-                # writes through the same pool for simplicity.  If you want strict
-                # separation, use a separate pool with a write role here.
-                vector_literal = "[" + ",".join(str(v) for v in vector) + "]"
-                async with pool.acquire() as conn:
-                    await conn.execute(
-                        "UPDATE job_analysis_cache "
-                        "SET embedding = $1::vector "
-                        "WHERE external_id = $2",
-                        vector_literal,
-                        external_id,
-                    )
+                # Write via Supabase service-role client — the asyncpg pool
+                # connects as ai_query_user (SELECT-only) so it cannot UPDATE.
+                _eid = external_id
+                _vec = vector
+                await asyncio.to_thread(
+                    lambda: supabase.table("job_analysis_cache")
+                    .update({"embedding": _vec})
+                    .eq("external_id", _eid)
+                    .execute()
+                )
                 total_embedded += 1
 
             except Exception as exc:

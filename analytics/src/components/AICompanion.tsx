@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useKnowledgeBase } from "@/hooks/useKnowledgeBase";
 import { ChatMessage, QueryPlan } from "@/types/knowledge-base";
 
@@ -12,6 +12,191 @@ const SUGGESTED_PROMPTS = [
   "Which job sources are most active?",
 ];
 
+// ── Lightweight inline markdown renderer ─────────────────────────────────────
+// Handles: **bold**, *italic*, `code`, and newlines.
+// Returns an array of React nodes suitable for inline rendering.
+function renderMarkdown(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  // Split by markdown patterns: **bold**, *italic*, `code`
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    // Push text before the match
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[2]) {
+      // **bold**
+      nodes.push(
+        <strong key={key++} style={{ color: "#ffffff", fontWeight: 700 }}>
+          {match[2]}
+        </strong>
+      );
+    } else if (match[3]) {
+      // *italic*
+      nodes.push(
+        <em key={key++} style={{ fontStyle: "italic" }}>
+          {match[3]}
+        </em>
+      );
+    } else if (match[4]) {
+      // `code`
+      nodes.push(
+        <code
+          key={key++}
+          style={{
+            background: "rgba(255,140,0,0.1)",
+            border: "1px solid rgba(255,140,0,0.2)",
+            padding: "1px 4px",
+            fontSize: "11px",
+            color: "#ff8c00",
+          }}
+        >
+          {match[4]}
+        </code>
+      );
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Push remaining text
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+// ── Collapsible "Thinking" block (shows SQL + timing) ────────────────────────
+function ThinkingBlock({ plan }: { plan: QueryPlan }) {
+  const [open, setOpen] = useState(false);
+
+  const queryType = plan.type || plan.query_type || "unknown";
+  const hasSql = !!plan.sql_query;
+  if (!hasSql && queryType !== "sql" && queryType !== "hybrid") return null;
+
+  const elapsedLabel = plan.elapsed_ms != null ? `${(plan.elapsed_ms / 1000).toFixed(1)}s` : null;
+  const sqlTimeLabel = plan.sql_time_ms != null ? `${plan.sql_time_ms}ms` : null;
+
+  return (
+    <div
+      style={{
+        marginTop: "6px",
+        maxWidth: "88%",
+      }}
+    >
+      {/* Toggle button */}
+      <button
+        onClick={() => setOpen((prev) => !prev)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          background: "none",
+          border: "1px solid rgba(255,140,0,0.2)",
+          padding: "3px 8px",
+          cursor: "pointer",
+          fontFamily: "var(--font-mono)",
+          fontSize: "9px",
+          fontWeight: 700,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: "#ff8c00",
+          transition: "border-color 0.15s",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "rgba(255,140,0,0.5)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = "rgba(255,140,0,0.2)";
+        }}
+      >
+        {/* Chevron */}
+        <span
+          style={{
+            display: "inline-block",
+            transition: "transform 0.15s",
+            transform: open ? "rotate(90deg)" : "rotate(0deg)",
+            fontSize: "8px",
+          }}
+        >
+          {"\u25B6"}
+        </span>
+        <span>
+          {queryType === "hybrid" ? "SQL + VECTOR" : queryType.toUpperCase()}
+        </span>
+        {plan.rows_returned != null && (
+          <span style={{ color: "#888" }}>{plan.rows_returned} rows</span>
+        )}
+        {elapsedLabel && (
+          <span style={{ color: "#888" }}>{elapsedLabel}</span>
+        )}
+      </button>
+
+      {/* Collapsible content */}
+      {open && (
+        <div
+          style={{
+            marginTop: "4px",
+            border: "1px solid rgba(255,140,0,0.12)",
+            background: "#0a0a0a",
+            padding: "10px 12px",
+            overflow: "auto",
+          }}
+        >
+          {/* Timing breakdown */}
+          {(sqlTimeLabel || elapsedLabel) && (
+            <div
+              style={{
+                display: "flex",
+                gap: "16px",
+                marginBottom: hasSql ? "8px" : 0,
+                fontFamily: "var(--font-mono)",
+                fontSize: "9px",
+                letterSpacing: "0.1em",
+                color: "#888",
+              }}
+            >
+              {sqlTimeLabel && (
+                <span>
+                  SQL EXEC: <span style={{ color: "#ff8c00" }}>{sqlTimeLabel}</span>
+                </span>
+              )}
+              {elapsedLabel && (
+                <span>
+                  TOTAL: <span style={{ color: "#ff8c00" }}>{elapsedLabel}</span>
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* SQL query */}
+          {hasSql && (
+            <pre
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "10px",
+                lineHeight: 1.5,
+                color: "#ccc",
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+              }}
+            >
+              {plan.sql_query}
+            </pre>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Query plan badge ──────────────────────────────────────────────────────────
 function QueryBadge({ plan }: { plan: QueryPlan }) {
   const labels: Record<string, string> = {
@@ -20,6 +205,10 @@ function QueryBadge({ plan }: { plan: QueryPlan }) {
     hybrid: "HYBRID",
     none: "NONE",
   };
+  const queryType = plan.type || plan.query_type;
+  // Don't render the simple badge if we show the thinking block instead
+  if (queryType === "sql" || queryType === "hybrid") return null;
+
   return (
     <span
       style={{
@@ -72,6 +261,14 @@ function TypingIndicator() {
 // ── Single chat message bubble ────────────────────────────────────────────────
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
+  const renderedContent = useMemo(
+    () => (isUser ? message.content : renderMarkdown(message.content)),
+    [message.content, isUser]
+  );
+
+  const queryType = message.queryPlan?.type || message.queryPlan?.query_type;
+  const showThinking = !isUser && message.queryPlan && !message.isStreaming &&
+    (queryType === "sql" || queryType === "hybrid");
 
   return (
     <div
@@ -112,7 +309,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           wordBreak: "break-word",
         }}
       >
-        {message.content}
+        {renderedContent}
         {message.isStreaming && (
           <span
             style={{
@@ -128,8 +325,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         )}
       </div>
 
-      {/* Query plan badge for assistant messages */}
-      {!isUser && message.queryPlan && !message.isStreaming && (
+      {/* Collapsible thinking block for SQL/hybrid queries */}
+      {showThinking && <ThinkingBlock plan={message.queryPlan!} />}
+
+      {/* Simple badge for vector/other queries */}
+      {!isUser && message.queryPlan && !message.isStreaming && !showThinking && (
         <QueryBadge plan={message.queryPlan} />
       )}
     </div>
@@ -544,7 +744,7 @@ export function AICompanion({ onClose }: { onClose?: () => void }) {
             transition: "color 0.15s",
           }}
         >
-          \u21b5
+          {"\u21b5"}
         </button>
       </div>
     </div>

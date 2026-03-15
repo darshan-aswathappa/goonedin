@@ -67,8 +67,11 @@ Return ONLY a JSON object with these exact fields:
 
 === SQL DRAFTING RULES ===
 - Always use :user_id as the parameter placeholder (not $1, not %(user_id)s)
-- Default to job_analysis_cache for global/aggregate queries (no user_id needed)
+- PREFER materialized views (mv_skill_frequency, mv_company_hiring_stats, mv_salary_distribution) over raw table queries — they are faster and pre-computed
+- mv_skill_frequency stores skills already lowercased — match with lowercase literals: skill IN ('python', 'java'), NOT skill IN ('Python', 'Java')
+- Default to job_analysis_cache for global/aggregate queries not covered by MVs (no user_id needed)
 - Use scraped_jobs with WHERE user_id = :user_id for per-user queries
+- ALWAYS use LOWER() for case-insensitive keyword/skill matching (e.g. LOWER(skill) IN ('python', 'java'), not skill IN ('Python', 'Java'))
 - Limit result sets: default LIMIT 20, aggregates can return more
 - Always add ORDER BY on aggregate queries
 - Only generate SELECT statements — no DDL, no DML
@@ -113,6 +116,16 @@ Output:
   "vector_query": null,
   "explanation": "User-specific saved jobs joined with global analysis cache for visa data.",
   "needs_user_id": true
+}}
+
+User: "Python vs Java, which keyword was mostly used in the job descriptions?"
+Output:
+{{
+  "query_type": "sql",
+  "sql": "SELECT skill, job_count FROM mv_skill_frequency WHERE skill_type = 'must_have' AND skill IN ('python', 'java') ORDER BY job_count DESC",
+  "vector_query": null,
+  "explanation": "Skill comparison using materialized view with case-insensitive matching.",
+  "needs_user_id": false
 }}
 
 User: "Delete all my jobs"

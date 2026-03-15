@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger("JobQueue")
 
+_analysis_write_count = 0
+
 
 async def get_cache_entry(supabase: Any, external_id: str) -> Optional[dict]:
     """Fetch a cache entry from job_analysis_cache by external_id."""
@@ -99,6 +101,18 @@ async def write_analysis_to_cache(
         )
         logger.info(f"[CacheWrite] Successfully wrote cache for {external_id}. Result: {result}")
 
+        # Track writes and refresh materialized views every 50 analyses
+        global _analysis_write_count
+        _analysis_write_count += 1
+        if _analysis_write_count % 50 == 0:
+            try:
+                await asyncio.to_thread(
+                    lambda: supabase.rpc("refresh_ai_kb_views").execute()
+                )
+                logger.info(f"[CacheWrite] Refreshed AI KB materialized views (after {_analysis_write_count} analyses)")
+            except Exception as mv_err:
+                logger.warning(f"[CacheWrite] MV refresh failed (non-fatal): {mv_err}")
+
         # ---- Embedding: non-blocking, non-fatal ----
         # Import here (not at module top) to avoid a circular import at cold start,
         # because knowledge_base_service itself imports from config which imports
@@ -123,20 +137,19 @@ async def write_analysis_to_cache(
                 if text.strip():
                     vector = await embed_text(text)
                     if vector is not None:
-                        # Write embedding back via direct Supabase upsert.
-                        # We store the vector as a JSON array string; pgvector
-                        # accepts text input cast to vector type.
-                        import json as _json
-                        vector_str = _json.dumps(vector)
+                        # Pass list directly — PostgREST casts JSON array → vector.
+                        # Capturing in local vars avoids lambda closure pitfalls.
+                        _eid = external_id
+                        _vec = vector
                         await asyncio.to_thread(
                             lambda: supabase.table("job_analysis_cache")
-                            .update({"embedding": vector_str})
-                            .eq("external_id", external_id)
+                            .update({"embedding": _vec, "embedding_generated_at": datetime.now(timezone.utc).isoformat()})
+                            .eq("external_id", _eid)
                             .execute()
                         )
-                        logger.debug(
-                            f"[CacheWrite] Embedding stored for {external_id} "
-                            f"({len(vector)} dims)"
+                        logger.info(
+                            f"[CacheWrite] Embedding stored for {_eid} "
+                            f"({len(_vec)} dims)"
                         )
         except Exception as embed_err:
             # Non-fatal — analysis is already persisted above

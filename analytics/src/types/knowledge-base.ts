@@ -8,6 +8,8 @@ export interface QueryPlan {
   elapsed_ms?: number;
   rows_returned?: number;
   tables_used?: string[];
+  sql_query?: string;
+  sql_time_ms?: number;
 }
 
 export interface StreamEvent {
