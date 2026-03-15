@@ -43,9 +43,9 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
         background: "var(--bg-panel)",
         padding: "0 20px",
         height: "44px",
-        display: "flex",
+        display: "grid",
+        gridTemplateColumns: "1fr auto 1fr",
         alignItems: "center",
-        justifyContent: "space-between",
         fontFamily: "var(--font-mono)",
         position: "sticky",
         top: 0,
@@ -76,7 +76,7 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
       </div>
 
       {/* Center: Live status */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "center" }}>
         <span className="live-dot" />
         <span
           style={{
@@ -96,7 +96,7 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
       </div>
 
       {/* Right: Clock + Refresh */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "16px", justifyContent: "flex-end" }}>
         {onRefresh && (
           <button
             onClick={onRefresh}
