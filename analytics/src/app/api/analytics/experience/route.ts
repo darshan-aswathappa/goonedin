@@ -27,9 +27,12 @@ export async function GET() {
     let matched = 0;
 
     for (const row of cacheRows ?? []) {
-      const analysis =
-        typeof row.analysis === "string" ? JSON.parse(row.analysis) : row.analysis;
-      if (!analysis?.minimum_qualifications) continue;
+      // Handle double-encoded JSON (JSONB column storing a JSON string)
+      let analysis = row.analysis;
+      while (typeof analysis === "string") {
+        try { analysis = JSON.parse(analysis); } catch { break; }
+      }
+      if (!analysis || typeof analysis !== "object" || !analysis.minimum_qualifications) continue;
 
       // Check all qualifications for year patterns
       let bestYears: number | null = null;

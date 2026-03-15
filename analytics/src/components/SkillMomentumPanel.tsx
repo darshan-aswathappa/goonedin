@@ -98,7 +98,7 @@ function SkillRow({
           textAlign: "right",
         }}
       >
-        {sign}{entry.delta}
+        {sign}{Math.abs(entry.delta).toFixed(1)}
       </span>
     </div>
   );
@@ -159,7 +159,7 @@ export default function SkillMomentumPanel({ rising, declining }: Props) {
               >
                 <span>Rising</span>
                 <span style={{ color: "var(--muted)", fontSize: "7px", letterSpacing: "0.05em" }}>
-                  now/prev
+                  now/prev &Delta;
                 </span>
               </div>
               {rising.length > 0 ? (
@@ -210,7 +210,7 @@ export default function SkillMomentumPanel({ rising, declining }: Props) {
               >
                 <span>Declining</span>
                 <span style={{ color: "var(--muted)", fontSize: "7px", letterSpacing: "0.05em" }}>
-                  now/prev
+                  now/prev &Delta;
                 </span>
               </div>
               {declining.length > 0 ? (

@@ -14,69 +14,98 @@ export async function GET() {
   try {
     const sb = createServerClient();
 
-    // Try RPC first, fall back to direct query
-    const rpcRes = await sb.rpc("analytics_skill_momentum");
-
-    if (!rpcRes.error && rpcRes.data?.length) {
-      const raw = rpcRes.data as { skill: string; recent_count: number; prior_count: number; delta: number }[];
-      const momentum: MomentumEntry[] = raw
-        .filter((r) => r.prior_count >= 2 || r.recent_count >= 3)
-        .map((r) => ({
-          skill: r.skill,
-          recent: Number(r.recent_count),
-          prior: Number(r.prior_count),
-          delta: Number(r.delta),
-        }));
-
-      const rising = momentum.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 10);
-      const declining = momentum.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 10);
-
-      return NextResponse.json({ rising, declining });
-    }
-
-    // Fallback: query job_analysis_cache directly
+    // Fetch completed analyses -- use cache created_at as the canonical timestamp.
+    // This avoids the scraped_jobs MIN() deduplication bias where multi-user
+    // rows cluster dates toward the earliest scrape.
     const { data: cacheRows, error } = await sb
       .from("job_analysis_cache")
       .select("external_id, analysis, created_at")
       .eq("analysis_status", "completed");
 
     if (error) throw error;
-
-    const now = new Date();
-    const d14 = new Date(now.getTime() - 14 * 86400000);
-    const d28 = new Date(now.getTime() - 28 * 86400000);
-
-    const recentFreq: Record<string, number> = {};
-    const priorFreq: Record<string, number> = {};
-
-    for (const row of cacheRows ?? []) {
-      const analysis = typeof row.analysis === "string" ? JSON.parse(row.analysis) : row.analysis;
-      if (!analysis?.must_have_keywords) continue;
-      const date = new Date(row.created_at);
-      const target = date >= d14 ? recentFreq : date >= d28 ? priorFreq : null;
-      if (!target) continue;
-      for (const kw of analysis.must_have_keywords) {
-        const key = kw.trim().toLowerCase();
-        if (key.length >= 2) target[key] = (target[key] ?? 0) + 1;
-      }
+    if (!cacheRows?.length) {
+      return NextResponse.json({ rising: [], declining: [] });
     }
 
-    // Merge and compute delta
+    // Sort rows by created_at so we can split at the median
+    const sorted = [...cacheRows].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    if (sorted.length < 6) {
+      return NextResponse.json({ rising: [], declining: [] });
+    }
+
+    // Split at the median index -- guarantees ~50/50 job count in each half
+    const medianIdx = Math.floor(sorted.length / 2);
+
+    const priorRows = sorted.slice(0, medianIdx);
+    const recentRows = sorted.slice(medianIdx);
+
+    const priorCount = priorRows.length;
+    const recentCount = recentRows.length;
+
+    // Count keyword frequency in each half
+    function countKeywords(rows: NonNullable<typeof cacheRows>): Record<string, number> {
+      const freq: Record<string, number> = {};
+      for (const row of rows) {
+        let analysis = row.analysis;
+        while (typeof analysis === "string") {
+          try { analysis = JSON.parse(analysis); } catch { break; }
+        }
+        if (!analysis || typeof analysis !== "object" || !analysis.must_have_keywords) continue;
+
+        for (const kw of analysis.must_have_keywords) {
+          const key = kw.trim().toLowerCase();
+          if (key.length >= 2) freq[key] = (freq[key] ?? 0) + 1;
+        }
+      }
+      return freq;
+    }
+
+    const priorFreq = countKeywords(priorRows);
+    const recentFreq = countKeywords(recentRows);
+
+    // Compute normalized delta: rate per 100 jobs in each half
+    // This makes the comparison fair even if halves aren't exactly equal
     const allSkills = new Set([...Object.keys(recentFreq), ...Object.keys(priorFreq)]);
     const momentum: MomentumEntry[] = [];
+
     for (const skill of allSkills) {
-      const recent = recentFreq[skill] ?? 0;
-      const prior = priorFreq[skill] ?? 0;
-      if (recent + prior < 3) continue; // noise filter
-      momentum.push({ skill, recent, prior, delta: recent - prior });
+      const recentRaw = recentFreq[skill] ?? 0;
+      const priorRaw = priorFreq[skill] ?? 0;
+      if (recentRaw + priorRaw < 3) continue; // noise filter
+
+      // Normalize to rate per 100 jobs
+      const recentRate = (recentRaw / recentCount) * 100;
+      const priorRate = (priorRaw / priorCount) * 100;
+      const delta = Math.round((recentRate - priorRate) * 10) / 10;
+
+      // Show raw counts in the UI but sort/filter by normalized delta
+      momentum.push({
+        skill,
+        recent: recentRaw,
+        prior: priorRaw,
+        delta,
+      });
     }
 
-    const rising = momentum.filter((m) => m.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 10);
-    const declining = momentum.filter((m) => m.delta < 0).sort((a, b) => a.delta - b.delta).slice(0, 10);
+    const rising = momentum
+      .filter((m) => m.delta > 0)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 10);
+
+    const declining = momentum
+      .filter((m) => m.delta < 0)
+      .sort((a, b) => a.delta - b.delta)
+      .slice(0, 10);
 
     return NextResponse.json({ rising, declining });
   } catch (err) {
     console.error("[analytics/skill-momentum]", err);
-    return NextResponse.json({ error: "Failed to fetch skill momentum" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch skill momentum" },
+      { status: 500 }
+    );
   }
 }
