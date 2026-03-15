@@ -18,6 +18,7 @@ import WeekdayChart from "@/components/WeekdayChart";
 import TitleKeywordsPanel from "@/components/TitleKeywordsPanel";
 import JobFunctionsChart from "@/components/JobFunctionsChart";
 import QueueHealth from "@/components/QueueHealth";
+import SkillCooccurrence from "@/components/SkillCooccurrence";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
 
 export const revalidate = 60;
@@ -89,6 +90,10 @@ interface Queue {
   withSalary: number;
   analyzedCount: number;
 }
+interface Cooccurrence {
+  pairs: { a: string; b: string; count: number }[];
+  topSkills: { skill: string; count: number }[];
+}
 
 export default async function DashboardPage() {
   const [
@@ -103,6 +108,7 @@ export default async function DashboardPage() {
     seniority,
     weekday,
     queue,
+    cooccurrence,
   ] = await Promise.all([
     fetchJson<Overview>("/api/analytics/overview"),
     fetchJson<Companies>("/api/analytics/companies"),
@@ -115,6 +121,7 @@ export default async function DashboardPage() {
     fetchJson<Seniority>("/api/analytics/seniority"),
     fetchJson<Weekday>("/api/analytics/weekday"),
     fetchJson<Queue>("/api/analytics/queue"),
+    fetchJson<Cooccurrence>("/api/analytics/cooccurrence"),
   ]);
 
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
@@ -228,16 +235,28 @@ export default async function DashboardPage() {
             <PostingHeatmap data={companies?.hourlyDistribution ?? []} />
           </div>
 
-          {/* Row 5: Soft Skills + Seniority + Weekday */}
+          {/* Row 5: Soft Skills + Skill Co-occurrence */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
+              gridTemplateColumns: "1fr 2fr",
+              gap: "12px",
+              height: "280px",
+            }}
+          >
+            <SoftSkillsPanel data={skills?.softSkills ?? []} />
+            <SkillCooccurrence data={cooccurrence?.pairs ?? []} />
+          </div>
+
+          {/* Row 6: Seniority + Weekday */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
               gap: "12px",
               height: "240px",
             }}
           >
-            <SoftSkillsPanel data={skills?.softSkills ?? []} />
             <SeniorityChart data={seniority?.seniority ?? []} />
             <WeekdayChart
               data={weekday?.weekday ?? []}
@@ -245,7 +264,7 @@ export default async function DashboardPage() {
             />
           </div>
 
-          {/* Row 6: Visa + Job Functions */}
+          {/* Row 7: Visa + Job Functions */}
           <div
             style={{
               display: "grid",
@@ -262,7 +281,7 @@ export default async function DashboardPage() {
             <JobFunctionsChart data={seniority?.jobFunctions ?? []} />
           </div>
 
-          {/* Row 7: Salary + Title Keywords */}
+          {/* Row 8: Salary + Title Keywords */}
           <div
             style={{
               display: "grid",
@@ -280,7 +299,7 @@ export default async function DashboardPage() {
             <TitleKeywordsPanel data={seniority?.titleKeywords ?? []} />
           </div>
 
-          {/* Row 8: Queue Health + Intel Panel */}
+          {/* Row 9: Queue Health + Intel Panel */}
           <div
             style={{
               display: "grid",
