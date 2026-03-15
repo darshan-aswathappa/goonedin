@@ -239,3 +239,156 @@ body {
   from { transform: scale(0); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+/* ── Panel content area (below panel-header) ─────────────────────── */
+.panel-body {
+  padding: 10px 14px;
+  height: calc(100% - 37px);
+  overflow-y: auto;
+}
+
+.panel-body-chart {
+  padding: 12px 12px 0;
+  height: calc(100% - 37px);
+}
+
+/* ── Ranked-list row ─────────────────────────────────────────────── */
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rank-number {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  width: 14px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rank-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  opacity: 0.2;
+  border-radius: 1px;
+  transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 2px;
+}
+
+.rank-label {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.rank-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  min-width: 24px;
+  text-align: right;
+}
+
+/* ── Filter button (chart header toggles) ────────────────────────── */
+.filter-btn {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.filter-btn[data-active="true"] {
+  background: var(--teal-dim);
+  color: var(--teal);
+  border-color: var(--teal);
+}
+
+/* ── Ghost button (skip, zoom controls, got it) ──────────────────── */
+.ghost-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.ghost-btn:hover {
+  color: var(--teal);
+  border-color: var(--teal);
+}
+
+/* ── Stat callout (QueueHealth, VisaStats, SalaryChart) ──────────── */
+.stat-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* ── Section guide divider ───────────────────────────────────────── */
+.section-guide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+}
+
+.section-guide-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--teal);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.section-guide-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.section-guide-desc {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}

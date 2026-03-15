@@ -11,20 +11,11 @@ export default function SoftSkillsPanel({ data }: Props) {
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header">Top Qualifications</div>
-      <div
-        style={{
-          padding: "10px 14px",
-          height: "calc(100% - 37px)",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "6px",
-        }}
-      >
+      <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {top.map((row, i) => {
           const pct = (row.count / maxCount) * 100;
           return (
-            <div key={row.skill} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div key={row.skill} className="rank-row">
               <div style={{ flex: 1 }}>
                 <div
                   style={{
@@ -59,17 +50,7 @@ export default function SoftSkillsPanel({ data }: Props) {
                   />
                 </div>
               </div>
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  color: "var(--amber)",
-                  fontWeight: 600,
-                  flexShrink: 0,
-                  minWidth: "24px",
-                  textAlign: "right",
-                }}
-              >
+              <span className="rank-count" style={{ color: "var(--amber)" }}>
                 {row.count}
               </span>
             </div>

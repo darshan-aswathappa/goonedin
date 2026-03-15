@@ -6,8 +6,9 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
-  type TooltipProps,
 } from "recharts";
+import ChartTooltip from "./ChartTooltip";
+import { CHART_ANIM_MS } from "@/lib/tokens";
 
 interface SeniorityBucket {
   level: string;
@@ -17,25 +18,6 @@ interface SeniorityBucket {
 
 interface Props {
   data: SeniorityBucket[];
-}
-
-function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "7px 10px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: payload[0]?.payload?.color }}>{payload[0]?.name}</div>
-      <div style={{ color: "var(--text)", fontWeight: 700 }}>{payload[0]?.value} jobs</div>
-    </div>
-  );
 }
 
 export default function SeniorityChart({ data }: Props) {
@@ -54,7 +36,6 @@ export default function SeniorityChart({ data }: Props) {
           alignItems: "center",
         }}
       >
-        {/* Donut */}
         <div style={{ flex: "0 0 110px", height: "100%" }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -67,48 +48,31 @@ export default function SeniorityChart({ data }: Props) {
                 innerRadius="45%"
                 outerRadius="80%"
                 paddingAngle={2}
-                animationDuration={600}
+                animationDuration={CHART_ANIM_MS}
               >
                 {data.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.color}
-                    stroke="var(--bg-panel)"
-                    strokeWidth={2}
-                  />
+                  <Cell key={i} fill={entry.color} stroke="var(--bg-panel)" strokeWidth={2} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    formatLabel={(p) => p?.level ?? ""}
+                    formatValue={(v) => `${v} jobs`}
+                  />
+                }
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Legend + top stat */}
         <div style={{ flex: "0 0 auto", minWidth: 0, maxWidth: "180px", display: "flex", flexDirection: "column", gap: "4px" }}>
           {topLevel && (
             <div style={{ marginBottom: "6px" }}>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: topLevel.color,
-                  lineHeight: 1,
-                }}
-              >
+              <div className="stat-value" style={{ fontSize: "16px", color: topLevel.color }}>
                 {total > 0 ? Math.round((topLevel.count / total) * 100) : 0}%
               </div>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "7px",
-                  color: "var(--muted)",
-                  letterSpacing: "0.12em",
-                  marginTop: "2px",
-                }}
-              >
-                {topLevel.level.toUpperCase()}
-              </div>
+              <div className="stat-label">{topLevel.level.toUpperCase()}</div>
             </div>
           )}
           {data.map((d) => (

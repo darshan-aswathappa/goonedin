@@ -1,40 +1,7 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  type TooltipProps,
-} from "recharts";
-
 interface Props {
   data: { company: string; count: number }[];
-}
-
-function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "7px 10px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: "var(--teal)" }}>{payload[0]?.payload?.company}</div>
-      <div style={{ color: "var(--text)", fontWeight: 700, marginTop: "2px" }}>
-        {payload[0]?.value?.toLocaleString()} postings
-      </div>
-    </div>
-  );
 }
 
 export default function CompanyLeaderboard({ data }: Props) {
@@ -44,27 +11,26 @@ export default function CompanyLeaderboard({ data }: Props) {
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header">Company Rankings</div>
-      <div style={{ padding: "12px 4px 12px 12px", height: "calc(100% - 37px)", overflowY: "auto" }}>
+      <div className="panel-body">
         {top.map((row, i) => {
           const pct = (row.count / maxCount) * 100;
           const isTop3 = i < 3;
           return (
             <div
               key={row.company}
+              className="rank-row"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
                 marginBottom: "7px",
                 padding: "5px 6px",
                 borderRadius: "var(--radius)",
-                background: isTop3 ? "rgba(0,212,170,0.04)" : "transparent",
+                background: isTop3 ? "var(--teal-dim)" : "transparent",
                 transition: "background 0.15s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(0,212,170,0.07)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = isTop3 ? "rgba(0,212,170,0.04)" : "transparent")}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--teal-dim)")}
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = isTop3 ? "var(--teal-dim)" : "transparent")
+              }
             >
-              {/* Rank */}
               <span
                 style={{
                   fontFamily: "var(--font-mono)",
@@ -78,8 +44,6 @@ export default function CompanyLeaderboard({ data }: Props) {
               >
                 {i + 1}
               </span>
-
-              {/* Bar */}
               <div style={{ width: "45%", flexShrink: 0, height: "6px", position: "relative" }}>
                 <div
                   style={{
@@ -92,7 +56,6 @@ export default function CompanyLeaderboard({ data }: Props) {
                   }}
                 />
               </div>
-              {/* Label */}
               <span
                 style={{
                   flex: 1,
@@ -107,8 +70,6 @@ export default function CompanyLeaderboard({ data }: Props) {
               >
                 {row.company}
               </span>
-
-              {/* Count */}
               <span
                 style={{
                   fontFamily: "var(--font-mono)",

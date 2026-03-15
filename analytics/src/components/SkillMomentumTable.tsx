@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { MOMENTUM } from "@/lib/tokens";
 
 interface DailyCount {
   day: string;
@@ -19,17 +20,13 @@ interface Props {
   dateRange: { start: string; end: string } | null;
 }
 
-// Tiny SVG sparkline
 function Sparkline({ data, color }: { data: number[]; color: string }) {
   if (data.length < 2) return null;
   const max = Math.max(...data, 1);
   const w = 80;
   const h = 20;
   const step = w / (data.length - 1);
-
-  const points = data
-    .map((v, i) => `${i * step},${h - (v / max) * (h - 2) - 1}`)
-    .join(" ");
+  const points = data.map((v, i) => `${i * step},${h - (v / max) * (h - 2) - 1}`).join(" ");
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width={80} height={20} style={{ display: "block" }}>
@@ -67,7 +64,6 @@ function computeRows(
   const filteredSet = new Set(filteredDays);
   const jobsMap = new Map(dailyJobs.map((d) => [d.day, d.count]));
 
-  // Pre-compute total jobs in each half
   let earlyJobsTotal = 0;
   let lateJobsTotal = 0;
   for (const day of earlyDays) earlyJobsTotal += jobsMap.get(day) ?? 0;
@@ -111,7 +107,6 @@ function computeRows(
     .slice(0, 20);
 }
 
-// Column grid for a single half
 const COL_GRID = "minmax(0,1fr) 80px 44px 44px 44px 64px";
 
 function ColumnHeaders() {
@@ -143,17 +138,17 @@ function ColumnHeaders() {
 function SkillRow({ row, rank }: { row: ComputedRow; rank: number }) {
   const mColor =
     row.momentum === null
-      ? "var(--muted)"
+      ? MOMENTUM.none
       : row.momentum > 0
-      ? "#4ade80"
+      ? MOMENTUM.up
       : row.momentum < 0
-      ? "#ef4444"
-      : "var(--text-dim)";
+      ? MOMENTUM.down
+      : MOMENTUM.flat;
   const sparkColor =
     row.momentum !== null && row.momentum > 0
       ? "var(--teal)"
       : row.momentum !== null && row.momentum < 0
-      ? "#ef4444"
+      ? "var(--red)"
       : "var(--border-bright)";
   const arrow =
     row.momentum !== null && row.momentum > 0
@@ -236,12 +231,8 @@ function SkillRow({ row, rank }: { row: ComputedRow; rank: number }) {
 }
 
 export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
-  const allDays = useMemo(
-    () => dailyJobs.map((d) => d.day).sort(),
-    [dailyJobs]
-  );
+  const allDays = useMemo(() => dailyJobs.map((d) => d.day).sort(), [dailyJobs]);
 
-  // Default to past 7 days
   const filteredDays = useMemo(() => {
     if (allDays.length === 0) return allDays;
     const cutoff = new Date();
@@ -284,13 +275,7 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
         </span>
       </div>
 
-      <div
-        style={{
-          padding: "0 14px 10px",
-          display: "flex",
-          gap: "16px",
-        }}
-      >
+      <div style={{ padding: "0 14px 10px", display: "flex", gap: "16px" }}>
         {computed.length === 0 ? (
           <div
             style={{
@@ -309,18 +294,13 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
           </div>
         ) : (
           <>
-            {/* Left column: #1–10 */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <ColumnHeaders />
               {leftCol.map((row, i) => (
                 <SkillRow key={row.skill} row={row} rank={i + 1} />
               ))}
             </div>
-
-            {/* Divider */}
             <div style={{ width: "1px", background: "var(--border)", flexShrink: 0 }} />
-
-            {/* Right column: #11–20 */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <ColumnHeaders />
               {rightCol.map((row, i) => (

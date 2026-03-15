@@ -10,8 +10,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  type TooltipProps,
 } from "recharts";
+import ChartTooltip from "./ChartTooltip";
+import { AXIS_TICK, AXIS_TICK_SM, BAR_CURSOR, CHART_ANIM_MS } from "@/lib/tokens";
 
 const DAYS = ["All", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 
@@ -26,29 +27,6 @@ type HourlyByDay = Record<string, { hour: number; count: number }[]>;
 
 interface Props {
   fallbackData: { hour: number; count: number }[];
-}
-
-function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  const h = payload[0]?.payload?.hour;
-  const label = h !== undefined ? `${h}:00 — ${h + 1}:00` : "";
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "7px 10px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: "var(--teal)" }}>{label}</div>
-      <div style={{ color: "var(--text)", fontWeight: 700, marginTop: "2px" }}>
-        {payload[0]?.value?.toLocaleString()} jobs
-      </div>
-    </div>
-  );
 }
 
 export default function TimeDistributionChart({ fallbackData }: Props) {
@@ -81,40 +59,19 @@ export default function TimeDistributionChart({ fallbackData }: Props) {
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header" style={{ gap: "8px" }}>
         Posting Times by Day
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            alignItems: "center",
-            gap: "3px",
-          }}
-        >
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px" }}>
           {DAYS.map((day) => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
+              className="filter-btn"
+              data-active={selectedDay === day}
               style={{
-                background:
-                  selectedDay === day
-                    ? "var(--teal)"
-                    : "transparent",
-                color:
-                  selectedDay === day
-                    ? "var(--bg-root)"
-                    : "var(--muted)",
-                border: "1px solid",
-                borderColor:
-                  selectedDay === day
-                    ? "var(--teal)"
-                    : "var(--border)",
-                borderRadius: "3px",
                 padding: "1px 5px",
-                fontSize: "8px",
-                fontFamily: "var(--font-mono)",
-                fontWeight: selectedDay === day ? 700 : 400,
-                cursor: "pointer",
-                letterSpacing: "0.03em",
                 lineHeight: "14px",
+                ...(selectedDay === day
+                  ? { background: "var(--teal)", color: "var(--bg-root)", fontWeight: 700 }
+                  : {}),
               }}
             >
               {day}
@@ -122,44 +79,30 @@ export default function TimeDistributionChart({ fallbackData }: Props) {
           ))}
         </div>
       </div>
-      <div style={{ padding: "12px 12px 0", height: "calc(100% - 37px)" }}>
+      <div className="panel-body-chart">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+          <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{
-                fontSize: 8,
-                fontFamily: "var(--font-mono)",
-                fill: "var(--muted)",
-              }}
+              tick={AXIS_TICK_SM}
               axisLine={{ stroke: "var(--border)" }}
               tickLine={false}
               interval={2}
             />
-            <YAxis
-              tick={{
-                fontSize: 9,
-                fontFamily: "var(--font-mono)",
-                fill: "var(--muted)",
-              }}
-              axisLine={false}
-              tickLine={false}
-              width={30}
+            <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={30} />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  formatLabel={(p) => {
+                    const h = p?.hour;
+                    return h !== undefined ? `${h}:00 \u2014 ${h + 1}:00` : "";
+                  }}
+                />
+              }
+              cursor={BAR_CURSOR}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-            <Bar
-              dataKey="count"
-              radius={[2, 2, 0, 0]}
-              animationDuration={600}
-            >
+            <Bar dataKey="count" radius={[2, 2, 0, 0]} animationDuration={CHART_ANIM_MS}>
               {chartData.map((entry, i) => (
                 <Cell
                   key={i}

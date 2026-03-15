@@ -49,14 +49,7 @@ export default function EmptyPanel({
         >
           {suggestion}
         </div>
-        {/* Animated waiting indicator */}
-        <div
-          style={{
-            display: "flex",
-            gap: "4px",
-            marginTop: "8px",
-          }}
-        >
+        <div style={{ display: "flex", gap: "4px", marginTop: "8px" }}>
           {[0, 1, 2].map((i) => (
             <div
               key={i}

@@ -21,15 +21,7 @@ interface StatProps {
 function Stat({ label, value, accent = "var(--teal)", sub }: StatProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "22px",
-          fontWeight: 700,
-          color: accent,
-          lineHeight: 1,
-        }}
-      >
+      <div className="stat-value" style={{ fontSize: "22px", color: accent }}>
         {value}
       </div>
       {sub && (
@@ -37,17 +29,7 @@ function Stat({ label, value, accent = "var(--teal)", sub }: StatProps) {
           {sub}
         </div>
       )}
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "7px",
-          color: "var(--muted)",
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </div>
+      <div className="stat-label">{label}</div>
     </div>
   );
 }
@@ -78,7 +60,7 @@ export default function QueueHealth({
         }}
       >
         <Stat label="Completed" value={completed} accent="var(--teal)" />
-        <Stat label="Failed" value={failed} accent="var(--red, #ef4444)" />
+        <Stat label="Failed" value={failed} accent="var(--red)" />
         <Stat label="Success Rate" value={`${successRate}%`} accent="var(--green)" />
         <Stat
           label="Visa Data Found"
@@ -92,11 +74,7 @@ export default function QueueHealth({
           accent="var(--amber)"
           sub={`${withSalary} jobs`}
         />
-        <Stat
-          label="Pending"
-          value={pending}
-          accent="var(--muted)"
-        />
+        <Stat label="Pending" value={pending} accent="var(--muted)" />
       </div>
     </div>
   );

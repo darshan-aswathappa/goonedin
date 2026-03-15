@@ -35,7 +35,7 @@ export default function IntelPanel({
       icon: <Buildings size={12} weight="bold" />,
       color: "var(--teal)",
       label: "TOP EMPLOYER",
-      text: `${topCompany} leads all companies in posting volume — consistently the most active recruiter in this dataset.`,
+      text: `${topCompany} leads all companies in posting volume \u2014 consistently the most active recruiter in this dataset.`,
     });
   }
 
@@ -63,7 +63,7 @@ export default function IntelPanel({
       icon: <Sparkle size={12} weight="bold" />,
       color: sponsorshipRate > 40 ? "var(--green)" : sponsorshipRate > 20 ? "var(--amber)" : "var(--red)",
       label: "VISA SIGNAL",
-      text: `${sponsorshipRate}% sponsorship availability — a ${level} signal. ${
+      text: `${sponsorshipRate}% sponsorship availability \u2014 a ${level} signal. ${
         sponsorshipRate > 40
           ? "International candidates have favorable conditions in this market."
           : sponsorshipRate > 20
@@ -87,16 +87,7 @@ export default function IntelPanel({
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header">Market Intelligence</div>
-      <div
-        style={{
-          padding: "12px 14px",
-          height: "calc(100% - 37px)",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
+      <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {insights.length === 0 ? (
           <div
             style={{
@@ -120,29 +111,11 @@ export default function IntelPanel({
                 borderBottom: i < insights.length - 1 ? "1px solid var(--border)" : "none",
               }}
             >
-              {/* Icon */}
-              <div
-                style={{
-                  color: item.color,
-                  flexShrink: 0,
-                  marginTop: "1px",
-                }}
-              >
+              <div style={{ color: item.color, flexShrink: 0, marginTop: "1px" }}>
                 {item.icon}
               </div>
-
-              {/* Content */}
               <div>
-                <div
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "8px",
-                    fontWeight: 700,
-                    letterSpacing: "0.18em",
-                    color: item.color,
-                    marginBottom: "4px",
-                  }}
-                >
+                <div className="stat-label" style={{ color: item.color, fontSize: "8px", letterSpacing: "0.18em", marginBottom: "4px", marginTop: 0 }}>
                   {item.label}
                 </div>
                 <div

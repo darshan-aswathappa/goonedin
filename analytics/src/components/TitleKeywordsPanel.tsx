@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, useCallback } from "react";
+import { TOOLTIP_STYLE } from "@/lib/tokens";
 
 interface Props {
   data: { word: string; count: number }[];
@@ -17,12 +18,13 @@ interface PlacedWord {
   height: number;
 }
 
+/** Map count percentile to CSS variable color values */
 function getColor(pct: number): string {
-  if (pct > 0.8) return "#cc33cc";   // --purple
-  if (pct > 0.6) return "#ff8c00";   // --teal (amber/orange)
-  if (pct > 0.4) return "#00bfff";   // --blue
-  if (pct > 0.2) return "#aaaaaa";   // --text-dim
-  return "#555555";                    // --muted
+  if (pct > 0.8) return "#cc33cc";   // var(--purple)
+  if (pct > 0.6) return "#ff8c00";   // var(--teal)
+  if (pct > 0.4) return "#00bfff";   // var(--blue)
+  if (pct > 0.2) return "#aaaaaa";   // var(--text-dim)
+  return "#555555";                    // var(--muted)
 }
 
 function layoutWords(
@@ -34,7 +36,6 @@ function layoutWords(
   const min = words[words.length - 1]?.count ?? 1;
   const placed: PlacedWord[] = [];
 
-  // Measure text using an offscreen canvas
   const offscreen = document.createElement("canvas");
   const ctx = offscreen.getContext("2d")!;
 
@@ -48,7 +49,6 @@ function layoutWords(
     const w = metrics.width + 12;
     const h = fontSize + 8;
 
-    // Spiral placement to avoid overlap
     const cx = canvasW / 2;
     const cy = canvasH / 2;
     let angle = 0;
@@ -61,14 +61,12 @@ function layoutWords(
       x = cx + radius * Math.cos(angle) - w / 2;
       y = cy + radius * Math.sin(angle) - h / 2;
 
-      // Check bounds
       if (x < 2 || y < 2 || x + w > canvasW - 2 || y + h > canvasH - 2) {
         angle += 0.3;
         radius += 0.4;
         continue;
       }
 
-      // Check overlap with placed words
       let overlaps = false;
       for (const p of placed) {
         if (
@@ -106,7 +104,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
   const [hovered, setHovered] = useState<PlacedWord | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Pan + zoom state
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const dragRef = useRef<{ dragging: boolean; startX: number; startY: number; origX: number; origY: number }>({
@@ -115,7 +112,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
 
   const top = data.slice(0, 25);
 
-  // Layout on mount / resize
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !top.length) return;
@@ -136,7 +132,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
     return () => observer.disconnect();
   }, [data]);
 
-  // Draw
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -163,7 +158,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
       ctx.textBaseline = "top";
 
       if (isHovered) {
-        // Glow effect
         ctx.shadowColor = p.color;
         ctx.shadowBlur = 12;
         ctx.fillStyle = p.color;
@@ -177,7 +171,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
 
       ctx.fillText(p.word.toUpperCase(), p.x + 6, p.y + 4);
 
-      // Count badge — top-right of word
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
@@ -189,7 +182,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
       const bx = p.x + p.width - badgeW + 2;
       const by = p.y - badgeH / 2 + 1;
 
-      // Badge background
       ctx.fillStyle = p.color;
       ctx.globalAlpha = isHovered ? 0.9 : 0.25;
       ctx.beginPath();
@@ -202,7 +194,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
       ctx.closePath();
       ctx.fill();
 
-      // Badge text
       ctx.globalAlpha = 1;
       ctx.fillStyle = isHovered ? "#000000" : p.color;
       ctx.textBaseline = "middle";
@@ -216,7 +207,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
     draw();
   }, [draw]);
 
-  // Hit test
   const hitTest = useCallback(
     (clientX: number, clientY: number): PlacedWord | null => {
       const canvas = canvasRef.current;
@@ -275,7 +265,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
     setHovered(null);
   }, []);
 
-  // Zoom on scroll — native listener so we can preventDefault to stop page scroll
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -293,7 +282,6 @@ export default function TitleKeywordsPanel({ data }: Props) {
 
       setZoom((prev) => {
         const next = Math.min(Math.max(prev * factor, 0.3), 5);
-        // Zoom toward mouse position
         setOffset((off) => ({
           x: mx - (mx - off.x) * (next / prev),
           y: my - (my - off.y) * (next / prev),
@@ -327,19 +315,13 @@ export default function TitleKeywordsPanel({ data }: Props) {
           style={{ display: "block", width: "100%", height: "100%" }}
         />
 
-        {/* Tooltip */}
         {hovered && !dragRef.current.dragging && (
           <div
             style={{
+              ...TOOLTIP_STYLE,
               position: "fixed",
               left: mousePos.x + 12,
               top: mousePos.y - 8,
-              background: "var(--bg-panel)",
-              border: "1px solid var(--border-bright)",
-              padding: "6px 10px",
-              fontFamily: "var(--font-mono)",
-              fontSize: "11px",
-              borderRadius: "var(--radius)",
               pointerEvents: "none",
               zIndex: 100,
             }}

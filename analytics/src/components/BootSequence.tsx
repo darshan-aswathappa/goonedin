@@ -19,8 +19,8 @@ const BOOT_LINES = [
   { text: "salary, seniority, visa sponsorship, and more.", delay: 1850, color: "var(--text-dim)" },
   { text: "", delay: 2000, color: "" },
   { text: "DASHBOARD LAYOUT", delay: 2100, color: "var(--teal)" },
-  { text: "Row 1  KPI cards — total jobs, analysis rate, velocity", delay: 2300, color: "var(--text-dim)" },
-  { text: "Row 2  Job volume trend — 7/14/30/90-day timeline", delay: 2450, color: "var(--text-dim)" },
+  { text: "Row 1  KPI cards \u2014 total jobs, analysis rate, velocity", delay: 2300, color: "var(--text-dim)" },
+  { text: "Row 2  Job volume trend \u2014 7/14/30/90-day timeline", delay: 2450, color: "var(--text-dim)" },
   { text: "Row 3  Top employers + geographic distribution", delay: 2600, color: "var(--text-dim)" },
   { text: "Row 4  Technical skills + posting heatmap", delay: 2750, color: "var(--text-dim)" },
   { text: "Row 5  Soft skills + skill co-occurrence matrix", delay: 2900, color: "var(--text-dim)" },
@@ -77,7 +77,7 @@ export default function BootSequence() {
 
   useEffect(() => {
     if (!visible) return;
-    const handler = (e: KeyboardEvent) => {
+    const handler = () => {
       if (visibleLines >= BOOT_LINES.length) {
         dismiss();
       }
@@ -97,7 +97,7 @@ export default function BootSequence() {
         position: "fixed",
         inset: 0,
         zIndex: 10000,
-        background: "#000000",
+        background: "var(--bg-root)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
@@ -130,7 +130,6 @@ export default function BootSequence() {
           </div>
         ))}
 
-        {/* Blinking cursor */}
         <span
           style={{
             display: "inline-block",
@@ -144,36 +143,14 @@ export default function BootSequence() {
         />
       </div>
 
-      {/* Skip button — always visible */}
       {!allRevealed && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             dismiss();
           }}
-          style={{
-            position: "absolute",
-            bottom: "32px",
-            right: "32px",
-            fontFamily: "var(--font-mono)",
-            fontSize: "9px",
-            letterSpacing: "0.12em",
-            color: "var(--muted)",
-            background: "none",
-            border: "1px solid var(--border)",
-            padding: "6px 14px",
-            borderRadius: "var(--radius)",
-            cursor: "pointer",
-            transition: "color 0.15s, border-color 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--teal)";
-            e.currentTarget.style.borderColor = "var(--teal)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--muted)";
-            e.currentTarget.style.borderColor = "var(--border)";
-          }}
+          className="ghost-btn"
+          style={{ position: "absolute", bottom: "32px", right: "32px" }}
         >
           SKIP INTRO
         </button>

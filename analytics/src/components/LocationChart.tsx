@@ -8,7 +8,6 @@ import {
   BAY_AREA_CENTER,
 } from "@/lib/city-coordinates";
 
-// react-simple-maps has no SSR support for geography fetching
 const ComposableMap = dynamic(
   () => import("react-simple-maps").then((m) => m.ComposableMap),
   { ssr: false },
@@ -68,6 +67,18 @@ function clusterBayArea(
   return data;
 }
 
+/**
+ * Orange-to-red gradient using CSS variable palette.
+ * Interpolates between --teal (#ff8c00) and --red (#ff3333).
+ */
+function bubbleColor(count: number, maxCount: number): string {
+  const t = Math.min(count / maxCount, 1);
+  const r = 255;
+  const g = Math.round(140 * (1 - t) + 51 * t);
+  const b = Math.round(0 * (1 - t) + 51 * t);
+  return `rgb(${r},${g},${b})`;
+}
+
 export default function LocationChart({ data }: Props) {
   const [hover, setHover] = useState<string | null>(null);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -88,14 +99,9 @@ export default function LocationChart({ data }: Props) {
     }
 
     const max = mapped.reduce((m, d) => Math.max(m, d.count), 1);
-    return {
-      bubbles: mapped,
-      remoteCount: remoteEntry?.count ?? 0,
-      maxCount: max,
-    };
+    return { bubbles: mapped, remoteCount: remoteEntry?.count ?? 0, maxCount: max };
   }, [data]);
 
-  // scaleSqrt: radius proportional to sqrt of value, inversely scaled with zoom
   const radius = useCallback(
     (count: number) => {
       const minR = 6;
@@ -105,15 +111,6 @@ export default function LocationChart({ data }: Props) {
     },
     [maxCount, zoom],
   );
-
-  // Orange→red gradient based on count
-  const bubbleColor = (count: number) => {
-    const t = Math.min(count / maxCount, 1);
-    const r = 255;
-    const g = Math.round(140 * (1 - t) + 51 * t);
-    const b = Math.round(0 * (1 - t) + 51 * t);
-    return `rgb(${r},${g},${b})`;
-  };
 
   const handleZoomIn = () => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM));
   const handleZoomOut = () => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM));
@@ -128,10 +125,7 @@ export default function LocationChart({ data }: Props) {
   };
 
   return (
-    <div
-      className="panel chart-enter"
-      style={{ height: "100%", position: "relative" }}
-    >
+    <div className="panel chart-enter" style={{ height: "100%", position: "relative" }}>
       <div className="panel-header">Top Locations</div>
       <div style={{ height: "calc(100% - 37px)", position: "relative" }}>
         <ComposableMap
@@ -161,12 +155,12 @@ export default function LocationChart({ data }: Props) {
                   <Geography
                     key={geo.rsmKey}
                     geography={geo}
-                    fill="#111111"
-                    stroke="#2a2a2a"
+                    fill="var(--border)"
+                    stroke="var(--border-bright)"
                     strokeWidth={0.5 / zoom}
                     style={{
                       default: { outline: "none" },
-                      hover: { outline: "none", fill: "#1a1a1a" },
+                      hover: { outline: "none", fill: "var(--border-bright)" },
                       pressed: { outline: "none" },
                     }}
                   />
@@ -177,6 +171,7 @@ export default function LocationChart({ data }: Props) {
             {bubbles.map((b, i) => {
               const r = radius(b.count);
               const isHovered = hover === b.city;
+              const color = bubbleColor(b.count, maxCount);
               return (
                 <Marker
                   key={b.city}
@@ -184,26 +179,23 @@ export default function LocationChart({ data }: Props) {
                   onMouseEnter={() => setHover(b.city)}
                   onMouseLeave={() => setHover(null)}
                 >
-                  {/* Glow */}
                   <circle
                     r={r + 3 / Math.sqrt(zoom)}
-                    fill={bubbleColor(b.count)}
+                    fill={color}
                     opacity={isHovered ? 0.3 : 0.12}
                     style={{ transition: "opacity 0.2s" }}
                   />
-                  {/* Bubble */}
                   <circle
                     r={r}
-                    fill={bubbleColor(b.count)}
+                    fill={color}
                     opacity={isHovered ? 0.95 : 0.75}
-                    stroke={isHovered ? "#fff" : bubbleColor(b.count)}
+                    stroke={isHovered ? "var(--text)" : color}
                     strokeWidth={(isHovered ? 1 : 0.5) / Math.sqrt(zoom)}
                     style={{
                       transition: "opacity 0.2s, stroke 0.2s",
                       animation: `bubble-pop 0.4s ease-out ${i * 60}ms both`,
                     }}
                   />
-                  {/* Count inside bubble */}
                   <text
                     textAnchor="middle"
                     dominantBaseline="central"
@@ -211,14 +203,13 @@ export default function LocationChart({ data }: Props) {
                       fontFamily: "var(--font-mono)",
                       fontSize: fontSize(r),
                       fontWeight: 700,
-                      fill: "#fff",
+                      fill: "var(--text)",
                       pointerEvents: "none",
                       animation: `bubble-pop 0.4s ease-out ${i * 60 + 100}ms both`,
                     }}
                   >
                     {b.count}
                   </text>
-                  {/* City name label */}
                   {(isHovered || r > 12 / Math.sqrt(zoom)) && (
                     <text
                       y={-(r + 6 / Math.sqrt(zoom))}
@@ -226,7 +217,7 @@ export default function LocationChart({ data }: Props) {
                       style={{
                         fontFamily: "var(--font-mono)",
                         fontSize: `${7 / Math.sqrt(zoom)}px`,
-                        fill: isHovered ? "#f0f0f0" : "var(--muted)",
+                        fill: isHovered ? "var(--text)" : "var(--muted)",
                         pointerEvents: "none",
                         letterSpacing: "0.05em",
                       }}
@@ -260,30 +251,18 @@ export default function LocationChart({ data }: Props) {
             <button
               key={label}
               onClick={action}
+              className="ghost-btn"
               style={{
                 width: 22,
                 height: 22,
-                background: "var(--bg-panel)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                color: "var(--text-dim)",
-                fontFamily: "var(--font-mono)",
+                padding: 0,
                 fontSize: "11px",
                 fontWeight: 700,
-                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                padding: 0,
-                lineHeight: 1,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--teal)";
-                e.currentTarget.style.color = "var(--teal)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.color = "var(--text-dim)";
+                letterSpacing: 0,
+                background: "var(--bg-panel)",
               }}
             >
               {label}
@@ -301,7 +280,7 @@ export default function LocationChart({ data }: Props) {
               fontFamily: "var(--font-mono)",
               fontSize: "9px",
               color: "var(--text-dim)",
-              background: "rgba(255,140,0,0.1)",
+              background: "var(--teal-dim)",
               border: "1px solid var(--border)",
               borderRadius: "var(--radius)",
               padding: "3px 8px",
@@ -310,9 +289,7 @@ export default function LocationChart({ data }: Props) {
               gap: "5px",
             }}
           >
-            <span style={{ color: "var(--teal)", fontWeight: 700 }}>
-              {remoteCount}
-            </span>
+            <span style={{ color: "var(--teal)", fontWeight: 700 }}>{remoteCount}</span>
             <span>REMOTE</span>
           </div>
         )}

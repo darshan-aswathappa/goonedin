@@ -9,33 +9,13 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  type TooltipProps,
 } from "recharts";
+import ChartTooltip from "./ChartTooltip";
+import { AXIS_TICK, BAR_CURSOR, CHART_ANIM_MS } from "@/lib/tokens";
 
 interface Props {
   data: { day: string; count: number }[];
   peakDay: string | null;
-}
-
-function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "7px 10px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: "var(--amber)" }}>{label}</div>
-      <div style={{ color: "var(--text)", fontWeight: 700, marginTop: "2px" }}>
-        {payload[0]?.value?.toLocaleString()} jobs
-      </div>
-    </div>
-  );
 }
 
 export default function WeekdayChart({ data, peakDay }: Props) {
@@ -58,35 +38,27 @@ export default function WeekdayChart({ data, peakDay }: Props) {
           </span>
         )}
       </div>
-      <div style={{ padding: "12px 12px 0", height: "calc(100% - 37px)" }}>
+      <div className="panel-body-chart">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="day"
-              tick={{ fontSize: 9, fontFamily: "var(--font-mono)", fill: "var(--muted)" }}
+              tick={AXIS_TICK}
               axisLine={{ stroke: "var(--border)" }}
               tickLine={false}
             />
-            <YAxis
-              tick={{ fontSize: 9, fontFamily: "var(--font-mono)", fill: "var(--muted)" }}
-              axisLine={false}
-              tickLine={false}
-              width={30}
+            <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={30} />
+            <Tooltip
+              content={<ChartTooltip accentColor="var(--amber)" />}
+              cursor={BAR_CURSOR}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-            <Bar dataKey="count" radius={[2, 2, 0, 0]} animationDuration={600}>
+            <Bar dataKey="count" radius={[2, 2, 0, 0]} animationDuration={CHART_ANIM_MS}>
               {data.map((entry, i) => (
                 <Cell
                   key={i}
                   fill={
-                    entry.day === peakDay
-                      ? "var(--amber)"
-                      : entry.count === max
+                    entry.day === peakDay || entry.count === max
                       ? "var(--amber)"
                       : entry.count > max * 0.7
                       ? "var(--teal)"

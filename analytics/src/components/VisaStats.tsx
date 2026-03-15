@@ -6,8 +6,9 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
-  type TooltipProps,
 } from "recharts";
+import ChartTooltip from "./ChartTooltip";
+import { CHART_ANIM_MS } from "@/lib/tokens";
 
 interface VisaBucket {
   label: string;
@@ -19,25 +20,6 @@ interface Props {
   data: VisaBucket[];
   sponsorshipRate: number;
   total: number;
-}
-
-function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "7px 10px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: payload[0]?.payload?.color }}>{payload[0]?.name}</div>
-      <div style={{ color: "var(--text)", fontWeight: 700 }}>{payload[0]?.value} jobs</div>
-    </div>
-  );
 }
 
 export default function VisaStats({ data, sponsorshipRate, total }: Props) {
@@ -55,27 +37,10 @@ export default function VisaStats({ data, sponsorshipRate, total }: Props) {
       >
         {/* Big callout */}
         <div style={{ flexShrink: 0, textAlign: "center", width: "90px" }}>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "36px",
-              fontWeight: 700,
-              color: "var(--teal)",
-              lineHeight: 1,
-            }}
-          >
+          <div className="stat-value" style={{ fontSize: "36px", color: "var(--teal)" }}>
             {sponsorshipRate}%
           </div>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "7px",
-              color: "var(--muted)",
-              letterSpacing: "0.15em",
-              marginTop: "5px",
-              lineHeight: 1.5,
-            }}
-          >
+          <div className="stat-label" style={{ letterSpacing: "0.15em", marginTop: "5px", lineHeight: 1.5 }}>
             SPONSORSHIP
             <br />
             RATE
@@ -105,13 +70,20 @@ export default function VisaStats({ data, sponsorshipRate, total }: Props) {
                 innerRadius="50%"
                 outerRadius="80%"
                 paddingAngle={2}
-                animationDuration={600}
+                animationDuration={CHART_ANIM_MS}
               >
                 {data.map((entry, i) => (
                   <Cell key={i} fill={entry.color} stroke="var(--bg-panel)" strokeWidth={2} />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip
+                content={
+                  <ChartTooltip
+                    formatLabel={(p) => p?.label ?? ""}
+                    formatValue={(v) => `${v} jobs`}
+                  />
+                }
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>

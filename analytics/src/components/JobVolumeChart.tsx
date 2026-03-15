@@ -9,9 +9,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  type TooltipProps,
 } from "recharts";
 import { format, parseISO } from "date-fns";
+import ChartTooltip from "./ChartTooltip";
+import { AXIS_TICK, CHART_ANIM_MS } from "@/lib/tokens";
 
 interface DataPoint {
   day: string;
@@ -25,46 +26,16 @@ const RANGES = [
   { label: "90D", days: 90 },
 ] as const;
 
-const SOURCES = [{ label: "ALL", value: "" }] as const;
-
-function CustomTooltip({
-  active,
-  payload,
-  label,
-}: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "8px 12px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: "var(--teal)", letterSpacing: "0.05em" }}>
-        {label ? format(parseISO(label), "MMM d, yyyy") : ""}
-      </div>
-      <div style={{ color: "var(--text)", marginTop: "3px", fontWeight: 700 }}>
-        {payload[0]?.value?.toLocaleString()} jobs
-      </div>
-    </div>
-  );
-}
-
 interface Props {
   data: DataPoint[];
 }
 
 export default function JobVolumeChart({ data: initialData }: Props) {
   const [days, setDays] = useState(30);
-  const [source, setSource] = useState("");
   const [data, setData] = useState<DataPoint[]>(initialData);
   const [loading, setLoading] = useState(false);
 
-  const isDefault = days === 30 && source === "";
+  const isDefault = days === 30;
 
   const fetchData = useCallback(async () => {
     if (isDefault) {
@@ -74,7 +45,6 @@ export default function JobVolumeChart({ data: initialData }: Props) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ days: String(days) });
-      if (source) params.set("source", source);
       const res = await fetch(`/api/analytics/timeline?${params}`);
       if (!res.ok) throw new Error("fetch failed");
       const json = await res.json();
@@ -84,7 +54,7 @@ export default function JobVolumeChart({ data: initialData }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [days, source, isDefault, initialData]);
+  }, [days, isDefault, initialData]);
 
   useEffect(() => {
     fetchData();
@@ -97,8 +67,7 @@ export default function JobVolumeChart({ data: initialData }: Props) {
       <div className="panel-header" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
         <span style={{ whiteSpace: "nowrap", flexShrink: 0 }}>
           Job Volume
-          {source ? ` · ${source.toUpperCase()}` : ""}
-          {" — "}
+          {" \u2014 "}
           {days}D Trend
           <span
             style={{
@@ -113,55 +82,12 @@ export default function JobVolumeChart({ data: initialData }: Props) {
         </span>
 
         <div style={{ display: "flex", gap: "4px", alignItems: "center", flexShrink: 0, marginLeft: "auto" }}>
-          {/* Source filter */}
-          {SOURCES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setSource(s.value)}
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "8px",
-                letterSpacing: "0.1em",
-                padding: "2px 6px",
-                background:
-                  source === s.value ? "var(--teal-dim)" : "transparent",
-                color: source === s.value ? "var(--teal)" : "var(--muted)",
-                border: `1px solid ${source === s.value ? "var(--teal)" : "var(--border)"}`,
-                borderRadius: "var(--radius)",
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-
-          <span
-            style={{
-              width: "1px",
-              height: "12px",
-              background: "var(--border-bright)",
-              margin: "0 4px",
-            }}
-          />
-
-          {/* Time range filter */}
           {RANGES.map((r) => (
             <button
               key={r.days}
               onClick={() => setDays(r.days)}
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "8px",
-                letterSpacing: "0.1em",
-                padding: "2px 6px",
-                background: days === r.days ? "var(--teal-dim)" : "transparent",
-                color: days === r.days ? "var(--teal)" : "var(--muted)",
-                border: `1px solid ${days === r.days ? "var(--teal)" : "var(--border)"}`,
-                borderRadius: "var(--radius)",
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
+              className="filter-btn"
+              data-active={days === r.days}
             >
               {r.label}
             </button>
@@ -169,13 +95,7 @@ export default function JobVolumeChart({ data: initialData }: Props) {
         </div>
       </div>
 
-      <div
-        style={{
-          padding: "12px 12px 0",
-          height: "calc(100% - 37px)",
-          position: "relative",
-        }}
-      >
+      <div className="panel-body-chart" style={{ position: "relative" }}>
         {loading && (
           <div
             style={{
@@ -193,21 +113,14 @@ export default function JobVolumeChart({ data: initialData }: Props) {
           </div>
         )}
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={data}
-            margin={{ top: 4, right: 20, left: 4, bottom: 0 }}
-          >
+          <AreaChart data={data} margin={{ top: 4, right: 20, left: 4, bottom: 0 }}>
             <defs>
               <linearGradient id="volumeGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--teal)" stopOpacity={0.3} />
                 <stop offset="95%" stopColor="var(--teal)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="day"
               tickFormatter={(v) => {
@@ -217,34 +130,34 @@ export default function JobVolumeChart({ data: initialData }: Props) {
                   return v;
                 }
               }}
-              tick={{
-                fontSize: 9,
-                fontFamily: "var(--font-mono)",
-                fill: "var(--muted)",
-              }}
+              tick={AXIS_TICK}
               axisLine={{ stroke: "var(--border)" }}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{
-                fontSize: 9,
-                fontFamily: "var(--font-mono)",
-                fill: "var(--muted)",
-              }}
+              tick={AXIS_TICK}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
               width={40}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  formatLabel={(_, label) =>
+                    label ? format(parseISO(label), "MMM d, yyyy") : ""
+                  }
+                />
+              }
+            />
             <Area
               type="monotone"
               dataKey="count"
               stroke="var(--teal)"
               strokeWidth={2}
               fill="url(#volumeGradient)"
-              animationDuration={600}
+              animationDuration={CHART_ANIM_MS}
               animationEasing="ease-out"
             />
           </AreaChart>

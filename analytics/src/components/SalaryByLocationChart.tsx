@@ -9,8 +9,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  type TooltipProps,
 } from "recharts";
+import ChartTooltip from "./ChartTooltip";
+import { AXIS_TICK_SM, BAR_CURSOR, CHART_ANIM_MS } from "@/lib/tokens";
 
 interface CityData {
   city: string;
@@ -20,31 +21,6 @@ interface CityData {
 
 interface Props {
   cities: CityData[];
-}
-
-function CustomTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0]?.payload as CityData;
-  return (
-    <div
-      style={{
-        background: "var(--bg-panel)",
-        border: "1px solid var(--border-bright)",
-        padding: "7px 10px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "11px",
-        borderRadius: "var(--radius)",
-      }}
-    >
-      <div style={{ color: "var(--green)" }}>{data.city}</div>
-      <div style={{ color: "var(--text)", fontWeight: 700, marginTop: "2px" }}>
-        ${data.median.toLocaleString()} median
-      </div>
-      <div style={{ color: "var(--muted)", marginTop: "2px" }}>
-        n={data.count} jobs
-      </div>
-    </div>
-  );
 }
 
 export default function SalaryByLocationChart({ cities }: Props) {
@@ -74,23 +50,11 @@ export default function SalaryByLocationChart({ cities }: Props) {
       >
         <div style={{ flex: 1 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={cities}
-              layout="vertical"
-              margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--border)"
-                horizontal={false}
-              />
+            <BarChart data={cities} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
               <XAxis
                 type="number"
-                tick={{
-                  fontSize: 8,
-                  fontFamily: "var(--font-mono)",
-                  fill: "var(--muted)",
-                }}
+                tick={AXIS_TICK_SM}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `$${Math.round(v / 1000)}K`}
@@ -98,30 +62,28 @@ export default function SalaryByLocationChart({ cities }: Props) {
               <YAxis
                 dataKey="city"
                 type="category"
-                tick={{
-                  fontSize: 8,
-                  fontFamily: "var(--font-mono)",
-                  fill: "var(--text-dim)",
-                }}
+                tick={{ ...AXIS_TICK_SM, fill: "var(--text-dim)" }}
                 axisLine={false}
                 tickLine={false}
                 width={100}
               />
               <Tooltip
-                content={<CustomTooltip />}
-                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                content={
+                  <ChartTooltip
+                    accentColor="var(--green)"
+                    formatLabel={(p) => p?.city ?? ""}
+                    formatValue={(_, p) =>
+                      `$${p?.median?.toLocaleString()} median\nn=${p?.count} jobs`
+                    }
+                  />
+                }
+                cursor={BAR_CURSOR}
               />
-              <Bar dataKey="median" radius={[0, 2, 2, 0]} animationDuration={600}>
+              <Bar dataKey="median" radius={[0, 2, 2, 0]} animationDuration={CHART_ANIM_MS}>
                 {cities.map((_, i) => (
                   <Cell
                     key={i}
-                    fill={
-                      i < 3
-                        ? "var(--green)"
-                        : i < 7
-                        ? "var(--teal)"
-                        : "var(--blue)"
-                    }
+                    fill={i < 3 ? "var(--green)" : i < 7 ? "var(--teal)" : "var(--blue)"}
                     opacity={0.85}
                   />
                 ))}
