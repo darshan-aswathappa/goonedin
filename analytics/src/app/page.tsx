@@ -8,7 +8,6 @@ import SkillsFrequency from "@/components/SkillsFrequency";
 import SoftSkillsPanel from "@/components/SoftSkillsPanel";
 import GoodToHavePanel from "@/components/GoodToHavePanel";
 import PostingHeatmap from "@/components/PostingHeatmap";
-import SourceDistribution from "@/components/SourceDistribution";
 import LocationChart from "@/components/LocationChart";
 import VisaStats from "@/components/VisaStats";
 import IntelPanel from "@/components/IntelPanel";
@@ -19,6 +18,7 @@ import TitleKeywordsPanel from "@/components/TitleKeywordsPanel";
 import JobFunctionsChart from "@/components/JobFunctionsChart";
 import QueueHealth from "@/components/QueueHealth";
 import SkillCooccurrence from "@/components/SkillCooccurrence";
+import TimeDistributionChart from "@/components/TimeDistributionChart";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
 
 export const revalidate = 60;
@@ -194,13 +194,12 @@ export default async function DashboardPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "2fr 1fr",
+              gridTemplateColumns: "1fr",
               gap: "12px",
               height: "240px",
             }}
           >
             <JobVolumeChart data={timeline?.timeline ?? []} />
-            <SourceDistribution data={sources?.sources ?? []} />
           </div>
 
           {/* Row 3: Companies + Locations */}
@@ -243,11 +242,11 @@ export default async function DashboardPage() {
             <SkillCooccurrence data={skills?.cooccurrencePairs ?? []} />
           </div>
 
-          {/* Row 6: Seniority + Weekday */}
+          {/* Row 6: Seniority + Weekday + Time Distribution */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "300px 1fr",
+              gridTemplateColumns: "300px 1fr 1fr",
               gap: "12px",
               height: "240px",
             }}
@@ -257,6 +256,7 @@ export default async function DashboardPage() {
               data={weekday?.weekday ?? []}
               peakDay={weekday?.peakDay ?? null}
             />
+            <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
           </div>
 
           {/* Row 7: Visa + Job Functions */}
