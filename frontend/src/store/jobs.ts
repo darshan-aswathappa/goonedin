@@ -93,11 +93,13 @@ interface JobsState {
   jobrightJobs: Job[];
   mathworksJobs: Job[];
   githubJobs: Job[];
+  indeedJobs: Job[];
   locationFilteredJobs: Job[];
   locationFilterLocation: string | null;
   locationFilterNormalized: LocationNormalized | null;
   nextLinkedinScrape: string | null;
   nextLocationScrape: string | null;
+  nextIndeedScrape: string | null;
   connectionStatus: "connecting" | "connected" | "disconnected";
   isLoading: boolean;
   apiError: string | null;
@@ -132,11 +134,13 @@ export const useJobsStore = create<JobsState>((set) => ({
   jobrightJobs: [],
   mathworksJobs: [],
   githubJobs: [],
+  indeedJobs: [],
   locationFilteredJobs: [],
   locationFilterLocation: null,
   locationFilterNormalized: null,
   nextLinkedinScrape: null,
   nextLocationScrape: null,
+  nextIndeedScrape: null,
   connectionStatus: "disconnected",
   isLoading: true,
   apiError: null,
@@ -166,6 +170,9 @@ export const useJobsStore = create<JobsState>((set) => ({
         githubJobs: job.source === "GitHub"
           ? [job, ...state.githubJobs]
           : state.githubJobs,
+        indeedJobs: job.source === "Indeed"
+          ? [job, ...state.indeedJobs]
+          : state.indeedJobs,
         locationFilteredJobs: matchesLocationFilter(job, state.locationFilterNormalized)
           ? [job, ...state.locationFilteredJobs]
           : state.locationFilteredJobs,
@@ -182,6 +189,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         jobrightJobs: state.jobrightJobs.filter((j) => j.external_id !== externalId),
         mathworksJobs: state.mathworksJobs.filter((j) => j.external_id !== externalId),
         githubJobs: state.githubJobs.filter((j) => j.external_id !== externalId),
+        indeedJobs: state.indeedJobs.filter((j) => j.external_id !== externalId),
         locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
         dismissedJobIds: newDismissed,
       };
@@ -194,6 +202,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       jobrightJobs: state.jobrightJobs.filter((j) => j.company !== company),
       mathworksJobs: state.mathworksJobs.filter((j) => j.company !== company),
       githubJobs: state.githubJobs.filter((j) => j.company !== company),
+      indeedJobs: state.indeedJobs.filter((j) => j.company !== company),
       locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.company !== company),
     })),
 
@@ -208,6 +217,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         jobrightJobs: updateList(state.jobrightJobs),
         mathworksJobs: updateList(state.mathworksJobs),
         githubJobs: updateList(state.githubJobs),
+        indeedJobs: updateList(state.indeedJobs),
         locationFilteredJobs: updateList(state.locationFilteredJobs),
       };
     }),
@@ -221,6 +231,7 @@ export const useJobsStore = create<JobsState>((set) => ({
         jobrightJobs: filtered.filter((j) => j.source === "Jobright"),
         mathworksJobs: filtered.filter((j) => j.source === "MathWorks"),
         githubJobs: filtered.filter((j) => j.source === "GitHub"),
+        indeedJobs: filtered.filter((j) => j.source === "Indeed"),
         locationFilteredJobs: filtered.filter((j) => matchesLocationFilter(j, state.locationFilterNormalized)),
       };
     }),
@@ -235,6 +246,8 @@ export const useJobsStore = create<JobsState>((set) => ({
   setNextScrape: (scraper, nextAt) =>
     set(scraper === "linkedin"
       ? { nextLinkedinScrape: nextAt }
+      : scraper === "indeed"
+      ? { nextIndeedScrape: nextAt }
       : { nextLocationScrape: nextAt }
     ),
 
@@ -249,6 +262,7 @@ export const useJobsStore = create<JobsState>((set) => ({
       jobrightJobs: [],
       mathworksJobs: [],
       githubJobs: [],
+      indeedJobs: [],
       locationFilteredJobs: [],
       dismissedJobIds: new Set<string>(),
     }),

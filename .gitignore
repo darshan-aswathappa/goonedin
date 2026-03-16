@@ -13,6 +13,8 @@ backend/.env
 .cursor
 .claude-flow
 
+indeed-test/
+
 # Python
 __pycache__/
 **/__pycache__/

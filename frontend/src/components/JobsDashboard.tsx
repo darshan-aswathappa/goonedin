@@ -71,6 +71,8 @@ export function JobsDashboard() {
     locationFilterNormalized,
     nextLinkedinScrape,
     nextLocationScrape,
+    indeedJobs,
+    nextIndeedScrape,
     customSources,
     removeCustomSource,
     sourceStatuses,
@@ -83,11 +85,13 @@ export function JobsDashboard() {
       jobrightJobs: state.jobrightJobs,
       mathworksJobs: state.mathworksJobs,
       githubJobs: state.githubJobs,
+      indeedJobs: state.indeedJobs,
       locationFilteredJobs: state.locationFilteredJobs,
       locationFilterLocation: state.locationFilterLocation,
       locationFilterNormalized: state.locationFilterNormalized,
       nextLinkedinScrape: state.nextLinkedinScrape,
       nextLocationScrape: state.nextLocationScrape,
+      nextIndeedScrape: state.nextIndeedScrape,
       customSources: state.customSources,
       removeCustomSource: state.removeCustomSource,
       sourceStatuses: state.sourceStatuses,
@@ -427,6 +431,16 @@ export function JobsDashboard() {
                   </TabsTrigger>
                 )}
 
+                {(indeedJobs.length > 0 || activeTab === "indeed") && (
+                  <TabsTrigger value="indeed" className={TAB_BASE}>
+                    <div className="flex items-center gap-1.5">
+                      <MagnifyingGlass weight="bold" className="h-3 w-3" />
+                      <span>INDEED</span>
+                      <span style={{ color: "#555" }}>({indeedJobs.length})</span>
+                    </div>
+                  </TabsTrigger>
+                )}
+
                 {customSources.map((source) => {
                   const sourceJobs = jobs.filter((j) => j.source === source.name);
                   return (
@@ -562,6 +576,19 @@ export function JobsDashboard() {
             <JobList
               jobs={githubJobs}
               emptyMessage="No GitHub jobs found yet. We'll update you as we discover them."
+              isLocked={!user}
+            />
+          </TabsContent>
+
+          <TabsContent value="indeed" className="mt-0">
+            {nextIndeedScrape && (
+              <div className="mb-1.5">
+                <ScrapeCountdown nextScrapeAt={nextIndeedScrape} />
+              </div>
+            )}
+            <JobList
+              jobs={indeedJobs}
+              emptyMessage="No Indeed jobs found yet. Scanning every 10 minutes."
               isLocked={!user}
             />
           </TabsContent>

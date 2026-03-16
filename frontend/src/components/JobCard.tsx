@@ -197,7 +197,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   return (
     <>
       <div
-        onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
+        onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") ? () => setAnalysisOpen(true) : undefined}
         onMouseEnter={() => setCardHovered(true)}
         onMouseLeave={() => setCardHovered(false)}
         className={`group relative h-full flex flex-col ${
@@ -312,7 +312,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
               </div>
             )}
 
-            {(job.source === "LinkedIn" || job.source === "Jobright") && job.salary && (
+            {(job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") && job.salary && (
               <div
                 style={{
                   border: "1px solid #1c1c1c",
@@ -335,7 +335,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
               </div>
             )}
 
-            {(job.source === "LinkedIn" || job.source === "Jobright") && job.visa && (() => {
+            {(job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") && job.visa && (() => {
               const formatted = formatVisa(job.visa);
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
@@ -536,7 +536,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
         </div>
       </div>
 
-      {(job.source === "LinkedIn" || job.source === "Jobright") && (
+      {(job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") && (
         <JobAnalysisModal
           job={job}
           open={analysisOpen}

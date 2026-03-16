@@ -174,15 +174,20 @@ async def run_job_analysis(
     external_id: str,
     job_url: str,
     api_key: str,
+    description: Optional[str] = None,
 ) -> tuple[Optional[dict[str, Any]], Optional[str]]:
     """
     Full analysis pipeline for a single job:
     1. Extract job ID from URL
-    2. Fetch job description from LinkedIn API
+    2. Fetch job description from LinkedIn API (or use pre-fetched description)
     3. Analyze with DeepSeek
     Returns a tuple of (analysis dict, error message).
     If successful, error is None. If failed, analysis is None and error contains the reason.
     (Caller is responsible for persisting the result.)
+
+    Args:
+        description: Pre-fetched description text (e.g. from Indeed scraper).
+                     If provided, skips the LinkedIn HTML fetch step.
     """
     import asyncio
 
@@ -201,15 +206,16 @@ async def run_job_analysis(
             logger.info(f"[JobAnalyzer] Skipping DeepSeek for Jobright {job_id} — analysis is pre-built by scraper")
             return None, "Jobright jobs should have pre-built analysis from scraper"
 
-        # 2. Fetch job description
-        description = await fetch_job_description(job_id)
+        # 2. Use pre-fetched description if available, otherwise fetch from LinkedIn
+        if not description:
+            description = await fetch_job_description(job_id)
         if not description:
             error_msg = f"No description found for job {job_id}"
             logger.warning(f"[JobAnalyzer] {error_msg}")
             return None, error_msg
 
         logger.info(
-            f"[JobAnalyzer] Fetched {len(description)} chars of description for job {external_id}"
+            f"[JobAnalyzer] Got {len(description)} chars of description for job {external_id}"
         )
 
         # 3. Analyze with DeepSeek (blocking HTTP, run in thread)

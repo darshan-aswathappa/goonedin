@@ -59,13 +59,14 @@ from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.scraper_github import fetch_github_jobs
 from app.services.scraper_jobright import fetch_jobright_jobs
+from app.services.scraper_indeed import fetch_indeed_jobs
 
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
 from app.services.resume_analyzer import enqueue_resume_analysis, process_resume_analysis_queue
 from app.services.job_analyzer import run_job_analysis
 from app.services.job_queue import get_cache_entry, create_cache_entry, enqueue_job
-from app.services.job_queue_worker import process_job_analysis_queue
+from app.services.job_queue_worker import process_job_analysis_queue, store_description
 from app.api.knowledge_base import router as kb_router
 
 logging.basicConfig(level=logging.INFO)
@@ -83,6 +84,7 @@ settings = get_settings()
 JOB_RECENCY_MINUTES = 600
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 2
 GITHUB_TTL_SECONDS = 24 * 60 * 60
+INDEED_TTL_SECONDS = 60 * 60 * 2  # 2 hours
 
 # ── In-memory dedup for LinkedIn jobs ──────────────────────────────
 # Maps user_id → {external_id: timestamp_added}
@@ -220,6 +222,8 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     jobright_jobs: List[Any] = []
     mathworks_jobs: List[Any] = []
     github_jobs: List[Any] = []
+    indeed_jobs: List[Any] = []
+    indeed_descriptions: dict[str, str] = {}
 
     for r in results:
         if isinstance(r, dict) and "jobs" in r:
@@ -236,6 +240,9 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 first_job = r["jobs"][0]
                 if hasattr(first_job, "source") and first_job.source == "Jobright":
                     jobright_jobs.extend(r["jobs"])
+                elif hasattr(first_job, "source") and first_job.source == "Indeed":
+                    indeed_jobs.extend(r["jobs"])
+                    indeed_descriptions.update(r.get("descriptions", {}))
                 else:
                     all_jobs.extend(r["jobs"])
         elif isinstance(r, Exception):
@@ -354,6 +361,61 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         logger.info(f"New Target (Jobright): {job.title} @ {job.company}")
 
+    # ── Indeed jobs: queue for DeepSeek analysis (description pre-fetched) ──
+    for job in indeed_jobs:
+        if _is_seen(ctx.user_id, job.external_id):
+            continue
+
+        title_lower = job.title.lower()
+        if not any(kw in title_lower for kw in target_keywords_lower):
+            _mark_seen(ctx.user_id, job.external_id)
+            continue
+
+        job_dict = job.model_dump(mode="json")
+
+        if settings.DEEPSEEK_API_KEY:
+            cache = await get_cache_entry(supabase, job_dict["external_id"])
+            if cache and cache["analysis_status"] == "completed":
+                job_dict["analysis"] = cache["analysis"]
+                job_dict["analysis_status"] = "completed"
+                job_dict["salary"] = job_dict.get("salary") or cache.get("salary")
+                job_dict["visa"] = cache.get("visa")
+                job_dict["visible"] = True
+                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+                _mark_seen(ctx.user_id, job.external_id)
+                if inserted is None:
+                    continue
+                total_finds += 1
+                await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+                job_dict["is_notified"] = True
+                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+                logger.info(f"New Target (Indeed, cached): {job.title} @ {job.company}")
+            else:
+                # Queue for analysis — store description in memory for worker
+                desc = indeed_descriptions.get(job.external_id)
+                if desc:
+                    store_description(job_dict["external_id"], desc)
+                await create_cache_entry(supabase, job_dict["external_id"], job_dict["url"])
+                await enqueue_job(supabase, job_dict["external_id"], job_dict["url"])
+                job_dict["visible"] = False
+                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+                _mark_seen(ctx.user_id, job.external_id)
+                if inserted is None:
+                    continue
+                total_finds += 1
+                logger.info(f"Queued Indeed job {job_dict['external_id']} for analysis")
+        else:
+            job_dict["visible"] = True
+            inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+            _mark_seen(ctx.user_id, job.external_id)
+            if inserted is None:
+                continue
+            total_finds += 1
+            await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+            job_dict["is_notified"] = True
+            await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+            logger.info(f"New Target (Indeed): {job.title} @ {job.company}")
+
     return total_finds
 
 
@@ -423,6 +485,35 @@ async def run_low_frequency_loop(ctx: UserContext):
         except Exception as e:
             logger.error(f"[LF] {ctx.user_id} Error: {e}")
         await asyncio.sleep(1200 + random.uniform(-30, 30))
+
+
+async def run_indeed_loop(ctx: UserContext):
+    """Dedicated Indeed scraper loop — runs every 10 minutes."""
+    supabase = get_supabase_client()
+    logger.info(f"[Indeed] Scraper started for {ctx.user_id}")
+    while True:
+        try:
+            result = await fetch_indeed_jobs(supabase, ctx.user_id)
+            if not result.get("failed"):
+                new_finds = await process_and_alert_jobs([result], ctx)
+                if new_finds:
+                    logger.info(f"[Indeed] {ctx.user_id} found {new_finds} new jobs")
+                else:
+                    logger.debug(f"[Indeed] {ctx.user_id} No new targets.")
+            else:
+                logger.warning(f"[Indeed] {ctx.user_id} fetch failed")
+        except asyncio.CancelledError:
+            logger.info(f"[Indeed] Scraper stopped for {ctx.user_id}")
+            break
+        except Exception as e:
+            logger.error(f"[Indeed] {ctx.user_id} Error: {e}")
+        sleep_secs = 600 + random.uniform(-30, 30)
+        next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
+        await manager.broadcast(ctx.user_id, {
+            "type": "SCRAPE_CYCLE",
+            "data": {"scraper": "indeed", "next_scrape_at": next_at.isoformat()}
+        })
+        await asyncio.sleep(sleep_secs)
 
 
 async def run_custom_sources_loop(ctx: UserContext):
@@ -628,6 +719,8 @@ def start_user_scrapers(ctx: UserContext) -> None:
         ctx.lf_task = asyncio.create_task(run_low_frequency_loop(ctx))
     if getattr(ctx, "custom_sources_task", None) is None or ctx.custom_sources_task.done():
         ctx.custom_sources_task = asyncio.create_task(run_custom_sources_loop(ctx))
+    if ctx.indeed_task is None or ctx.indeed_task.done():
+        ctx.indeed_task = asyncio.create_task(run_indeed_loop(ctx))
 
     # Start location scraper if user has a location filter set
     if ctx.location_task is None or ctx.location_task.done():

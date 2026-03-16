@@ -31,6 +31,20 @@ settings = get_settings()
 # Global semaphore to limit concurrency
 semaphore: asyncio.Semaphore = None
 
+# In-memory store for pre-fetched descriptions (e.g. Indeed jobs).
+# Keyed by external_id. Consumed (popped) once by the worker — no persistence needed.
+_prefetched_descriptions: dict[str, str] = {}
+
+
+def store_description(external_id: str, description: str) -> None:
+    """Store a pre-fetched description for the worker to pick up."""
+    _prefetched_descriptions[external_id] = description
+
+
+def pop_description(external_id: str) -> str | None:
+    """Retrieve and remove a pre-fetched description."""
+    return _prefetched_descriptions.pop(external_id, None)
+
 
 async def process_job_analysis_queue(supabase: Any):
     """Main queue worker loop. Polls and processes jobs with concurrency control."""
@@ -101,8 +115,14 @@ async def _process_one(supabase: Any, row: dict):
             # (they're visible=FALSE now; after bulk update they'll be TRUE)
             pending_targets = await get_users_with_pending_job(supabase, external_id)
 
+            # Check for pre-fetched description (e.g. Indeed jobs already have it)
+            pre_description = pop_description(external_id)
+
             # Run analysis
-            analysis, error_reason = await run_job_analysis(external_id, job_url, settings.DEEPSEEK_API_KEY)
+            analysis, error_reason = await run_job_analysis(
+                external_id, job_url, settings.DEEPSEEK_API_KEY,
+                description=pre_description,
+            )
 
             if analysis:
                 # Extract salary and visa from analysis result
