@@ -4,8 +4,11 @@ Indeed job scraper using Indeed's GraphQL API.
 Searches each target keyword individually, deduplicates by job key,
 applies client-side freshness and title filters, and returns JobCreate objects.
 
+Search keywords and title filter keywords are loaded from the user's Supabase
+settings (same as LinkedIn and other scrapers).
+
 Indeed API limitation: date filters and attribute filters cannot be combined.
-Strategy: server-side date filter (4h) + sort DATE, client-side title filtering.
+Strategy: server-side date filter (1h) + sort DATE, client-side title filtering.
 """
 
 import asyncio
@@ -17,9 +20,13 @@ from typing import Any, Optional
 import httpx
 from bs4 import BeautifulSoup
 
+from app.core.config import get_settings
+from app.core.supabase_config import get_target_keywords, get_title_filter_keywords
 from app.models.job import JobCreate
 
 logger = logging.getLogger("VelocityScraper")
+
+settings = get_settings()
 
 INDEED_API_URL = "https://apis.indeed.com/graphql"
 
@@ -47,7 +54,7 @@ query GetJobData {
         filters: {
             date: {
                 field: "dateOnIndeed"
-                start: "4h"
+                start: "1h"
             }
         }
     ) {
@@ -90,40 +97,10 @@ query GetJobData {
 }
 """
 
-# Search terms: each is queried individually against Indeed
-INDEED_SEARCH_KEYWORDS = [
-    "Software Engineer",
-    "Software Developer",
-    "Backend Developer",
-    "Full Stack Developer",
-    "FullStack Developer",
-    "Java Developer",
-    "Python Developer",
-    "New Grad Software",
-    "Entry Level Software Engineer",
-    "Associate Software Engineer",
-    "Junior Software Developer",
-    "Junior Software Engineer",
-    "SWE",
-    "Entry Level Software Developer",
-]
+MAX_AGE_HOURS = 1
 
-# Client-side title relevance filter
-INCLUDE_TITLE_KEYWORDS = [
-    "software", "developer", "backend", "full stack", "fullstack",
-    "java", "python", "swe", "front end", "frontend",
-    ".net", "devops", "dev ops", "golang", "rust", "node",
-    "react", "angular", "typescript", "javascript", "c#", "c++",
-    "data engineer", "ml engineer", "machine learning engineer",
-]
-
-# Client-side title block filter
-BLOCK_TITLE_KEYWORDS = [
-    "senior", "principal", "manager", "staff", "sr.", "lead", "director",
-    "nurse", "therapist", "veterinarian",
-]
-
-MAX_AGE_HOURS = 4
+# Batch size for parallel keyword fetches (avoid firing all at once)
+KEYWORD_BATCH_SIZE = 4
 
 
 def _is_fresh(date_published) -> bool:
@@ -136,14 +113,16 @@ def _is_fresh(date_published) -> bool:
     return age_hours <= MAX_AGE_HOURS
 
 
-def _is_relevant(title: str) -> bool:
+def _is_relevant(title: str, target_keywords: list[str]) -> bool:
+    """Check if title matches any of the user's target keywords."""
     lower = title.lower()
-    return any(kw in lower for kw in INCLUDE_TITLE_KEYWORDS)
+    return any(kw.lower() in lower for kw in target_keywords)
 
 
-def _is_blocked(title: str) -> bool:
+def _is_blocked(title: str, title_filter_keywords: list[str]) -> bool:
+    """Check if title matches any of the user's title filter (block) keywords."""
     lower = title.lower()
-    return any(kw in lower for kw in BLOCK_TITLE_KEYWORDS)
+    return any(kw.lower() in lower for kw in title_filter_keywords)
 
 
 def _format_salary(compensation: Optional[dict]) -> Optional[str]:
@@ -215,77 +194,122 @@ async def _fetch_one_keyword(client: httpx.AsyncClient, search_term: str) -> lis
         return []
 
 
-async def fetch_indeed_jobs(supabase: Any, user_id: str) -> dict:
+async def fetch_indeed_jobs(
+    supabase: Any,
+    user_id: str,
+    client: Optional[httpx.AsyncClient] = None,
+) -> dict:
     """
-    Fetch Indeed jobs across all target keywords.
+    Fetch Indeed jobs across the user's target keywords (from Supabase settings).
+    Title filter keywords also come from user settings, matching LinkedIn behavior.
+
+    Accepts an optional pre-built httpx client for connection pooling (reused
+    across scraper cycles). If not provided, creates a one-shot client.
+
+    Keywords are fetched in batches of KEYWORD_BATCH_SIZE to speed up scans
+    while avoiding burst rate-limit triggers.
+
     Returns {"jobs": List[JobCreate], "retries": 0, "failed": bool}
     """
+    # Load user-configured keywords from Supabase (same source as LinkedIn)
+    search_keywords = await get_target_keywords(supabase, user_id)
+    title_filter_kws = await get_title_filter_keywords(supabase, user_id)
+
+    if not search_keywords:
+        logger.warning(f"[Indeed] No target keywords configured for user {user_id}")
+        return {"jobs": [], "retries": 0, "failed": False, "descriptions": {}}
+
+    logger.info(f"[Indeed] Searching {len(search_keywords)} keywords for user {user_id}: {search_keywords}")
+
     seen_keys: set[str] = set()
     all_jobs: list[JobCreate] = []
-    # Store raw descriptions for analysis passthrough (keyed by external_id)
     descriptions: dict[str, str] = {}
-    failed = False
+    fetch_errors = 0
 
-    async with httpx.AsyncClient(verify=False) as client:
-        for kw in INDEED_SEARCH_KEYWORDS:
-            results = await _fetch_one_keyword(client, kw)
+    async def _process_results(results: list[dict]) -> None:
+        for item in results:
+            job = item.get("job", {})
+            key = job.get("key", "")
+            if not key or key in seen_keys:
+                continue
+            seen_keys.add(key)
 
-            for item in results:
-                job = item.get("job", {})
-                key = job.get("key", "")
-                if not key or key in seen_keys:
-                    continue
-                seen_keys.add(key)
+            title = job.get("title", "")
+            date_published = job.get("datePublished")
 
-                title = job.get("title", "")
-                date_published = job.get("datePublished")
+            # Client-side freshness check
+            if not _is_fresh(date_published):
+                continue
 
-                # Client-side freshness check
-                if not _is_fresh(date_published):
-                    continue
+            # Client-side title filters (from user settings)
+            if _is_blocked(title, title_filter_kws):
+                continue
+            if not _is_relevant(title, search_keywords):
+                continue
 
-                # Client-side title filters
-                if _is_blocked(title):
-                    continue
-                if not _is_relevant(title):
-                    continue
+            # Extract fields
+            employer = job.get("employer") or {}
+            company = employer.get("name") or "Unknown Company"
 
-                # Extract fields
-                employer = job.get("employer") or {}
-                company = employer.get("name") or "Unknown Company"
+            location_data = job.get("location") or {}
+            formatted = location_data.get("formatted") or {}
+            location = formatted.get("short") or formatted.get("long") or "USA"
 
-                location_data = job.get("location") or {}
-                formatted = location_data.get("formatted") or {}
-                location = formatted.get("short") or formatted.get("long") or "USA"
+            recruit = job.get("recruit") or {}
+            url = recruit.get("viewJobUrl") or f"https://www.indeed.com/viewjob?jk={key}"
 
-                # URL: prefer recruit.viewJobUrl, fallback to constructed URL
-                recruit = job.get("recruit") or {}
-                url = recruit.get("viewJobUrl") or f"https://www.indeed.com/viewjob?jk={key}"
+            salary = _format_salary(job.get("compensation"))
+            posted_at = _to_posted_at(date_published)
 
-                salary = _format_salary(job.get("compensation"))
-                posted_at = _to_posted_at(date_published)
+            desc_html = (job.get("description") or {}).get("html", "")
+            desc_text = _extract_description_text(desc_html)
+            if desc_text:
+                descriptions[key] = desc_text
 
-                # Description for analysis passthrough
-                desc_html = (job.get("description") or {}).get("html", "")
-                desc_text = _extract_description_text(desc_html)
-                if desc_text:
-                    descriptions[key] = desc_text
+            all_jobs.append(JobCreate(
+                external_id=key,
+                title=title,
+                company=company,
+                location=location,
+                url=url,
+                source="Indeed",
+                posted_at=posted_at,
+                salary=salary,
+            ))
 
-                all_jobs.append(JobCreate(
-                    external_id=key,
-                    title=title,
-                    company=company,
-                    location=location,
-                    url=url,
-                    source="Indeed",
-                    posted_at=posted_at,
-                    salary=salary,
-                ))
+    # Use provided client (connection pooling) or create a one-shot client
+    proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    owns_client = client is None
+    if owns_client:
+        client = httpx.AsyncClient(proxy=proxy)
 
-            # Delay between keyword searches to avoid rate limiting
-            await asyncio.sleep(random.uniform(1.5, 2.5))
+    try:
+        # Fetch keywords in batches for faster scans
+        for i in range(0, len(search_keywords), KEYWORD_BATCH_SIZE):
+            batch = search_keywords[i:i + KEYWORD_BATCH_SIZE]
+            batch_results = await asyncio.gather(
+                *[_fetch_one_keyword(client, kw) for kw in batch]
+            )
 
-    logger.info(f"[Indeed] Fetched {len(all_jobs)} fresh relevant jobs from {len(INDEED_SEARCH_KEYWORDS)} keyword searches")
+            for results in batch_results:
+                if not results:
+                    fetch_errors += 1
+                await _process_results(results)
+
+            # Delay between batches (not between individual queries)
+            if i + KEYWORD_BATCH_SIZE < len(search_keywords):
+                await asyncio.sleep(random.uniform(1.5, 2.5))
+    finally:
+        if owns_client:
+            await client.aclose()
+
+    # Mark as failed if majority of keyword fetches returned errors
+    total_fetches = len(search_keywords)
+    failed = fetch_errors > (total_fetches * 0.8)
+    if failed:
+        logger.warning(f"[Indeed] {fetch_errors}/{total_fetches} keyword fetches failed for user {user_id}")
+
+    logger.info(f"[Indeed] Fetched {len(all_jobs)} fresh relevant jobs from {len(search_keywords)} keyword searches")
 
     return {
         "jobs": all_jobs,

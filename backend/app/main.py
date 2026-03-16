@@ -59,6 +59,7 @@ from app.services.scraper_linkedin import fetch_linkedin_jobs
 from app.services.scraper_mathworks import fetch_mathworks_jobs
 from app.services.scraper_github import fetch_github_jobs
 from app.services.scraper_jobright import fetch_jobright_jobs
+import httpx
 from app.services.scraper_indeed import fetch_indeed_jobs
 
 from app.api.websocket import manager, log_manager
@@ -488,32 +489,44 @@ async def run_low_frequency_loop(ctx: UserContext):
 
 
 async def run_indeed_loop(ctx: UserContext):
-    """Dedicated Indeed scraper loop — runs every 10 minutes."""
+    """Dedicated Indeed scraper loop — polls every 3 minutes with connection pooling."""
     supabase = get_supabase_client()
-    logger.info(f"[Indeed] Scraper started for {ctx.user_id}")
-    while True:
-        try:
-            result = await fetch_indeed_jobs(supabase, ctx.user_id)
-            if not result.get("failed"):
-                new_finds = await process_and_alert_jobs([result], ctx)
-                if new_finds:
-                    logger.info(f"[Indeed] {ctx.user_id} found {new_finds} new jobs")
+    proxy = settings.PROXY_URL if settings.PROXY_URL else None
+    logger.info(f"[Indeed] Scraper started for {ctx.user_id} (3-min interval, proxy={'yes' if proxy else 'no'})")
+
+    # Reuse a single httpx client across cycles (connection pooling)
+    client = httpx.AsyncClient(proxy=proxy)
+    try:
+        while True:
+            try:
+                result = await fetch_indeed_jobs(supabase, ctx.user_id, client=client)
+                if not result.get("failed"):
+                    new_finds = await process_and_alert_jobs([result], ctx)
+                    if new_finds:
+                        logger.info(f"[Indeed] {ctx.user_id} found {new_finds} new jobs")
+                    else:
+                        logger.debug(f"[Indeed] {ctx.user_id} No new targets.")
                 else:
-                    logger.debug(f"[Indeed] {ctx.user_id} No new targets.")
-            else:
-                logger.warning(f"[Indeed] {ctx.user_id} fetch failed")
-        except asyncio.CancelledError:
-            logger.info(f"[Indeed] Scraper stopped for {ctx.user_id}")
-            break
-        except Exception as e:
-            logger.error(f"[Indeed] {ctx.user_id} Error: {e}")
-        sleep_secs = 600 + random.uniform(-30, 30)
-        next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
-        await manager.broadcast(ctx.user_id, {
-            "type": "SCRAPE_CYCLE",
-            "data": {"scraper": "indeed", "next_scrape_at": next_at.isoformat()}
-        })
-        await asyncio.sleep(sleep_secs)
+                    logger.warning(f"[Indeed] {ctx.user_id} fetch failed")
+            except asyncio.CancelledError:
+                logger.info(f"[Indeed] Scraper stopped for {ctx.user_id}")
+                break
+            except httpx.HTTPError as e:
+                # Connection-level error — recreate the client
+                logger.warning(f"[Indeed] {ctx.user_id} connection error, recreating client: {e}")
+                await client.aclose()
+                client = httpx.AsyncClient(proxy=proxy)
+            except Exception as e:
+                logger.error(f"[Indeed] {ctx.user_id} Error: {e}")
+            sleep_secs = 180 + random.uniform(-20, 20)
+            next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
+            await manager.broadcast(ctx.user_id, {
+                "type": "SCRAPE_CYCLE",
+                "data": {"scraper": "indeed", "next_scrape_at": next_at.isoformat()}
+            })
+            await asyncio.sleep(sleep_secs)
+    finally:
+        await client.aclose()
 
 
 async def run_custom_sources_loop(ctx: UserContext):

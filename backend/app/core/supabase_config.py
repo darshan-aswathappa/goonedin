@@ -89,15 +89,16 @@ async def _get_setting(supabase: Any, user_id: str, key: str) -> list:
             val = resp.data[0].get(key)
             if isinstance(val, str):
                 val = json.loads(val)
-            result = val if isinstance(val, list) else DEFAULTS.get(key, [])
+            result = val if isinstance(val, list) else []
         else:
-            result = DEFAULTS.get(key, [])
+            logger.warning(f"No user_settings row for {user_id} — user must configure '{key}'")
+            result = []
 
         _cache[ck] = (result, time.time())
         return result
     except Exception as e:
-        logger.warning(f"Failed to get setting '{key}' for {user_id}: {e}")
-        return DEFAULTS.get(key, [])
+        logger.error(f"Failed to fetch setting '{key}' for {user_id}: {e}")
+        return []
 
 
 async def _set_setting(supabase: Any, user_id: str, key: str, value: list) -> bool:
