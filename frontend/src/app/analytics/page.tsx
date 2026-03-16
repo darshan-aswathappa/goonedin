@@ -500,6 +500,7 @@ export default function AnalyticsPage() {
 
       {/* Main content: charts left, AI right */}
       <main
+        className="analytics-main"
         style={{
           flex: 1,
           display: "flex",
@@ -509,6 +510,7 @@ export default function AnalyticsPage() {
       >
         {/* Left: Charts panel (60%) */}
         <div
+          className="analytics-charts"
           style={{
             flex: "0 0 60%",
             overflowY: "auto",
@@ -546,12 +548,12 @@ export default function AnalyticsPage() {
 
         {/* Right: AI Companion (40%) */}
         <div
+          className="analytics-ai"
           style={{
             flex: "0 0 40%",
             display: "flex",
             flexDirection: "column",
             minHeight: 0,
-            // On mobile this becomes full-width below charts
           }}
         >
           <AICompanion />

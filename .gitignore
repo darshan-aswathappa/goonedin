@@ -11,6 +11,7 @@ backend/.env
 # Claude/Cursor
 .claude
 .cursor
+.claude-flow
 
 # Python
 __pycache__/

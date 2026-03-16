@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
 import { Command, CommandGroup } from "@/types/knowledge-base";
@@ -187,27 +187,30 @@ export function CommandPalette() {
     router.push("/analytics");
   }, [router]);
 
-  const commands = buildCommands(router, closeAndNavigate, onAskAI);
+  const commands = useMemo(
+    () => buildCommands(router, closeAndNavigate, onAskAI),
+    [router, closeAndNavigate, onAskAI]
+  );
 
-  // Filter by query
-  const filtered = query.trim()
-    ? commands.filter(
-        (c) =>
-          c.label.toLowerCase().includes(query.toLowerCase()) ||
-          (c.description ?? "").toLowerCase().includes(query.toLowerCase())
-      )
-    : commands;
+  // Filter, group, and flatten — recomputed only when query or commands change
+  const { groups, flatItems } = useMemo(() => {
+    const filtered = query.trim()
+      ? commands.filter(
+          (c) =>
+            c.label.toLowerCase().includes(query.toLowerCase()) ||
+            (c.description ?? "").toLowerCase().includes(query.toLowerCase())
+        )
+      : commands;
 
-  // Group filtered commands
-  const groups: { label: CommandGroup; items: Command[] }[] = [];
-  const groupOrder: CommandGroup[] = ["NAVIGATE", "ACTION"];
-  for (const group of groupOrder) {
-    const items = filtered.filter((c) => c.group === group);
-    if (items.length > 0) groups.push({ label: group, items });
-  }
+    const groupOrder: CommandGroup[] = ["NAVIGATE", "ACTION"];
+    const grouped: { label: CommandGroup; items: Command[] }[] = [];
+    for (const group of groupOrder) {
+      const items = filtered.filter((c) => c.group === group);
+      if (items.length > 0) grouped.push({ label: group, items });
+    }
 
-  // Flatten for index tracking
-  const flatItems = groups.flatMap((g) => g.items);
+    return { groups: grouped, flatItems: grouped.flatMap((g) => g.items) };
+  }, [commands, query]);
 
   // Clamp selectedIndex when filter changes
   useEffect(() => {

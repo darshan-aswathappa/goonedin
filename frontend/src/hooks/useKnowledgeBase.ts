@@ -23,7 +23,7 @@
  *   clearSession           — reset history and rotate to a fresh session
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { ChatMessage, QueryPlan, StreamEvent } from "@/types/knowledge-base";
 
@@ -50,10 +50,21 @@ export function useKnowledgeBase() {
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const isStreamingRef = useRef(false);
+  const sessionIdRef = useRef<string | null>(null);
+
+  // Keep refs in sync with state
+  useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+
+  // Abort in-flight stream on unmount
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
 
   const sendMessage = useCallback(async (input: string) => {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    if (!trimmed || isStreamingRef.current) return;
 
     // Append user message immediately
     const userMsg: ChatMessage = {
@@ -89,7 +100,7 @@ export function useKnowledgeBase() {
         },
         body: JSON.stringify({
           message: trimmed,
-          session_id: sessionId,
+          session_id: sessionIdRef.current,
         }),
         signal: abortRef.current.signal,
       });
@@ -194,7 +205,7 @@ export function useKnowledgeBase() {
       setCurrentStatus(null);
       abortRef.current = null;
     }
-  }, [isStreaming, sessionId]);
+  }, []);
 
   const clearSession = useCallback(() => {
     setMessages([]);

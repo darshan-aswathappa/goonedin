@@ -12,6 +12,24 @@ const SUGGESTED_PROMPTS = [
   "Which job sources are most active?",
 ];
 
+// ── Shared style constants (avoid new objects per render) ─────────────────────
+const MONO_LABEL_STYLE: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: "9px",
+  letterSpacing: "0.14em",
+  textTransform: "uppercase",
+};
+
+const MONO_BODY_STYLE: React.CSSProperties = {
+  fontFamily: "var(--font-mono)",
+  fontSize: "12px",
+  lineHeight: 1.65,
+  color: "#e8e8e8",
+  letterSpacing: "0.02em",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+};
+
 // ── Query plan badge ──────────────────────────────────────────────────────────
 function QueryBadge({ plan }: { plan: QueryPlan }) {
   const labels: Record<string, string> = {

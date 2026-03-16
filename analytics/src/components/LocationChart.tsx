@@ -99,7 +99,11 @@ export default function LocationChart({ data }: Props) {
     }
 
     const max = mapped.reduce((m, d) => Math.max(m, d.count), 1);
-    return { bubbles: mapped, remoteCount: remoteEntry?.count ?? 0, maxCount: max };
+    return {
+      bubbles: mapped,
+      remoteCount: remoteEntry?.count ?? 0,
+      maxCount: max,
+    };
   }, [data]);
 
   const radius = useCallback(
@@ -125,7 +129,10 @@ export default function LocationChart({ data }: Props) {
   };
 
   return (
-    <div className="panel chart-enter" style={{ height: "100%", position: "relative" }}>
+    <div
+      className="panel chart-enter"
+      style={{ height: "100%", position: "relative" }}
+    >
       <div className="panel-header">Top Locations</div>
       <div style={{ height: "calc(100% - 37px)", position: "relative" }}>
         <ComposableMap
@@ -271,8 +278,7 @@ export default function LocationChart({ data }: Props) {
           ))}
         </div>
 
-        {/* Remote badge */}
-        {remoteCount > 0 && (
+        {/*{remoteCount > 0 && (
           <div
             style={{
               position: "absolute",
@@ -293,7 +299,7 @@ export default function LocationChart({ data }: Props) {
             <span style={{ color: "var(--teal)", fontWeight: 700 }}>{remoteCount}</span>
             <span>REMOTE</span>
           </div>
-        )}
+        )}*/}
 
         {/* Hover tooltip */}
         {hover && (
