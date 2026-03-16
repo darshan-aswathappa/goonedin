@@ -24,16 +24,15 @@ import ExperienceDistribution from "@/components/ExperienceDistribution";
 import SalaryByLocationChart from "@/components/SalaryByLocationChart";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
 import BootSequence from "@/components/BootSequence";
+import AutoRefresh from "@/components/AutoRefresh";
 import EmptyPanel from "@/components/EmptyPanel";
 import SectionGuide from "@/components/SectionGuide";
 import SafePanel from "@/components/SafePanel";
 
-export const revalidate = 60;
-
 async function fetchJson<T>(path: string): Promise<T | null> {
   try {
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
-    const res = await fetch(`${base}${path}`, { next: { revalidate: 60 } });
+    const res = await fetch(`${base}${path}`, { cache: "no-store" });
     if (!res.ok) return null;
     return res.json() as Promise<T>;
   } catch {
@@ -150,6 +149,7 @@ export default async function DashboardPage() {
 
   return (
     <>
+      <AutoRefresh />
       <BootSequence />
       <ScanlineOverlay />
       <div
