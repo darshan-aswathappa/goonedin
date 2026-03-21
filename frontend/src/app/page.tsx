@@ -87,7 +87,7 @@ function TerminalPanel() {
 
   return (
     <div
-      className="hidden lg:flex flex-col h-full"
+      className="hidden lg:flex flex-col h-full overflow-hidden"
       style={{ borderLeft: "1px solid #1A1A1A", background: "#020202" }}
     >
       {/* Panel header */}
@@ -296,7 +296,7 @@ export default function Home() {
       {/* Hero — two columns */}
       <div
         className="grid grid-cols-1 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_480px]"
-        style={{ borderBottom: "1px solid #1A1A1A", minHeight: "520px" }}
+        style={{ borderBottom: "1px solid #1A1A1A", height: "520px" }}
       >
         {/* Left: copy */}
         <div

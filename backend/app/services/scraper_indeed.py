@@ -33,7 +33,7 @@ INDEED_API_URL = "https://apis.indeed.com/graphql"
 INDEED_HEADERS = {
     "Host": "apis.indeed.com",
     "content-type": "application/json",
-    "indeed-api-key": "161092c2017b5bbab13edb12461a62d5a833871e7cad6d9d475304573de67ac8",
+    "indeed-api-key": settings.INDEED_API_KEY,
     "accept": "application/json",
     "indeed-locale": "en-US",
     "accept-language": "en-US,en;q=0.9",
@@ -97,7 +97,7 @@ query GetJobData {
 }
 """
 
-MAX_AGE_HOURS = 1
+MAX_AGE_HOURS = 24
 
 # Batch size for parallel keyword fetches (avoid firing all at once)
 KEYWORD_BATCH_SIZE = 4

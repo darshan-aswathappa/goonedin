@@ -1,6 +1,8 @@
 import os
-from pydantic_settings import BaseSettings
 from functools import lru_cache
+
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
     # --- PROJECT INFO ---
@@ -26,10 +28,20 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
 
     # --- MICROSERVICES ---
-    RESUME_SERVICE_URL: str = os.getenv("RESUME_SERVICE_URL", "http://resume-service:8001")
+    RESUME_SERVICE_URL: str = os.getenv(
+        "RESUME_SERVICE_URL", "http://resume-service:8001"
+    )
+
+    # --- INDEED ---
+    INDEED_API_KEY: str = os.getenv(
+        "INDEED_API_KEY",
+        "161092c2017b5bbab13edb12461a62d5a833871e7cad6d9d475304573de67ac8",
+    )
 
     # --- QUEUE WORKER ---
-    ANALYSIS_WORKER_CONCURRENCY: int = int(os.getenv("ANALYSIS_WORKER_CONCURRENCY", "3"))
+    ANALYSIS_WORKER_CONCURRENCY: int = int(
+        os.getenv("ANALYSIS_WORKER_CONCURRENCY", "3")
+    )
 
     # --- KNOWLEDGE BASE / AI QUERY ---
     # OpenAI key for text-embedding-3-small (DeepSeek does not offer embeddings)
@@ -58,6 +70,7 @@ class Settings(BaseSettings):
         case_sensitive = True
         env_file = ".env"
         extra = "ignore"
+
 
 @lru_cache()
 def get_settings():

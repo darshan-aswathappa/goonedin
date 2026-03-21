@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   Briefcase,
-  MagnifyingGlass,
   Sparkle,
   ArrowRight,
   X,
@@ -228,13 +227,6 @@ function StepGetStarted({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="border border-[#1A1A1A] divide-y divide-[#1A1A1A]">
-        <div className="px-4 py-3 flex gap-3 items-start">
-          <MagnifyingGlass weight="bold" className="h-3.5 w-3.5 text-[#FF6E00] shrink-0 mt-0.5" />
-          <div>
-            <p className="text-white text-[10px] font-bold uppercase tracking-[0.15em] mb-0.5">Add Keywords</p>
-            <p className="text-[#444] text-[11px]">&quot;Software Engineer&quot;, &quot;Machine Learning&quot;, &quot;React&quot;</p>
-          </div>
-        </div>
         <div className="px-4 py-3 flex gap-3 items-start">
           <Gear weight="bold" className="h-3.5 w-3.5 text-[#FF6E00] shrink-0 mt-0.5" />
           <div>

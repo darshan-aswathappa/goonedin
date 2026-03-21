@@ -362,7 +362,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
         logger.info(f"New Target (Jobright): {job.title} @ {job.company}")
 
-    # ── Indeed jobs: queue for DeepSeek analysis (description pre-fetched) ──
+    # ── Indeed jobs: no analysis needed — salary/location/title from API ──
     for job in indeed_jobs:
         if _is_seen(ctx.user_id, job.external_id):
             continue
@@ -373,49 +373,16 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
             continue
 
         job_dict = job.model_dump(mode="json")
-
-        if settings.DEEPSEEK_API_KEY:
-            cache = await get_cache_entry(supabase, job_dict["external_id"])
-            if cache and cache["analysis_status"] == "completed":
-                job_dict["analysis"] = cache["analysis"]
-                job_dict["analysis_status"] = "completed"
-                job_dict["salary"] = job_dict.get("salary") or cache.get("salary")
-                job_dict["visa"] = cache.get("visa")
-                job_dict["visible"] = True
-                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
-                _mark_seen(ctx.user_id, job.external_id)
-                if inserted is None:
-                    continue
-                total_finds += 1
-                await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-                job_dict["is_notified"] = True
-                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
-                logger.info(f"New Target (Indeed, cached): {job.title} @ {job.company}")
-            else:
-                # Queue for analysis — store description in memory for worker
-                desc = indeed_descriptions.get(job.external_id)
-                if desc:
-                    store_description(job_dict["external_id"], desc)
-                await create_cache_entry(supabase, job_dict["external_id"], job_dict["url"])
-                await enqueue_job(supabase, job_dict["external_id"], job_dict["url"])
-                job_dict["visible"] = False
-                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
-                _mark_seen(ctx.user_id, job.external_id)
-                if inserted is None:
-                    continue
-                total_finds += 1
-                logger.info(f"Queued Indeed job {job_dict['external_id']} for analysis")
-        else:
-            job_dict["visible"] = True
-            inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
-            _mark_seen(ctx.user_id, job.external_id)
-            if inserted is None:
-                continue
-            total_finds += 1
-            await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
-            job_dict["is_notified"] = True
-            await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
-            logger.info(f"New Target (Indeed): {job.title} @ {job.company}")
+        job_dict["visible"] = True
+        inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+        _mark_seen(ctx.user_id, job.external_id)
+        if inserted is None:
+            continue
+        total_finds += 1
+        await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+        job_dict["is_notified"] = True
+        await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
+        logger.info(f"New Target (Indeed): {job.title} @ {job.company} | salary={job_dict.get('salary')}")
 
     return total_finds
 
@@ -913,23 +880,81 @@ async def get_config(ctx: UserContext = Depends(_get_ctx)):
     return await get_all_config(supabase, ctx.user_id)
 
 
-@app.get("/config/target-keywords")
-async def get_target_keywords_endpoint(ctx: UserContext = Depends(_get_ctx)):
+# ── Public: read-only view of active global keywords ────────────────────────
+
+@app.get("/keywords")
+async def list_active_keywords(ctx: UserContext = Depends(_get_ctx)):
+    """Return all active platform-wide job-title keywords."""
     supabase = get_supabase_client()
-    keywords = await get_target_keywords(supabase, ctx.user_id)
-    return {"target_keywords": keywords, "count": len(keywords)}
+    keywords = await get_target_keywords(supabase)
+    return {"keywords": keywords, "count": len(keywords)}
 
 
-@app.put("/config/target-keywords")
-async def update_target_keywords(
-    request: ConfigUpdateRequest, ctx: UserContext = Depends(_get_ctx)
+# ── Admin: full CRUD on global_keywords (service-role auth required) ─────────
+
+class AdminKeywordRequest(BaseModel):
+    keyword: str
+
+
+class AdminKeywordToggleRequest(BaseModel):
+    active: bool
+
+
+def _require_service_key(authorization: str = None):
+    """Dependency: accepts only requests bearing the service-role key."""
+    from fastapi import Header
+    return authorization
+
+
+@app.get("/admin/keywords")
+async def admin_list_keywords(authorization: Optional[str] = None):
+    """List all global keywords (admin only)."""
+    if authorization != f"Bearer {settings.SUPABASE_SERVICE_KEY}":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    from app.core.global_keywords import list_global_keywords
+    supabase = get_supabase_client()
+    rows = await list_global_keywords(supabase)
+    return {"keywords": rows}
+
+
+@app.post("/admin/keywords", status_code=201)
+async def admin_add_keyword(
+    request: AdminKeywordRequest, authorization: Optional[str] = None
 ):
+    """Add a new keyword to the global list (admin only)."""
+    if authorization != f"Bearer {settings.SUPABASE_SERVICE_KEY}":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    if not request.keyword.strip():
+        raise HTTPException(status_code=422, detail="keyword must not be empty")
+    from app.core.global_keywords import add_keyword
     supabase = get_supabase_client()
-    success = await set_config_list(supabase, ctx.user_id, "target_keywords", request.values)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to update config")
-    _seen_linkedin.pop(ctx.user_id, None)
-    return {"message": "Updated", "target_keywords": request.values}
+    row = await add_keyword(supabase, request.keyword.strip())
+    return {"message": "Created", "keyword": row}
+
+
+@app.put("/admin/keywords/{keyword_id}")
+async def admin_toggle_keyword(
+    keyword_id: str,
+    request: AdminKeywordToggleRequest,
+    authorization: Optional[str] = None,
+):
+    """Toggle a keyword active/inactive (admin only)."""
+    if authorization != f"Bearer {settings.SUPABASE_SERVICE_KEY}":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    from app.core.global_keywords import toggle_keyword
+    supabase = get_supabase_client()
+    row = await toggle_keyword(supabase, keyword_id, request.active)
+    return {"message": "Updated", "keyword": row}
+
+
+@app.delete("/admin/keywords/{keyword_id}", status_code=204)
+async def admin_delete_keyword(keyword_id: str, authorization: Optional[str] = None):
+    """Hard-delete a keyword (admin only)."""
+    if authorization != f"Bearer {settings.SUPABASE_SERVICE_KEY}":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    from app.core.global_keywords import delete_keyword
+    supabase = get_supabase_client()
+    await delete_keyword(supabase, keyword_id)
 
 
 @app.get("/config/target-locations")

@@ -31,14 +31,6 @@ interface ConfigSection {
 
 const CONFIG_SECTIONS: ConfigSection[] = [
   {
-    key: "target_keywords",
-    title: "Target Keywords",
-    description: "Keywords to search for in job titles (e.g., 'Software Engineer', 'Python')",
-    icon: <MagnifyingGlass style={{ color: "#000", width: "12px", height: "12px" }} />,
-    endpoint: "/config/target-keywords",
-    dataKey: "target_keywords",
-  },
-  {
     key: "target_locations",
     title: "Target Locations",
     description: "Locations to search for jobs (e.g., 'United States', 'Remote')",

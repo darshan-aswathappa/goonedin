@@ -15,8 +15,11 @@ from typing import Any
 logger = logging.getLogger("SupabaseConfig")
 
 # In-memory cache: { "user_id:key" -> (value, timestamp) }
+# Also stores "global:target_keywords" for the platform-wide keyword list.
 _cache: dict[str, tuple[list, float]] = {}
 _CACHE_TTL = 120  # seconds — fallback max age; writes invalidate instantly
+
+_GLOBAL_KEYWORDS_CACHE_KEY = "global:target_keywords"
 
 
 DEFAULT_TARGET_KEYWORDS = [
@@ -49,10 +52,9 @@ DEFAULT_TITLE_FILTER_KEYWORDS = [
     "Dental", "Pharmacist", "Veterinarian",
 ]
 
-VALID_KEYS = ["target_keywords", "target_locations", "blocked_companies", "title_filter_keywords", "location_filter_location"]
+VALID_KEYS = ["target_locations", "blocked_companies", "title_filter_keywords", "location_filter_location"]
 
 DEFAULTS = {
-    "target_keywords": DEFAULT_TARGET_KEYWORDS,
     "target_locations": DEFAULT_TARGET_LOCATIONS,
     "blocked_companies": DEFAULT_BLOCKED_COMPANIES,
     "title_filter_keywords": DEFAULT_TITLE_FILTER_KEYWORDS,
@@ -123,8 +125,31 @@ async def _set_setting(supabase: Any, user_id: str, key: str, value: list) -> bo
 # Public API — drop-in replacements for redis_config functions
 # ---------------------------------------------------------------------------
 
-async def get_target_keywords(supabase: Any, user_id: str) -> list[str]:
-    return await _get_setting(supabase, user_id, "target_keywords")
+async def get_target_keywords(supabase: Any, user_id: str = "") -> list[str]:
+    """Read active keywords from the global_keywords table.
+
+    user_id is accepted for backwards-compatible call sites but is ignored —
+    keywords are a platform concern, not per-user.
+    """
+    cached = _cache.get(_GLOBAL_KEYWORDS_CACHE_KEY)
+    if cached:
+        val, ts = cached
+        if time.time() - ts < _CACHE_TTL:
+            return val
+
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("global_keywords")
+            .select("keyword")
+            .eq("active", True)
+            .execute()
+        )
+        result = [row["keyword"] for row in (resp.data or [])]
+        _cache[_GLOBAL_KEYWORDS_CACHE_KEY] = (result, time.time())
+        return result
+    except Exception as e:
+        logger.error(f"Failed to fetch global_keywords: {e}")
+        return []
 
 
 async def get_target_locations(supabase: Any, user_id: str) -> list[str]:
@@ -148,7 +173,6 @@ async def set_config_list(supabase: Any, user_id: str, key: str, value: list) ->
 
 async def get_all_config(supabase: Any, user_id: str) -> dict:
     return {
-        "target_keywords": await get_target_keywords(supabase, user_id),
         "target_locations": await get_target_locations(supabase, user_id),
         "blocked_companies": await get_blocked_companies(supabase, user_id),
         "title_filter_keywords": await get_title_filter_keywords(supabase, user_id),
