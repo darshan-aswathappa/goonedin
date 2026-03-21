@@ -70,6 +70,8 @@ from app.services.job_analyzer import run_job_analysis
 from app.services.job_queue import get_cache_entry, create_cache_entry, enqueue_job
 from app.services.job_queue_worker import process_job_analysis_queue, store_description
 from app.api.knowledge_base import router as kb_router
+from app.services.jobright_credentials import get_jobright_credentials
+from app.api.jobright_config import router as jobright_config_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("VelocityMain")
@@ -195,6 +197,7 @@ app.add_middleware(
 
 app.include_router(websocket.router)
 app.include_router(kb_router)
+app.include_router(jobright_config_router)
 
 @app.get("/api/health")
 async def health():
@@ -406,10 +409,20 @@ async def run_high_frequency_loop(ctx: UserContext):
                     logger.error(f"[HF] LinkedIn fetch failed for '{kw}': {e}")
                 await asyncio.sleep(random.uniform(1.5, 3.0))
 
-            # Fetch Jobright concurrently (separate service, no rate-limit concern)
+            # Fetch Jobright — only if user has configured credentials
             try:
-                jobright_result = await fetch_jobright_jobs(limit=15, max_age_hours=2.0)
-                linkedin_results.append(jobright_result)
+                supabase = get_supabase_client()
+                jobright_creds = await get_jobright_credentials(supabase, ctx.user_id)
+                if jobright_creds:
+                    jobright_result = await fetch_jobright_jobs(
+                        user_id=ctx.user_id,
+                        creds=jobright_creds,
+                        limit=15,
+                        max_age_hours=2.0,
+                    )
+                    linkedin_results.append(jobright_result)
+                else:
+                    logger.debug(f"[HF] No Jobright credentials for {ctx.user_id}, skipping.")
             except Exception as e:
                 logger.error(f"[HF] Jobright fetch failed: {e}")
 

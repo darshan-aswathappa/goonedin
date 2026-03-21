@@ -1,26 +1,22 @@
 """
-Jobright.ai Session Manager — auto-login via curl_cffi.
-
-Handles authentication by POSTing email/password to /swan/auth/login/pwd,
-extracts SESSION_ID from the Set-Cookie header, caches it, and auto-refreshes
-when the session expires or becomes invalid.
+Jobright.ai Session Registry — per-user auto-login via curl_cffi.
 """
 
 import asyncio
 import logging
 import time
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from curl_cffi.requests import AsyncSession
-
 from app.core.config import get_settings
+
+if TYPE_CHECKING:
+    from app.services.jobright_credentials import JobrightCreds
 
 logger = logging.getLogger("JobrightSession")
 settings = get_settings()
 
 LOGIN_URL = "https://jobright.ai/swan/auth/login/pwd"
-
-# Re-login proactively every 50 minutes to stay ahead of any expiry
 SESSION_TTL_SECONDS = 50 * 60
 
 HEADERS = {
@@ -41,70 +37,68 @@ HEADERS = {
 }
 
 
-class JobrightSessionManager:
-    """Manages Jobright.ai authentication and SESSION_ID lifecycle."""
+class _UserSession:
+    """Per-user session state."""
+    __slots__ = ("session_id", "obtained_at", "lock")
 
     def __init__(self):
-        self._session_id: Optional[str] = None
-        self._obtained_at: float = 0
-        self._lock = asyncio.Lock()
+        self.session_id: Optional[str] = None
+        self.obtained_at: float = 0
+        self.lock: asyncio.Lock = asyncio.Lock()
 
-    async def get_session_id(self) -> str:
-        """
-        Return a valid SESSION_ID. Logs in automatically if needed.
-        Falls back to the static JOBRIGHT_COOKIE from .env if login fails.
-        """
-        # Fast path: session is still fresh
-        if self._session_id and not self._is_expired():
-            return self._session_id
 
-        async with self._lock:
-            # Double-check after acquiring lock (another task may have refreshed)
-            if self._session_id and not self._is_expired():
-                return self._session_id
+class JobrightSessionRegistry:
+    """Registry of per-user Jobright sessions."""
 
-            # Try auto-login
-            sid = await self._login()
+    def __init__(self):
+        self._users: dict[str, _UserSession] = {}
+
+    def _get_or_create(self, user_id: str) -> _UserSession:
+        if user_id not in self._users:
+            self._users[user_id] = _UserSession()
+        return self._users[user_id]
+
+    async def get_session_id(self, user_id: str, creds: "JobrightCreds") -> str:
+        user_sess = self._get_or_create(user_id)
+
+        if user_sess.session_id and not self._is_expired(user_sess):
+            return user_sess.session_id
+
+        async with user_sess.lock:
+            if user_sess.session_id and not self._is_expired(user_sess):
+                return user_sess.session_id
+
+            sid = await self._login(creds["email"], creds["password"])
             if sid:
-                self._session_id = sid
-                self._obtained_at = time.time()
+                user_sess.session_id = sid
+                user_sess.obtained_at = time.time()
                 return sid
 
-            # Fallback to static cookie from .env
-            if settings.JOBRIGHT_COOKIE:
-                logger.warning(
-                    "[Jobright] Auto-login failed, falling back to static JOBRIGHT_COOKIE"
-                )
-                self._session_id = settings.JOBRIGHT_COOKIE
-                self._obtained_at = time.time()
-                return self._session_id
-
             raise RuntimeError(
-                "Jobright login failed and no JOBRIGHT_COOKIE fallback configured"
+                f"Jobright login failed for user {user_id}. "
+                "Check credentials in Settings → Jobright."
             )
 
-    async def refresh(self) -> str:
-        """Force a fresh login (called after a 401 or bad API response)."""
-        async with self._lock:
-            logger.info("[Jobright] Forcing session refresh...")
-            self._session_id = None
-            self._obtained_at = 0
+    async def refresh(self, user_id: str, creds: "JobrightCreds") -> str:
+        user_sess = self._get_or_create(user_id)
+        async with user_sess.lock:
+            user_sess.session_id = None
+            user_sess.obtained_at = 0
+        return await self.get_session_id(user_id, creds)
 
-        return await self.get_session_id()
+    def evict(self, user_id: str) -> None:
+        """Remove cached session (called when credentials change or are deleted)."""
+        self._users.pop(user_id, None)
 
-    def _is_expired(self) -> bool:
-        return (time.time() - self._obtained_at) > SESSION_TTL_SECONDS
+    @staticmethod
+    def _is_expired(sess: _UserSession) -> bool:
+        return (time.time() - sess.obtained_at) > SESSION_TTL_SECONDS
 
-    async def _login(self) -> Optional[str]:
+    @staticmethod
+    async def _login(email: str, password: str) -> Optional[str]:
         """POST email/password to Jobright and extract SESSION_ID cookie."""
-        email = settings.JOBRIGHT_EMAIL
-        password = settings.JOBRIGHT_PASSWORD
-
         if not email or not password:
-            logger.warning(
-                "[Jobright] JOBRIGHT_EMAIL / JOBRIGHT_PASSWORD not set, "
-                "cannot auto-login"
-            )
+            logger.warning("[Jobright] No credentials provided for login")
             return None
 
         proxy = settings.PROXY_URL
@@ -123,26 +117,20 @@ class JobrightSessionManager:
                     timeout=20,
                 )
 
-                # Extract SESSION_ID from Set-Cookie header
                 set_cookie = resp.headers.get("set-cookie", "")
                 sid = None
 
                 if "SESSION_ID=" in set_cookie:
                     sid = set_cookie.split("SESSION_ID=")[1].split(";")[0]
 
-                # Also check response cookies
                 if not sid and resp.cookies:
                     sid = resp.cookies.get("SESSION_ID")
 
                 if resp.status_code == 200 and sid:
-                    # Verify the response body indicates success
                     try:
                         body = resp.json()
                         if body.get("success") is True:
-                            logger.info(
-                                f"[Jobright] Login successful! "
-                                f"SESSION_ID={sid[:8]}..."
-                            )
+                            logger.info(f"[Jobright] Login successful! SESSION_ID={sid[:8]}...")
                             return sid
                         else:
                             logger.error(
@@ -150,10 +138,7 @@ class JobrightSessionManager:
                                 f"{body.get('errorMsg', 'unknown error')}"
                             )
                     except Exception:
-                        # Got a cookie but couldn't parse body — use it anyway
-                        logger.warning(
-                            "[Jobright] Got SESSION_ID but couldn't parse body"
-                        )
+                        logger.warning("[Jobright] Got SESSION_ID but couldn't parse body")
                         return sid
                 else:
                     error_msg = "unknown"
@@ -163,8 +148,7 @@ class JobrightSessionManager:
                     except Exception:
                         error_msg = resp.text[:200]
                     logger.error(
-                        f"[Jobright] Login failed: HTTP {resp.status_code}, "
-                        f"error={error_msg}"
+                        f"[Jobright] Login failed: HTTP {resp.status_code}, error={error_msg}"
                     )
                     return None
 
@@ -173,5 +157,5 @@ class JobrightSessionManager:
             return None
 
 
-# Module-level singleton
-session_manager = JobrightSessionManager()
+# Module-level registry (replaces the old singleton session_manager)
+session_registry = JobrightSessionRegistry()

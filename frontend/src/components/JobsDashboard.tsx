@@ -36,6 +36,7 @@ import {
   MagnifyingGlass,
   Monitor,
   DotsThreeVertical,
+  PlugsConnected,
 } from "@phosphor-icons/react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -50,6 +51,57 @@ import Link from "next/link";
 
 const TAB_BASE =
   "font-mono text-[9px] tracking-widest uppercase font-semibold whitespace-nowrap shrink-0 bg-transparent border-0 border-b-2 border-transparent px-3 py-2.5 transition-colors cursor-pointer rounded-none h-auto data-[state=active]:border-[#ff8c00] data-[state=active]:text-[#ff8c00] data-[state=active]:bg-transparent text-[#555555] hover:text-[#aaaaaa]";
+
+function JobrightEmptyState() {
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "64px 20px",
+      gap: "16px",
+      border: "1px solid #1c1c1c",
+      background: "#080808",
+    }}>
+      <div style={{ width: "40px", height: "40px", background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <PlugsConnected weight="bold" style={{ width: "18px", height: "18px", color: "#ff8c00" }} />
+      </div>
+      <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "6px" }}>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em", color: "#ff8c00", textTransform: "uppercase" }}>
+          CONNECT JOBRIGHT
+        </div>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.08em", maxWidth: "280px" }}>
+          Add your Jobright credentials in Settings to pull personalized job recommendations.
+        </div>
+      </div>
+      <Link href="/settings">
+        <button
+          style={{
+            border: "1px solid #ff8c00",
+            background: "rgba(255,140,0,0.1)",
+            color: "#ff8c00",
+            fontFamily: "var(--font-mono)",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            padding: "7px 20px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,140,0,0.18)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,140,0,0.1)"; }}
+        >
+          <Gear weight="bold" style={{ width: "12px", height: "12px" }} />
+          SET UP IN SETTINGS
+        </button>
+      </Link>
+    </div>
+  );
+}
 
 export function JobsDashboard() {
   const { user, loading, signOut } = useAuth();
@@ -76,6 +128,7 @@ export function JobsDashboard() {
     customSources,
     removeCustomSource,
     sourceStatuses,
+    hasJobrightCreds,
   } = useJobsStore(
     useShallow((state) => ({
       jobs: state.jobs,
@@ -95,6 +148,7 @@ export function JobsDashboard() {
       customSources: state.customSources,
       removeCustomSource: state.removeCustomSource,
       sourceStatuses: state.sourceStatuses,
+      hasJobrightCreds: state.hasJobrightCreds,
     })),
   );
 
@@ -401,7 +455,7 @@ export function JobsDashboard() {
                   </TabsTrigger>
                 )}
 
-                {(jobrightJobs.length > 0 || activeTab === "jobright") && (
+                {(jobrightJobs.length > 0 || activeTab === "jobright" || hasJobrightCreds) && (
                   <TabsTrigger value="jobright" className={TAB_BASE}>
                     <div className="flex items-center gap-1.5">
                       <Briefcase weight="bold" className="h-3 w-3" />
@@ -557,11 +611,15 @@ export function JobsDashboard() {
           </TabsContent>
 
           <TabsContent value="jobright" className="mt-0">
-            <JobList
-              jobs={jobrightJobs}
-              emptyMessage="No Jobright jobs found yet. We'll update you as we discover them."
-              isLocked={!user}
-            />
+            {!hasJobrightCreds && jobrightJobs.length === 0 ? (
+              <JobrightEmptyState />
+            ) : (
+              <JobList
+                jobs={jobrightJobs}
+                emptyMessage="No Jobright jobs found yet. We'll update you as we discover them."
+                isLocked={!user}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="mathworks" className="mt-0">

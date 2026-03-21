@@ -18,12 +18,13 @@ from curl_cffi.requests import AsyncSession
 
 from app.core.config import get_settings
 from app.models.job import JobCreate
-from app.services.jobright_session import session_manager
+from app.services.jobright_session import session_registry
+from app.services.jobright_credentials import JobrightCreds
 
 logger = logging.getLogger("ScraperJobright")
 settings = get_settings()
 
-_last_jobright_fetch = 0
+_last_jobright_fetch: dict[str, float] = {}
 
 JOBS_URL = (
     "https://jobright.ai/swan/recommend/list/jobs"
@@ -251,6 +252,8 @@ async def _fetch_with_session(
 
 
 async def fetch_jobright_jobs(
+    user_id: str,
+    creds: "JobrightCreds",
     limit: int = 15,
     max_age_hours: Optional[float] = 2.0,
 ) -> Dict[str, Any]:
@@ -260,22 +263,20 @@ async def fetch_jobright_jobs(
     Uses auto-login for SESSION_ID management. If the session is invalid,
     automatically refreshes and retries once.
     """
-    global _last_jobright_fetch
     now_ts = time.time()
 
-    # 10 minute cooldown
-    if now_ts - _last_jobright_fetch < 600:
+    # 10 minute cooldown per user
+    if now_ts - _last_jobright_fetch.get(user_id, 0) < 600:
         logger.debug("[Jobright] Skipping fetch, on 10m cooldown.")
         return {"failed": False, "jobs": []}
 
-    _last_jobright_fetch = now_ts
+    _last_jobright_fetch[user_id] = now_ts
 
     try:
         # Get session (auto-login if needed)
-        session_id = await session_manager.get_session_id()
+        session_id = await session_registry.get_session_id(user_id, creds)
         logger.info(
-            f"[Jobright] Fetching personalized jobs "
-            f"(session={session_id[:8]}...)"
+            f"[Jobright] Fetching for user {user_id} (session={session_id[:8]}...)"
         )
 
         result = await _fetch_with_session(session_id, limit, max_age_hours)
@@ -283,7 +284,7 @@ async def fetch_jobright_jobs(
         # If auth error, refresh session and retry once
         if result.get("auth_error"):
             logger.warning("[Jobright] Auth error, refreshing session and retrying...")
-            session_id = await session_manager.refresh()
+            session_id = await session_registry.refresh(user_id, creds)
             result = await _fetch_with_session(session_id, limit, max_age_hours)
 
             if result.get("auth_error"):

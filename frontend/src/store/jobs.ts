@@ -126,6 +126,8 @@ interface JobsState {
   updateCustomSource: (id: string, updates: Partial<CustomSource>) => void;
   sourceStatuses: Record<string, { status: string; message: string }>;
   setSourceStatus: (id: string, status: string, message: string) => void;
+  hasJobrightCreds: boolean;
+  setHasJobrightCreds: (value: boolean) => void;
 }
 
 export const useJobsStore = create<JobsState>((set) => ({
@@ -148,6 +150,7 @@ export const useJobsStore = create<JobsState>((set) => ({
   dismissedJobIds: new Set<string>(),
   customSources: [],
   sourceStatuses: {},
+  hasJobrightCreds: false,
 
   addJob: (job) =>
     set((state) => {
@@ -309,6 +312,8 @@ export const useJobsStore = create<JobsState>((set) => ({
         [id]: { status, message },
       },
     })),
+
+  setHasJobrightCreds: (value) => set({ hasJobrightCreds: value }),
 
   setApiError: (error) => set({ apiError: error }),
 }));

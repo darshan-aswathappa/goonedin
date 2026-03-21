@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { ResumeManager } from "@/components/ResumeManager";
+import { JobrightCredentialsManager } from "@/components/JobrightCredentialsManager";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -408,6 +409,7 @@ export default function SettingsPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <ResumeManager />
+            <JobrightCredentialsManager />
 
             {CONFIG_SECTIONS.map((section) => (
               <div key={section.key} style={{ position: "relative" }}>
