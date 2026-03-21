@@ -30,8 +30,13 @@ class Settings(BaseSettings):
     # --- INDEED ---
     INDEED_API_KEY: str = os.getenv(
         "INDEED_API_KEY",
-        "161092c2017b5bbab13edb12461a62d5a833871e7cad6d9d475304573de67ac8",
+        "xyz",
     )
+
+    # --- CREDENTIAL ENCRYPTION ---
+    # AES-256-GCM key for encrypting third-party credentials stored in the DB.
+    # Generate: python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"
+    CREDENTIAL_ENCRYPTION_KEY: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
 
     # --- QUEUE WORKER ---
     ANALYSIS_WORKER_CONCURRENCY: int = int(

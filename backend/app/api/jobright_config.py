@@ -75,7 +75,10 @@ async def save_credentials(
         supabase, user["user_id"], body.email, body.password
     )
     if not ok:
-        raise HTTPException(status_code=500, detail="Failed to save credentials")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save credentials — check backend logs for details",
+        )
 
     session_registry.evict(user["user_id"])
     return {"configured": True, "email_masked": _mask_email(body.email)}
