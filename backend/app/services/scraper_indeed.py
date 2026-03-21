@@ -30,19 +30,26 @@ settings = get_settings()
 
 INDEED_API_URL = "https://apis.indeed.com/graphql"
 
-INDEED_HEADERS = {
-    "Host": "apis.indeed.com",
-    "content-type": "application/json",
-    "indeed-api-key": settings.INDEED_API_KEY,
-    "accept": "application/json",
-    "indeed-locale": "en-US",
-    "accept-language": "en-US,en;q=0.9",
-    "user-agent": (
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6_1 like Mac OS X) "
-        "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Indeed App 193.1"
-    ),
-    "indeed-app-info": "appv=193.1; appid=com.indeed.jobsearch; osv=16.6.1; os=ios; dtype=phone",
-}
+def _build_headers() -> dict:
+    """Build Indeed API headers dynamically so INDEED_API_KEY is read each call."""
+    if not settings.INDEED_API_KEY:
+        logger.warning(
+            "INDEED_API_KEY is empty — Indeed API requests will likely fail. "
+            "Set INDEED_API_KEY in your environment or .env file."
+        )
+    return {
+        "Host": "apis.indeed.com",
+        "content-type": "application/json",
+        "indeed-api-key": settings.INDEED_API_KEY,
+        "accept": "application/json",
+        "indeed-locale": "en-US",
+        "accept-language": "en-US,en;q=0.9",
+        "user-agent": (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6_1 like Mac OS X) "
+            "AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Indeed App 193.1"
+        ),
+        "indeed-app-info": "appv=193.1; appid=com.indeed.jobsearch; osv=16.6.1; os=ios; dtype=phone",
+    }
 
 INDEED_QUERY = """
 query GetJobData {
@@ -103,11 +110,17 @@ MAX_AGE_HOURS = 24
 KEYWORD_BATCH_SIZE = 4
 
 
-def _is_fresh(date_published) -> bool:
-    """Check datePublished is within MAX_AGE_HOURS (Indeed re-indexes old jobs)."""
-    if not date_published:
+def _is_fresh(job: dict) -> bool:
+    """Check dateOnIndeed is within MAX_AGE_HOURS.
+
+    Uses dateOnIndeed (not datePublished) because Indeed re-indexes old jobs
+    with new dateOnIndeed timestamps. The server-side GraphQL filter also uses
+    dateOnIndeed, so the client-side check must match.
+    """
+    date_on_indeed = job.get("dateOnIndeed")
+    if not date_on_indeed:
         return False
-    ts = date_published / 1000 if date_published > 1e12 else date_published
+    ts = date_on_indeed / 1000 if date_on_indeed > 1e12 else date_on_indeed
     posted = datetime.fromtimestamp(ts, tz=timezone.utc)
     age_hours = (datetime.now(timezone.utc) - posted).total_seconds() / 3600
     return age_hours <= MAX_AGE_HOURS
@@ -162,36 +175,55 @@ def _extract_description_text(html: str) -> str:
     return text[:8000]
 
 
-def _to_posted_at(date_published) -> Optional[datetime]:
-    """Convert Indeed's datePublished (unix ts) to datetime."""
-    if not date_published:
+def _to_posted_at(job: dict) -> Optional[datetime]:
+    """Convert a job's dateOnIndeed timestamp to a timezone-aware datetime.
+
+    Uses dateOnIndeed (not datePublished) for consistency with _is_fresh() and
+    the server-side GraphQL date filter, both of which use dateOnIndeed.
+    """
+    date_on_indeed = job.get("dateOnIndeed")
+    if not date_on_indeed:
         return None
-    ts = date_published / 1000 if date_published > 1e12 else date_published
+    ts = date_on_indeed / 1000 if date_on_indeed > 1e12 else date_on_indeed
     return datetime.fromtimestamp(ts, tz=timezone.utc)
 
 
-async def _fetch_one_keyword(client: httpx.AsyncClient, search_term: str) -> list[dict]:
-    """Run one GraphQL query against Indeed and return raw job dicts."""
+async def _fetch_one_keyword(client: httpx.AsyncClient, search_term: str) -> Optional[list[dict]]:
+    """Run one GraphQL query against Indeed and return raw job dicts.
+
+    Returns:
+        None  — on real errors (HTTP failure, GraphQL errors, exceptions,
+                demand-control throttle). Counted as fetch_errors by caller.
+        []    — on success with zero results. NOT counted as an error.
+        list  — non-empty results on success.
+    """
     query = INDEED_QUERY.replace("%SEARCH%", search_term.replace('"', '\\"'))
     payload = {"query": query}
     try:
         resp = await client.post(
             INDEED_API_URL,
-            headers=INDEED_HEADERS,
+            headers=_build_headers(),
             json=payload,
             timeout=30.0,
         )
         if not resp.is_success:
             logger.warning(f"[Indeed] HTTP {resp.status_code} for '{search_term}'")
-            return []
+            return None
+
+        # Check Indeed's cost-based demand-control system (not HTTP 429)
+        demand_result = resp.headers.get("demand-control-result")
+        if demand_result is not None and demand_result.upper() != "COST_OK":
+            logger.warning(f"[Indeed] demand-control-result={demand_result!r} for '{search_term}'")
+            return None
+
         data = resp.json()
         if "errors" in data:
             logger.warning(f"[Indeed] GraphQL errors for '{search_term}': {data['errors']}")
-            return []
+            return None
         return data.get("data", {}).get("jobSearch", {}).get("results", [])
     except Exception as e:
-        logger.error(f"[Indeed] Fetch failed for '{search_term}': {e}")
-        return []
+        logger.error(f"[Indeed] Fetch failed for '{search_term}': {type(e).__name__}: {e}")
+        return None
 
 
 async def fetch_indeed_jobs(
@@ -235,10 +267,9 @@ async def fetch_indeed_jobs(
             seen_keys.add(key)
 
             title = job.get("title", "")
-            date_published = job.get("datePublished")
 
-            # Client-side freshness check
-            if not _is_fresh(date_published):
+            # Client-side freshness check (uses dateOnIndeed to match server-side filter)
+            if not _is_fresh(job):
                 continue
 
             # Client-side title filters (from user settings)
@@ -259,7 +290,7 @@ async def fetch_indeed_jobs(
             url = recruit.get("viewJobUrl") or f"https://www.indeed.com/viewjob?jk={key}"
 
             salary = _format_salary(job.get("compensation"))
-            posted_at = _to_posted_at(date_published)
+            posted_at = _to_posted_at(job)
 
             desc_html = (job.get("description") or {}).get("html", "")
             desc_text = _extract_description_text(desc_html)
@@ -292,8 +323,11 @@ async def fetch_indeed_jobs(
             )
 
             for results in batch_results:
-                if not results:
+                if results is None:
+                    # Real API error — count it toward failure threshold
                     fetch_errors += 1
+                    continue
+                # [] (no jobs for keyword) or populated list — both valid
                 await _process_results(results)
 
             # Delay between batches (not between individual queries)
