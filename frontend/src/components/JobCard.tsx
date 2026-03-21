@@ -197,11 +197,11 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   return (
     <>
       <div
-        onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") ? () => setAnalysisOpen(true) : undefined}
+        onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
         onMouseEnter={() => setCardHovered(true)}
         onMouseLeave={() => setCardHovered(false)}
         className={`group relative h-full flex flex-col ${
-          isLocked ? "pointer-events-none opacity-80" : "cursor-pointer"
+          isLocked ? "pointer-events-none opacity-80" : (job.source === "LinkedIn" || job.source === "Jobright") ? "cursor-pointer" : ""
         } ${isExiting ? "animate-card-exit" : ""}`}
         style={{
           background: "#080808",
@@ -536,7 +536,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
         </div>
       </div>
 
-      {(job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") && (
+      {(job.source === "LinkedIn" || job.source === "Jobright") && (
         <JobAnalysisModal
           job={job}
           open={analysisOpen}
