@@ -2,6 +2,7 @@ import re
 import asyncio
 import httpx
 import logging
+import random
 import urllib.parse
 from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
@@ -78,7 +79,7 @@ def parse_posted_at(time_tag) -> datetime | None:
 
 
 LINKEDIN_PAGE_SIZE = 25   # LinkedIn returns ~25 jobs per page
-MAX_PAGES = 4             # Cap at 4 pages (100 jobs) to avoid rate-limiting
+MAX_PAGES = 2             # Cap at 2 pages (50 jobs) to reduce rate-limiting; pages 3-4 are statistically empty at 90s cadence with 30-min freshness filter
 
 
 async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, location: str = None) -> dict:
@@ -99,7 +100,7 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
         f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
         f"?keywords={encoded_keywords}"
         f"&sortBy=DD"
-        f"&f_TPR=r1800"
+        f"&f_TPR=r300"
         f"&f_JT=F"
         f"&f_E=2,3"
         f"&f_WT=1,2,3"
@@ -118,13 +119,12 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
     start = 0          # cursor-based: advances by actual cards returned, not a fixed 25
     pages_fetched = 0
 
-    # Rotate User-Agent per pagination session to avoid fingerprinting
-    headers = {**HEADERS, "User-Agent": ua.get_random_user_agent()}
-
     proxy = settings.PROXY_URL or None
     async with httpx.AsyncClient(follow_redirects=True, proxy=proxy) as client:
         for page in range(MAX_PAGES):
             url = f"{base_url}&start={start}"
+            # Rotate User-Agent per page to avoid session fingerprinting
+            headers = {**HEADERS, "User-Agent": ua.get_random_user_agent()}
 
             try:
                 response = None
@@ -132,11 +132,16 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
                     try:
                         response = await client.get(url, headers=headers, timeout=15.0)
                         break
-                    except (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError) as retry_err:
+                    except (
+                        httpx.ConnectError,
+                        httpx.ConnectTimeout,
+                        httpx.ReadTimeout,
+                        httpx.RemoteProtocolError,
+                    ) as retry_err:
                         total_retries += 1
                         if attempt < max_retries:
                             logger.warning(f"Retry {attempt}/{max_retries} for '{search_term}' page {page + 1}: {type(retry_err).__name__}")
-                            await asyncio.sleep(1 * attempt)
+                            await asyncio.sleep(2 ** attempt + random.uniform(0, 1))
                         else:
                             raise
 

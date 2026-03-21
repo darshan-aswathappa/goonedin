@@ -7,28 +7,40 @@ logger = logging.getLogger("VelocityWebSocket")
 
 
 class LogConnectionManager:
-    """Manages WebSocket connections for the log stream (all auth'd users see all logs)."""
+    """Per-user WebSocket log stream. Each user only receives their own scraper logs."""
 
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: dict[str, List[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, user_id: str):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        self.active_connections.setdefault(user_id, []).append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+    def disconnect(self, websocket: WebSocket, user_id: str):
+        conns = self.active_connections.get(user_id, [])
+        if websocket in conns:
+            conns.remove(websocket)
 
-    async def broadcast(self, log_entry: dict):
-        dead = []
-        for conn in self.active_connections:
+    async def broadcast(self, user_id: str | None, log_entry: dict):
+        """Send log entry only to the connections belonging to user_id.
+        If user_id is None (global/system log), send to all connections."""
+        if user_id is not None:
+            targets = self.active_connections.get(user_id, [])
+        else:
+            targets = [c for conns in self.active_connections.values() for c in conns]
+
+        dead: list[tuple[WebSocket, str]] = []
+        for conn in targets:
             try:
                 await conn.send_json({"type": "LOG", "data": log_entry})
             except Exception:
-                dead.append(conn)
-        for conn in dead:
-            self.disconnect(conn)
+                # Find owner user_id for cleanup
+                for uid, conns in self.active_connections.items():
+                    if conn in conns:
+                        dead.append((conn, uid))
+                        break
+        for conn, uid in dead:
+            self.disconnect(conn, uid)
 
 
 log_manager = LogConnectionManager()
@@ -108,14 +120,15 @@ async def logs_websocket_endpoint(websocket: WebSocket, token: str = None):
         await websocket.close(code=1008)
         return
 
-    await log_manager.connect(websocket)
+    user_id = user["user_id"]
+    await log_manager.connect(websocket, user_id)
     try:
         while True:
             data = await websocket.receive_text()
             if data == "ping":
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
-        log_manager.disconnect(websocket)
+        log_manager.disconnect(websocket, user_id)
     except Exception as e:
         logger.error(f"Logs WebSocket error: {e}")
-        log_manager.disconnect(websocket)
+        log_manager.disconnect(websocket, user_id)

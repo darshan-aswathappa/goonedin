@@ -11,6 +11,7 @@ from typing import Optional, Any, List
 
 from app.core.config import get_settings
 from app.core.auth import get_current_user
+from app.core.context_vars import current_user_id
 from app.core.supabase_config import (
     get_target_keywords,
     get_blocked_companies,
@@ -391,6 +392,7 @@ async def run_high_frequency_loop(ctx: UserContext):
     supabase = get_supabase_client()
     logger.info(f"[HF] Scraper started for {ctx.user_id}")
     while True:
+        token = current_user_id.set(ctx.user_id)
         try:
             target_keywords = await get_target_keywords(supabase, ctx.user_id)
 
@@ -421,8 +423,14 @@ async def run_high_frequency_loop(ctx: UserContext):
             new_finds = await process_and_alert_jobs(valid_results, ctx)
             if new_finds == 0:
                 logger.debug(f"[HF] {ctx.user_id} No new targets.")
+        except asyncio.CancelledError:
+            current_user_id.reset(token)
+            logger.info(f"[HF] Scraper stopped for {ctx.user_id}")
+            break
         except Exception as e:
             logger.error(f"[HF] {ctx.user_id} Error: {e}")
+        finally:
+            current_user_id.reset(token)
         sleep_secs = 90 + random.uniform(-10, 10)
         next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
         await manager.broadcast(ctx.user_id, {
@@ -636,6 +644,7 @@ async def run_location_scrape_loop(ctx: UserContext, location: str):
     supabase = get_supabase_client()
     logger.info(f"[LOC] Location scraper started for {ctx.user_id} → {location}")
     while True:
+        token = current_user_id.set(ctx.user_id)
         try:
             target_keywords = await get_target_keywords(supabase, ctx.user_id)
 
@@ -659,10 +668,13 @@ async def run_location_scrape_loop(ctx: UserContext, location: str):
             if new_finds == 0:
                 logger.debug(f"[LOC] {ctx.user_id} ({location}) No new targets.")
         except asyncio.CancelledError:
+            current_user_id.reset(token)
             logger.info(f"[LOC] Location scraper stopped for {ctx.user_id}")
             break
         except Exception as e:
             logger.error(f"[LOC] {ctx.user_id} ({location}) Error: {e}")
+        finally:
+            current_user_id.reset(token)
         sleep_secs = 90 + random.uniform(-10, 10)
         next_at = datetime.now(timezone.utc) + timedelta(seconds=sleep_secs)
         await manager.broadcast(ctx.user_id, {
@@ -1118,8 +1130,8 @@ async def delete_custom_source(
 
 
 @app.get("/logs")
-async def get_logs(limit: int = 500, _: UserContext = Depends(_get_ctx)):
-    logs = get_historical_logs(limit=limit)
+async def get_logs(limit: int = 500, ctx: UserContext = Depends(_get_ctx)):
+    logs = get_historical_logs(limit=limit, user_id=ctx.user_id)
     return {"logs": logs, "count": len(logs)}
 
 
