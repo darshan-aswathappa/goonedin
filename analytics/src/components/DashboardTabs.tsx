@@ -351,8 +351,15 @@ export default function DashboardTabs({
 
         {activeTab === "companies" && (
           <>
-            {/* Company Leaderboard */}
-            <div style={{ height: "280px" }}>
+            {/* Company Leaderboard | Hiring Velocity */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 2fr",
+                gap: "12px",
+                height: "280px",
+              }}
+            >
               {(companies?.topCompanies ?? []).length > 0 ? (
                 <CompanyLeaderboard data={companies?.topCompanies ?? []} />
               ) : (
@@ -362,10 +369,6 @@ export default function DashboardTabs({
                   suggestion="Shows which employers post the most jobs. Requires AI analysis."
                 />
               )}
-            </div>
-
-            {/* Hiring Velocity */}
-            <div style={{ height: "280px" }}>
               <HiringVelocityChart
                 companies={hiringVelocity?.companies ?? []}
                 data={hiringVelocity?.data ?? []}
