@@ -26,11 +26,12 @@ export default function JobFunctionsChart({ data }: Props) {
           padding: "12px",
           height: "calc(100% - 37px)",
           display: "flex",
-          gap: "12px",
           alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <div style={{ flex: "0 0 110px", height: "100%" }}>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", width: "100%", maxWidth: "420px" }}>
+        <div style={{ flex: "0 0 120px", height: "180px" }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -98,6 +99,7 @@ export default function JobFunctionsChart({ data }: Props) {
               </span>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>

@@ -8,5 +8,5 @@
 -- UPSERT) is safe from the application layer.
 
 ALTER TABLE user_settings
-  ADD COLUMN IF NOT EXISTS jobright_email    TEXT DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS jobright_password TEXT DEFAULT NULL;
+  ADD COLUMN IF NOT EXISTS jobright_email_enc    TEXT DEFAULT NULL,
+  ADD COLUMN IF NOT EXISTS jobright_password_enc TEXT DEFAULT NULL;
