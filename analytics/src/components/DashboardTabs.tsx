@@ -17,6 +17,7 @@ import SeniorityChart from "@/components/SeniorityChart";
 import WeekdayChart from "@/components/WeekdayChart";
 import TitleKeywordsPanel from "@/components/TitleKeywordsPanel";
 import JobFunctionsChart from "@/components/JobFunctionsChart";
+import HiringVelocityChart from "@/components/HiringVelocityChart";
 import QueueHealth from "@/components/QueueHealth";
 import SkillCooccurrence from "@/components/SkillCooccurrence";
 import TimeDistributionChart from "@/components/TimeDistributionChart";
@@ -94,6 +95,10 @@ interface Experience {
 interface SalaryByLocation {
   cities: { city: string; median: number; count: number }[];
 }
+interface HiringVelocity {
+  companies: { name: string; color: string }[];
+  data: Record<string, string | number>[];
+}
 
 interface Props {
   overview: Overview | null;
@@ -109,6 +114,7 @@ interface Props {
   skillMomentum: SkillMomentum | null;
   experience: Experience | null;
   salaryByLocation: SalaryByLocation | null;
+  hiringVelocity: HiringVelocity | null;
 }
 
 export default function DashboardTabs({
@@ -125,6 +131,7 @@ export default function DashboardTabs({
   skillMomentum,
   experience,
   salaryByLocation,
+  hiringVelocity,
 }: Props) {
   const [activeTab, setActiveTab] = useState("market");
 
@@ -344,15 +351,8 @@ export default function DashboardTabs({
 
         {activeTab === "companies" && (
           <>
-            {/* Company Leaderboard | Top Job Titles (word cloud needs room) */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 2fr",
-                gap: "12px",
-                height: "340px",
-              }}
-            >
+            {/* Company Leaderboard */}
+            <div style={{ height: "280px" }}>
               {(companies?.topCompanies ?? []).length > 0 ? (
                 <CompanyLeaderboard data={companies?.topCompanies ?? []} />
               ) : (
@@ -362,15 +362,14 @@ export default function DashboardTabs({
                   suggestion="Shows which employers post the most jobs. Requires AI analysis."
                 />
               )}
-              {(seniority?.titleKeywords ?? []).length > 0 ? (
-                <TitleKeywordsPanel data={seniority?.titleKeywords ?? []} />
-              ) : (
-                <EmptyPanel
-                  title="Top Job Titles"
-                  message="No data yet"
-                  suggestion="Most common words in job titles across all postings."
-                />
-              )}
+            </div>
+
+            {/* Hiring Velocity */}
+            <div style={{ height: "280px" }}>
+              <HiringVelocityChart
+                companies={hiringVelocity?.companies ?? []}
+                data={hiringVelocity?.data ?? []}
+              />
             </div>
 
             {/* Market Intelligence | Queue Health */}

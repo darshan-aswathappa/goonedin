@@ -88,6 +88,10 @@ interface Experience {
 interface SalaryByLocation {
   cities: { city: string; median: number; count: number }[];
 }
+interface HiringVelocity {
+  companies: { name: string; color: string }[];
+  data: Record<string, string | number>[];
+}
 
 export default async function DashboardPage() {
   const [
@@ -106,6 +110,7 @@ export default async function DashboardPage() {
     skillMomentum,
     experience,
     salaryByLocation,
+    hiringVelocity,
   ] = await Promise.all([
     fetchJson<Overview>("/api/analytics/overview"),
     fetchJson<Companies>("/api/analytics/companies"),
@@ -121,6 +126,7 @@ export default async function DashboardPage() {
     fetchJson<SkillMomentum>("/api/analytics/skill-momentum"),
     fetchJson<Experience>("/api/analytics/experience"),
     fetchJson<SalaryByLocation>("/api/analytics/salary-by-location"),
+    fetchJson<HiringVelocity>("/api/analytics/hiring-velocity"),
   ]);
 
   return (
@@ -151,6 +157,7 @@ export default async function DashboardPage() {
           skillMomentum={skillMomentum}
           experience={experience}
           salaryByLocation={salaryByLocation}
+          hiringVelocity={hiringVelocity}
         />
         <footer
           style={{
