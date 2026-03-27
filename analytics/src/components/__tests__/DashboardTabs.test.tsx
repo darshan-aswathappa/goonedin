@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import DashboardTabs from "@/components/DashboardTabs";
 
 // Mock all chart/data components to avoid SVG/canvas measurement issues in jsdom
@@ -30,6 +30,72 @@ jest.mock("@/components/SafePanel", () => ({ children, title }: { children: Reac
 ));
 
 const SWITCH_TAB_EVENT = "dashboard:switchtab";
+
+const fullProps = {
+  overview: {
+    total: 1000,
+    analyzed: 800,
+    completionRate: 80,
+    uniqueCompanies: 50,
+    avgJobsPerDay: 33,
+    jobs30d: 990,
+  },
+  companies: {
+    topCompanies: [{ company: "Acme Corp", count: 100 }],
+    hourlyDistribution: [{ hour: 9, count: 50 }],
+  },
+  skills: {
+    techSkills: [{ keyword: "Python", count: 500 }],
+    softSkills: [{ skill: "Communication", count: 200 }],
+    goodToHave: [{ keyword: "Docker", count: 100 }],
+    cooccurrencePairs: [{ a: "Python", b: "SQL", count: 50 }],
+  },
+  timeline: { timeline: [{ day: "2026-03-01", count: 30 }] },
+  locations: { locations: [{ city: "San Francisco", count: 200 }] },
+  visa: {
+    visa: [{ label: "H-1B", count: 100, color: "#ff8c00" }],
+    total: 200,
+    sponsorshipRate: 50,
+  },
+  salary: {
+    buckets: [{ label: "$100k-$150k", count: 50 }],
+    listedRate: 40,
+    listedCount: 400,
+    medianEstimate: 125000,
+  },
+  seniority: {
+    seniority: [{ level: "Senior", count: 200, color: "#ff8c00" }],
+    titleKeywords: [{ word: "Engineer", count: 500 }],
+    jobFunctions: [{ function: "Engineering", count: 400, color: "#ff8c00" }],
+  },
+  weekday: { weekday: [{ day: "Monday", count: 100 }], peakDay: "Monday" },
+  queue: {
+    completed: 800,
+    failed: 10,
+    pending: 190,
+    total: 1000,
+    successRate: 80,
+    withVisa: 100,
+    withSalary: 400,
+    analyzedCount: 800,
+  },
+  skillMomentum: {
+    skills: [{ skill: "Python", total: 500, daily: [{ day: "2026-03-01", count: 30 }] }],
+    dailyJobs: [{ day: "2026-03-01", count: 30 }],
+    dateRange: { start: "2026-03-01", end: "2026-03-27" },
+  },
+  experience: {
+    distribution: [{ label: "3-5 years", count: 200 }],
+    matched: 200,
+    total: 1000,
+    matchRate: 20,
+  },
+  salaryByLocation: { cities: [{ city: "San Francisco", median: 150000, count: 50 }] },
+  hiringVelocity: {
+    companies: [{ name: "Acme Corp", color: "#ff8c00" }],
+    data: [{ day: "2026-03-01", "Acme Corp": 5 }],
+  },
+};
 
 const defaultProps = {
   overview: null,
@@ -122,5 +188,139 @@ describe("DashboardTabs – tab switching via custom event", () => {
         new CustomEvent(SWITCH_TAB_EVENT, { detail: "skills" })
       );
     });
+  });
+});
+
+describe("DashboardTabs – data-present branches (chart components rendered)", () => {
+  it("renders market tab charts when timeline and weekday data exist", () => {
+    render(<DashboardTabs {...fullProps} />);
+    expect(screen.getByTestId("job-volume-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("weekday-chart")).toBeInTheDocument();
+  });
+
+  it("renders skills tab charts when all skills data exists", () => {
+    render(<DashboardTabs {...fullProps} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "skills" }));
+    });
+    expect(screen.getByTestId("skills-frequency")).toBeInTheDocument();
+    expect(screen.getByTestId("good-to-have")).toBeInTheDocument();
+    expect(screen.getByTestId("soft-skills-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("skill-cooccurrence")).toBeInTheDocument();
+    expect(screen.getByTestId("skill-momentum")).toBeInTheDocument();
+  });
+
+  it("renders companies tab charts when company data exists", () => {
+    render(<DashboardTabs {...fullProps} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "companies" }));
+    });
+    expect(screen.getByTestId("company-leaderboard")).toBeInTheDocument();
+    expect(screen.getByTestId("intel-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("queue-health")).toBeInTheDocument();
+  });
+
+  it("renders pipeline tab charts when seniority, salary and experience data exist", () => {
+    render(<DashboardTabs {...fullProps} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "pipeline" }));
+    });
+    expect(screen.getByTestId("seniority-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("experience-dist")).toBeInTheDocument();
+    expect(screen.getByTestId("job-functions")).toBeInTheDocument();
+    expect(screen.getByTestId("salary-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("title-keywords")).toBeInTheDocument();
+  });
+
+  it("renders geo tab charts when location, visa and salary-by-location data exist", () => {
+    render(<DashboardTabs {...fullProps} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "geo" }));
+    });
+    expect(screen.getByTestId("location-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("visa-stats")).toBeInTheDocument();
+    expect(screen.getByTestId("salary-by-location")).toBeInTheDocument();
+  });
+
+  it("keeps visited tab mounted but hidden when switching to another tab", () => {
+    render(<DashboardTabs {...fullProps} />);
+    // Visit skills, companies, pipeline, geo — then return to market
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "skills" }));
+    });
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "companies" }));
+    });
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "pipeline" }));
+    });
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "geo" }));
+    });
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "market" }));
+    });
+    // Market tab is active
+    expect(screen.getByRole("tab", { name: /market/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    // All previously visited tab content is still mounted (kept alive)
+    expect(screen.getByTestId("skills-frequency")).toBeInTheDocument();
+    expect(screen.getByTestId("company-leaderboard")).toBeInTheDocument();
+    expect(screen.getByTestId("seniority-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("visa-stats")).toBeInTheDocument();
+  });
+
+  it("renders EmptyPanel for experience when all distribution counts are zero", () => {
+    const props = {
+      ...fullProps,
+      experience: {
+        distribution: [{ label: "3-5 years", count: 0 }],
+        matched: 0,
+        total: 1000,
+        matchRate: 0,
+      },
+    };
+    render(<DashboardTabs {...props} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "pipeline" }));
+    });
+    expect(screen.queryByTestId("experience-dist")).not.toBeInTheDocument();
+  });
+});
+
+describe("DashboardTabs – edge case branches", () => {
+  it("ignores dashboard:switchtab event when detail is an empty string", () => {
+    render(<DashboardTabs {...defaultProps} />);
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "" }));
+    });
+    // Active tab should remain 'market'
+    expect(screen.getByRole("tab", { name: /market/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+  });
+
+  it("does not recreate visitedTabs Set when the active tab is dispatched again", () => {
+    render(<DashboardTabs {...defaultProps} />);
+    // 'market' is in the initial Set — dispatching it again hits the early-return branch
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: "market" }));
+    });
+    expect(screen.getByRole("tab", { name: /market/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+  });
+
+  it("switches tab via direct click on TabNav", () => {
+    render(<DashboardTabs {...defaultProps} />);
+    fireEvent.click(screen.getByRole("tab", { name: /skills/i }));
+    expect(screen.getByRole("tab", { name: /skills/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
   });
 });

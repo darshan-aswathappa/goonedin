@@ -32,14 +32,19 @@ describe("EmptyPanel", () => {
 
   it("renders 3 animated dot elements", () => {
     const { container } = render(<EmptyPanel title="Test Panel" />);
-    // The dots container has display flex with 3 child divs that have borderRadius 50%
-    const dotsContainer = container.querySelector('[style*="borderRadius: \\"50%\\""]');
-    // Query all divs that have the animation style with empty-pulse
-    const allDivs = container.querySelectorAll("div");
-    const dotDivs = Array.from(allDivs).filter((d) => {
-      const style = d.getAttribute("style") ?? "";
-      return style.includes("empty-pulse");
-    });
+    const dotDivs = container.querySelectorAll(".empty-panel-dot");
     expect(dotDivs).toHaveLength(3);
+  });
+
+  it("renders WAITING label in footer", () => {
+    render(<EmptyPanel title="Test Panel" />);
+    expect(screen.getByText("WAITING")).toBeInTheDocument();
+  });
+
+  it("renders the em-dash prefix in the message", () => {
+    const { container } = render(<EmptyPanel title="Test Panel" />);
+    const dash = container.querySelector(".empty-panel-message-dash");
+    expect(dash).toBeInTheDocument();
+    expect(dash?.textContent).toBe("—");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TabNav from "@/components/TabNav";
 import MetricCard from "@/components/MetricCard";
 import JobVolumeChart from "@/components/JobVolumeChart";
@@ -134,15 +134,30 @@ export default function DashboardTabs({
   hiringVelocity,
 }: Props) {
   const [activeTab, setActiveTab] = useState("market");
+  // Track which tabs have been visited so we can keep them mounted (avoids
+  // expensive remounts — especially LocationChart re-fetching geo.json).
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(
+    () => new Set(["market"]),
+  );
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setVisitedTabs((prev) => {
+      if (prev.has(tab)) return prev;
+      const next = new Set(prev);
+      next.add(tab);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const tabId = (e as CustomEvent<string>).detail;
-      if (tabId) setActiveTab(tabId);
+      if (tabId) handleTabChange(tabId);
     };
     window.addEventListener("dashboard:switchtab", handler);
     return () => window.removeEventListener("dashboard:switchtab", handler);
-  }, []);
+  }, [handleTabChange]);
 
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
 
@@ -151,18 +166,12 @@ export default function DashboardTabs({
       {/* KPI strip */}
       <div
         style={{
-          padding: "16px 16px 12px",
+          padding: "20px 20px 0",
           background: "var(--bg-root)",
+          borderBottom: "1px solid var(--border)",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-            gap: "12px",
-            height: "110px",
-          }}
-        >
+        <div className="kpi-grid">
           <MetricCard
             label="Unique Postings"
             value={overview?.total ?? 0}
@@ -203,84 +212,66 @@ export default function DashboardTabs({
       </div>
 
       {/* Tab nav */}
-      <TabNav active={activeTab} onChange={setActiveTab} />
+      <TabNav active={activeTab} onChange={handleTabChange} />
 
       {/* Tab content */}
       <main
+        className="dashboard-main"
         style={{
           flex: 1,
-          padding: "16px",
+          padding: "20px",
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
+          gap: "16px",
         }}
       >
-        {activeTab === "market" && (
-          <>
-            {/* Job Volume full width */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: "12px",
-                height: "240px",
-              }}
-            >
-              {(timeline?.timeline ?? []).length > 0 ? (
-                <SafePanel title="Job Volume">
-                  <JobVolumeChart data={timeline?.timeline ?? []} />
-                </SafePanel>
-              ) : (
-                <EmptyPanel
-                  title="Job Volume"
-                  message="No timeline data yet"
-                  suggestion="This chart shows daily job posting volume with 7/14/30/90-day range filters."
-                />
-              )}
-            </div>
+        {/* Each tab is lazy-mounted on first visit, then kept alive hidden.
+            This prevents expensive remounts (e.g. LocationChart re-fetching
+            geo.json) on every tab switch. */}
 
-            {/* Weekday | Time Distribution | 24h Heatmap */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: "12px",
-                height: "240px",
-              }}
-            >
-              {(weekday?.weekday ?? []).length > 0 ? (
-                <WeekdayChart
-                  data={weekday?.weekday ?? []}
-                  peakDay={weekday?.peakDay ?? null}
-                />
-              ) : (
-                <EmptyPanel
-                  title="Posting Days"
-                  message="No data yet"
-                  suggestion="Which days of the week have the most job postings."
-                />
-              )}
-              <SafePanel title="Posting Times">
-                <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
+        <div style={{ display: activeTab === "market" ? undefined : "none" }}>
+          {/* Job Volume full width */}
+          <div className="chart-row chart-row--one" style={{ height: "272px" }}>
+            {(timeline?.timeline ?? []).length > 0 ? (
+              <SafePanel title="Job Volume">
+                <JobVolumeChart data={timeline?.timeline ?? []} />
               </SafePanel>
-              <SafePanel title="24h Posting Activity">
-                <PostingHeatmap data={companies?.hourlyDistribution ?? []} />
-              </SafePanel>
-            </div>
-          </>
-        )}
+            ) : (
+              <EmptyPanel
+                title="Job Volume"
+                message="No timeline data yet"
+                suggestion="This chart shows daily job posting volume with 7/14/30/90-day range filters."
+              />
+            )}
+          </div>
 
-        {activeTab === "skills" && (
-          <>
+          {/* Weekday | Time Distribution | 24h Heatmap */}
+          <div className="chart-row chart-row--three" style={{ height: "248px", marginTop: "16px" }}>
+            {(weekday?.weekday ?? []).length > 0 ? (
+              <WeekdayChart
+                data={weekday?.weekday ?? []}
+                peakDay={weekday?.peakDay ?? null}
+              />
+            ) : (
+              <EmptyPanel
+                title="Posting Days"
+                message="No data yet"
+                suggestion="Which days of the week have the most job postings."
+              />
+            )}
+            <SafePanel title="Posting Times">
+              <TimeDistributionChart fallbackData={companies?.hourlyDistribution ?? []} />
+            </SafePanel>
+            <SafePanel title="24h Posting Activity">
+              <PostingHeatmap data={companies?.hourlyDistribution ?? []} />
+            </SafePanel>
+          </div>
+        </div>
+
+        {visitedTabs.has("skills") && (
+          <div style={{ display: activeTab === "skills" ? undefined : "none" }}>
             {/* Tech Skills | Good-to-Have | 24h Posting Heatmap */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: "12px",
-                height: "280px",
-              }}
-            >
+            <div className="chart-row chart-row--three" style={{ height: "296px" }}>
               {(skills?.techSkills ?? []).length > 0 ? (
                 <SkillsFrequency data={skills?.techSkills ?? []} />
               ) : (
@@ -305,14 +296,7 @@ export default function DashboardTabs({
             </div>
 
             {/* Soft Skills | Skill Co-occurrence */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 2fr",
-                gap: "12px",
-                height: "280px",
-              }}
-            >
+            <div className="chart-row chart-row--one-two" style={{ height: "288px", marginTop: "16px" }}>
               {(skills?.softSkills ?? []).length > 0 ? (
                 <SoftSkillsPanel data={skills?.softSkills ?? []} />
               ) : (
@@ -334,13 +318,7 @@ export default function DashboardTabs({
             </div>
 
             {/* Skill Momentum Table */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: "12px",
-              }}
-            >
+            <div className="chart-row chart-row--one" style={{ minHeight: "256px", marginTop: "16px" }}>
               {(skillMomentum?.skills ?? []).length > 0 ? (
                 <SkillMomentumTable
                   skills={skillMomentum?.skills ?? []}
@@ -355,20 +333,13 @@ export default function DashboardTabs({
                 />
               )}
             </div>
-          </>
+          </div>
         )}
 
-        {activeTab === "companies" && (
-          <>
+        {visitedTabs.has("companies") && (
+          <div style={{ display: activeTab === "companies" ? undefined : "none" }}>
             {/* Company Leaderboard | Hiring Velocity */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 2fr",
-                gap: "12px",
-                height: "280px",
-              }}
-            >
+            <div className="chart-row chart-row--one-two" style={{ height: "300px" }}>
               {(companies?.topCompanies ?? []).length > 0 ? (
                 <CompanyLeaderboard data={companies?.topCompanies ?? []} />
               ) : (
@@ -385,14 +356,7 @@ export default function DashboardTabs({
             </div>
 
             {/* Market Intelligence | Queue Health */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "2fr 1fr",
-                gap: "12px",
-                height: "160px",
-              }}
-            >
+            <div className="chart-row chart-row--two-one" style={{ height: "176px", marginTop: "16px" }}>
               <IntelPanel
                 topCompany={companies?.topCompanies?.[0]?.company}
                 topSkill={skills?.techSkills?.[0]?.keyword}
@@ -413,20 +377,13 @@ export default function DashboardTabs({
                 analyzedCount={queue?.analyzedCount ?? 0}
               />
             </div>
-          </>
+          </div>
         )}
 
-        {activeTab === "pipeline" && (
-          <>
+        {visitedTabs.has("pipeline") && (
+          <div style={{ display: activeTab === "pipeline" ? undefined : "none" }}>
             {/* Seniority | Weekday | Time Distribution */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "300px 1fr 1fr",
-                gap: "12px",
-                height: "240px",
-              }}
-            >
+            <div className="chart-row chart-row--fixed-three" style={{ height: "256px" }}>
               {(seniority?.seniority ?? []).length > 0 ? (
                 <SeniorityChart data={seniority?.seniority ?? []} />
               ) : (
@@ -454,14 +411,7 @@ export default function DashboardTabs({
             </div>
 
             {/* Experience Distribution | Job Functions */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "12px",
-                height: "240px",
-              }}
-            >
+            <div className="chart-row chart-row--two" style={{ height: "248px", marginTop: "16px" }}>
               {(experience?.distribution ?? []).some((d) => d.count > 0) ? (
                 <ExperienceDistribution
                   distribution={experience?.distribution ?? []}
@@ -488,14 +438,7 @@ export default function DashboardTabs({
             </div>
 
             {/* Salary | Title Keywords */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 2fr",
-                gap: "12px",
-                height: "260px",
-              }}
-            >
+            <div className="chart-row chart-row--one-two" style={{ height: "276px", marginTop: "16px" }}>
               {(salary?.buckets ?? []).length > 0 ? (
                 <SalaryChart
                   buckets={salary?.buckets ?? []}
@@ -520,20 +463,13 @@ export default function DashboardTabs({
                 />
               )}
             </div>
-          </>
+          </div>
         )}
 
-        {activeTab === "geo" && (
-          <>
+        {visitedTabs.has("geo") && (
+          <div style={{ display: activeTab === "geo" ? undefined : "none" }}>
             {/* Location Chart | Visa Stats */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "12px",
-                height: "300px",
-              }}
-            >
+            <div className="chart-row chart-row--two" style={{ height: "316px" }}>
               {(locations?.locations ?? []).length > 0 ? (
                 <SafePanel title="Locations">
                   <LocationChart data={locations?.locations ?? []} />
@@ -561,14 +497,7 @@ export default function DashboardTabs({
             </div>
 
             {/* Salary by Location full width */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr",
-                gap: "12px",
-                height: "260px",
-              }}
-            >
+            <div className="chart-row chart-row--one" style={{ height: "272px", marginTop: "16px" }}>
               {(salaryByLocation?.cities ?? []).length > 0 ? (
                 <SalaryByLocationChart cities={salaryByLocation?.cities ?? []} />
               ) : (
@@ -579,7 +508,7 @@ export default function DashboardTabs({
                 />
               )}
             </div>
-          </>
+          </div>
         )}
       </main>
     </div>

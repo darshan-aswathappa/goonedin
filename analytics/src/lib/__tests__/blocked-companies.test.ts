@@ -46,3 +46,87 @@ describe("isBlocked", () => {
     expect(isBlocked("Good Company", blocked)).toBe(false);
   });
 });
+
+describe("getBlockedCompanies", () => {
+  it("fetches company names from supabase and returns them lowercased", async () => {
+    const mockSelect = jest.fn().mockResolvedValue({
+      data: [{ company_name: "Acme Corp" }, { company_name: "Evil Inc" }],
+      error: null,
+    });
+
+    let fn: () => Promise<string[]>;
+    jest.isolateModules(() => {
+      jest.doMock("@/lib/supabase-server", () => ({
+        createServerClient: () => ({ from: () => ({ select: mockSelect }) }),
+      }));
+      fn = require("@/lib/blocked-companies").getBlockedCompanies;
+    });
+
+    const result = await fn!();
+    expect(result).toEqual(["acme corp", "evil inc"]);
+    expect(mockSelect).toHaveBeenCalledWith("company_name");
+  });
+
+  it("returns the cached result without re-fetching on subsequent calls within TTL", async () => {
+    const mockSelect = jest.fn().mockResolvedValue({
+      data: [{ company_name: "Cached Co" }],
+      error: null,
+    });
+
+    let fn: () => Promise<string[]>;
+    jest.isolateModules(() => {
+      jest.doMock("@/lib/supabase-server", () => ({
+        createServerClient: () => ({ from: () => ({ select: mockSelect }) }),
+      }));
+      fn = require("@/lib/blocked-companies").getBlockedCompanies;
+    });
+
+    await fn!(); // first call — populates cache
+    await fn!(); // second call — should use cache
+    expect(mockSelect).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns empty array when fetch fails and cache is empty", async () => {
+    const mockSelect = jest.fn().mockResolvedValue({
+      data: null,
+      error: new Error("DB unavailable"),
+    });
+
+    let fn: () => Promise<string[]>;
+    jest.isolateModules(() => {
+      jest.doMock("@/lib/supabase-server", () => ({
+        createServerClient: () => ({ from: () => ({ select: mockSelect }) }),
+      }));
+      fn = require("@/lib/blocked-companies").getBlockedCompanies;
+    });
+
+    const result = await fn!();
+    expect(result).toEqual([]);
+  });
+
+  it("returns stale cache when fetch fails after a successful prior fetch", async () => {
+    const mockSelect = jest
+      .fn()
+      .mockResolvedValueOnce({ data: [{ company_name: "Stale Co" }], error: null })
+      .mockResolvedValueOnce({ data: null, error: new Error("DB error") });
+
+    let fn: () => Promise<string[]>;
+    jest.isolateModules(() => {
+      jest.doMock("@/lib/supabase-server", () => ({
+        createServerClient: () => ({ from: () => ({ select: mockSelect }) }),
+      }));
+      fn = require("@/lib/blocked-companies").getBlockedCompanies;
+    });
+
+    await fn!(); // populate cache
+
+    // Expire the cache by advancing system time past the 2-minute TTL
+    jest.useFakeTimers();
+    jest.setSystemTime(Date.now() + 200_000);
+
+    const result = await fn!(); // fetch fails — should return stale cache
+    expect(result).toEqual(["stale co"]);
+
+    jest.useRealTimers();
+  });
+});

@@ -44,6 +44,7 @@ export default function SalaryChart({
         </span>
       </div>
       <div
+        data-testid="salary-dist-body"
         style={{
           padding: "10px 12px 0",
           height: "calc(100% - 37px)",

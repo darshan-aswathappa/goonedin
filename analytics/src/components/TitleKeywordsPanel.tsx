@@ -299,6 +299,7 @@ export default function TitleKeywordsPanel({ data }: Props) {
       <div className="panel-header">Top Job Titles</div>
       <div
         ref={containerRef}
+        data-testid="title-keywords-canvas-container"
         style={{
           height: "calc(100% - 37px)",
           position: "relative",

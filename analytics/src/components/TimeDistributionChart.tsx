@@ -60,8 +60,8 @@ export default function TimeDistributionChart({ fallbackData }: Props) {
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>
       <div className="panel-header" style={{ gap: "8px" }}>
-        Posting Times by Day
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "3px" }}>
+        <span className="panel-header-title">Posting Times by Day</span>
+        <div className="time-filter-row">
           {DAYS.map((day) => (
             <button
               key={day}

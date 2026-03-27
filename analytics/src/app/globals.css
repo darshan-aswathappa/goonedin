@@ -40,6 +40,19 @@
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
   --font-sans: "Inter", system-ui, sans-serif;
   --radius: 2px;
+
+  /* Spacing scale — use these for gaps and padding, not arbitrary values */
+  --gap-xs: 8px;
+  --gap-sm: 12px;
+  --gap-md: 16px;
+  --gap-lg: 20px;
+  --gap-xl: 32px;
+  --gap-2xl: 48px;
+
+  /* Chart row heights — varied to create visual hierarchy */
+  --chart-hero: 272px;    /* primary / first-row charts */
+  --chart-standard: 248px; /* secondary charts */
+  --chart-compact: 176px;  /* supporting stats rows */
 }
 
 * {
@@ -96,7 +109,7 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--teal);
-  padding: 10px 14px 8px;
+  padding: 11px 14px 9px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -387,6 +400,68 @@ body {
   margin-top: 2px;
 }
 
+/* ── Empty panel ─────────────────────────────────────────────────── */
+.empty-panel-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 20px 20px 22px;
+  border-left: 2px solid var(--border-bright);
+  margin: 16px 14px;
+  height: calc(100% - 71px);
+}
+
+.empty-panel-message {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.empty-panel-message-dash {
+  color: var(--muted);
+}
+
+.empty-panel-suggestion {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.7;
+  max-width: 320px;
+  padding-left: 16px;
+}
+
+.empty-panel-footer {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.empty-panel-waiting {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--border-bright);
+  letter-spacing: 0.1em;
+}
+
+.empty-panel-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border-bright);
+  animation: empty-pulse 1.4s ease-in-out infinite;
+}
+
+.empty-panel-dot:nth-child(2) { animation-delay: 0s; }
+.empty-panel-dot:nth-child(3) { animation-delay: 0.25s; }
+.empty-panel-dot:nth-child(4) { animation-delay: 0.5s; }
+
 /* ── Section guide divider ───────────────────────────────────────── */
 .section-guide {
   display: flex;
@@ -420,12 +495,62 @@ body {
   flex-shrink: 0;
 }
 
+/* ── KPI grid (5 metric cards) ───────────────────────────────────── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  height: 120px;
+}
+
+/* ── Chart row grid system ───────────────────────────────────────── */
+/* Column pattern classes — heights set inline per row on desktop.   */
+/* Media queries override height to auto and set explicit child      */
+/* heights so Recharts ResponsiveContainer always has a parent px.   */
+.chart-row {
+  display: grid;
+  gap: var(--gap-md);
+}
+
+.chart-row--one         { grid-template-columns: 1fr; }
+.chart-row--two         { grid-template-columns: 1fr 1fr; }
+.chart-row--three       { grid-template-columns: 1fr 1fr 1fr; }
+.chart-row--one-two     { grid-template-columns: 1fr 2fr; }
+.chart-row--two-one     { grid-template-columns: 2fr 1fr; }
+.chart-row--fixed-three { grid-template-columns: 300px 1fr 1fr; }
+
 /* ── Responsive breakpoints ──────────────────────────────────────── */
 @media (max-width: 1024px) {
   .kpi-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     height: auto !important;
   }
+
+  /* Chart rows: remove inline heights, stack columns, give children    */
+  /* explicit heights so Recharts has a real parent px to compute from. */
+  /* !important is required to override inline style={{ height:"100%" }} */
+  /* on panel roots — without it the height:100% of an auto parent      */
+  /* creates an indeterminate sizing loop in Recharts ResizeObserver.   */
+  .chart-row {
+    height: auto !important;
+    min-height: unset !important;
+  }
+  .chart-row > * {
+    height: 240px !important;
+  }
+  .chart-row--three {
+    grid-template-columns: 1fr 1fr;
+  }
+  .chart-row--two,
+  .chart-row--one-two,
+  .chart-row--two-one {
+    grid-template-columns: 1fr;
+  }
+  .chart-row--fixed-three {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Legacy grid classes */
   .two-col-grid {
     grid-template-columns: 1fr !important;
     height: auto !important;
@@ -453,10 +578,85 @@ body {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
+  .chart-row > * {
+    height: 220px !important;
+  }
+  .chart-row--three,
+  .chart-row--fixed-three {
+    grid-template-columns: 1fr;
+  }
+  .dashboard-main {
+    padding: 12px !important;
+  }
+  .header-subtitle,
+  .header-shortcut {
+    display: none;
+  }
   .three-col-grid {
     grid-template-columns: 1fr !important;
   }
   .seniority-grid {
     grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Panel header title (truncatable) ───────────────────────────── */
+/* Used when a panel-header has both a title and a filter row.       */
+/* Allows the title to shrink/truncate rather than force a line wrap.*/
+.panel-header-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+/* ── Time Distribution filter row ───────────────────────────────── */
+/* 8 day-filter buttons (All + Mon-Sun) overflow on narrow screens.  */
+/* Allow horizontal scroll to keep all buttons accessible.           */
+.time-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .time-filter-row {
+    overflow-x: auto;
+    flex-shrink: 1;
+    max-width: 200px;
+    scrollbar-width: none; /* Firefox */
+  }
+  .time-filter-row::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+}
+
+/* ── Skill Momentum Table responsive ────────────────────────────── */
+/* Override .panel's overflow:hidden so the table body can scroll   */
+.skill-momentum-panel {
+  overflow-y: auto !important;
+}
+
+@media (max-width: 1024px) {
+  /* Stack the two 10-row columns vertically and let them scroll */
+  .skill-momentum-cols {
+    flex-direction: column !important;
+    overflow-y: auto;
+  }
+  /* Turn the vertical divider into a horizontal rule */
+  .skill-momentum-divider {
+    width: 100% !important;
+    height: 1px !important;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  /* On phones, each row's COL_GRID may be tight — allow horizontal scroll */
+  .skill-momentum-cols {
+    overflow-x: auto;
   }
 }

@@ -116,17 +116,26 @@ export default function LocationChart({ data }: Props) {
     [maxCount, zoom],
   );
 
-  const handleZoomIn = () => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM));
-  const handleZoomOut = () => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM));
-  const handleReset = () => {
+  const handleZoomIn = useCallback(
+    () => setZoom((z) => Math.min(z * 1.5, MAX_ZOOM)),
+    [],
+  );
+  const handleZoomOut = useCallback(
+    () => setZoom((z) => Math.max(z / 1.5, MIN_ZOOM)),
+    [],
+  );
+  const handleReset = useCallback(() => {
     setZoom(DEFAULT_ZOOM);
     setCenter(DEFAULT_CENTER);
-  };
+  }, []);
 
-  const fontSize = (r: number) => {
-    const size = r > 14 ? 9 : 7;
-    return `${size / Math.sqrt(zoom)}px`;
-  };
+  const fontSize = useCallback(
+    (r: number) => {
+      const size = r > 14 ? 9 : 7;
+      return `${size / Math.sqrt(zoom)}px`;
+    },
+    [zoom],
+  );
 
   return (
     <div

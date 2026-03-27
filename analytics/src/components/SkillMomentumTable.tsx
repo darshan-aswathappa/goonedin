@@ -258,7 +258,7 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
   const rightCol = computed.slice(10, 20);
 
   return (
-    <div className="panel chart-enter">
+    <div className="panel chart-enter skill-momentum-panel">
       <div className="panel-header" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <span>Top 20 Skills by Momentum</span>
         <span
@@ -275,7 +275,10 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
         </span>
       </div>
 
-      <div style={{ padding: "0 14px 10px", display: "flex", gap: "16px" }}>
+      <div
+        className="skill-momentum-cols"
+        style={{ padding: "0 14px 10px", display: "flex", gap: "16px" }}
+      >
         {computed.length === 0 ? (
           <div
             style={{
@@ -294,14 +297,17 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
           </div>
         ) : (
           <>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="skill-momentum-col" style={{ flex: 1, minWidth: 0 }}>
               <ColumnHeaders />
               {leftCol.map((row, i) => (
                 <SkillRow key={row.skill} row={row} rank={i + 1} />
               ))}
             </div>
-            <div style={{ width: "1px", background: "var(--border)", flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              className="skill-momentum-divider"
+              style={{ width: "1px", background: "var(--border)", flexShrink: 0 }}
+            />
+            <div className="skill-momentum-col" style={{ flex: 1, minWidth: 0 }}>
               <ColumnHeaders />
               {rightCol.map((row, i) => (
                 <SkillRow key={row.skill} row={row} rank={i + 11} />

@@ -65,59 +65,55 @@ export default function SalaryByLocationChart({ cities }: Props) {
           {cities.length} CITIES
         </span>
       </div>
+      {/* Direct height container — no intermediate flex:1 child.
+          Recharts ResponsiveContainer requires an ancestor with an
+          explicit px height to avoid infinite resize loops.            */}
       <div
-        style={{
-          padding: "10px 12px 0",
-          height: "calc(100% - 37px)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "6px",
-        }}
+        data-testid="salary-chart-body"
+        style={{ height: "calc(100% - 37px)" }}
       >
-        <div style={{ flex: 1 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={cities} layout="vertical" margin={{ top: 0, right: 12, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-              <XAxis
-                type="number"
-                tick={AXIS_TICK_SM}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `$${Math.round(v / 1000)}K`}
-              />
-              <YAxis
-                dataKey="city"
-                type="category"
-                tick={<CityTick x={0} y={0} payload={{ value: "" }} />}
-                axisLine={false}
-                tickLine={false}
-                width={130}
-                interval={0}
-              />
-              <Tooltip
-                content={
-                  <ChartTooltip
-                    accentColor="var(--green)"
-                    formatLabel={(p) => p?.city ?? ""}
-                    formatValue={(_, p) =>
-                      `$${p?.median?.toLocaleString()} median · n=${p?.count} jobs`
-                    }
-                  />
-                }
-                cursor={BAR_CURSOR}
-              />
-              <Bar dataKey="median" radius={[0, 2, 2, 0]} animationDuration={CHART_ANIM_MS}>
-                {cities.map((_, i) => (
-                  <Cell
-                    key={i}
-                    fill={i < 3 ? "var(--green)" : i < 7 ? "var(--teal)" : "var(--blue)"}
-                    opacity={0.85}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={cities} layout="vertical" margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+            <XAxis
+              type="number"
+              tick={AXIS_TICK_SM}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => `$${Math.round(v / 1000)}K`}
+            />
+            <YAxis
+              dataKey="city"
+              type="category"
+              tick={<CityTick x={0} y={0} payload={{ value: "" }} />}
+              axisLine={false}
+              tickLine={false}
+              width={110}
+              interval={0}
+            />
+            <Tooltip
+              content={
+                <ChartTooltip
+                  accentColor="var(--green)"
+                  formatLabel={(p) => p?.city ?? ""}
+                  formatValue={(_, p) =>
+                    `$${p?.median?.toLocaleString()} median · n=${p?.count} jobs`
+                  }
+                />
+              }
+              cursor={BAR_CURSOR}
+            />
+            <Bar dataKey="median" radius={[0, 2, 2, 0]} animationDuration={CHART_ANIM_MS}>
+              {cities.map((_, i) => (
+                <Cell
+                  key={i}
+                  fill={i < 3 ? "var(--green)" : i < 7 ? "var(--teal)" : "var(--blue)"}
+                  opacity={0.85}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

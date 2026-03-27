@@ -67,6 +67,7 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
           HIREFEED
         </span>
         <span
+          className="header-subtitle"
           style={{
             fontSize: "9px",
             letterSpacing: "0.12em",
@@ -125,6 +126,7 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
         }}
       >
         <span
+          className="header-shortcut"
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: "8px",
