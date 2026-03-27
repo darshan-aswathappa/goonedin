@@ -21,14 +21,16 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
-        })
+        }),
       );
       setDate(
-        now.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "2-digit",
-        }).toUpperCase()
+        now
+          .toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "2-digit",
+          })
+          .toUpperCase(),
       );
     };
     tick();
@@ -76,7 +78,14 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
       </div>
 
       {/* Center: Live status */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px", justifyContent: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          justifyContent: "center",
+        }}
+      >
         <span className="live-dot" />
         <span
           style={{
@@ -89,14 +98,32 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
           LIVE
         </span>
         {lastUpdated && (
-          <span style={{ fontSize: "9px", color: "var(--muted)", letterSpacing: "0.08em" }}>
-            &nbsp;· UPDATED {lastUpdated.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })}
+          <span
+            style={{
+              fontSize: "9px",
+              color: "var(--muted)",
+              letterSpacing: "0.08em",
+            }}
+          >
+            &nbsp;· UPDATED{" "}
+            {lastUpdated.toLocaleTimeString("en-US", {
+              hour12: false,
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </span>
         )}
       </div>
 
       {/* Right: Shortcuts + Clock + Refresh */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", justifyContent: "flex-end" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          justifyContent: "flex-end",
+        }}
+      >
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -107,19 +134,7 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
             letterSpacing: "0.08em",
           }}
         >
-          / COMMANDS
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "8px",
-            color: "var(--muted)",
-            border: "1px solid var(--border)",
-            padding: "2px 6px",
-            letterSpacing: "0.08em",
-          }}
-        >
-          \u2318J AI
+          / ⌘ K
         </span>
         {onRefresh && (
           <button
@@ -146,10 +161,24 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
           </button>
         )}
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", letterSpacing: "0.05em" }}>
+          <div
+            style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "var(--text)",
+              letterSpacing: "0.05em",
+            }}
+          >
             {time}
           </div>
-          <div style={{ fontSize: "8px", color: "var(--muted)", letterSpacing: "0.12em", marginTop: "1px" }}>
+          <div
+            style={{
+              fontSize: "8px",
+              color: "var(--muted)",
+              letterSpacing: "0.12em",
+              marginTop: "1px",
+            }}
+          >
             {date}
           </div>
         </div>
