@@ -521,25 +521,13 @@ function extractSoftSkill(raw: string): string {
 export function aggregateJobFunctions(
   rows: { title?: string | null }[]
 ): { function: string; count: number; color: string }[] {
-  const FUNCTIONS: { key: string; pattern: RegExp; color: string }[] = [
-    { key: 'Full Stack', pattern: /full.?stack/i, color: '#00d4aa' },
-    { key: 'Frontend', pattern: /front.?end|react\s+eng|angular\s+eng|vue\s+eng|ui\s+eng/i, color: '#3b82f6' },
-    { key: 'Backend', pattern: /back.?end|api\s+eng|server.side/i, color: '#4ade80' },
-    { key: 'Data Eng', pattern: /data\s+eng|etl\s+eng|analytics\s+eng|pipeline\s+eng/i, color: '#f59e0b' },
-    { key: 'ML/AI', pattern: /machine\s+learning|ml\s+eng|ai\s+eng|deep\s+learning|llm\s+eng|nlp\s+eng/i, color: '#a855f7' },
-    { key: 'DevOps/SRE', pattern: /devops|site\s+reliability|platform\s+eng|infrastructure\s+eng|cloud\s+eng/i, color: '#ef4444' },
-    { key: 'Mobile', pattern: /\bios\b|\bandroid\b|flutter|react\s+native|mobile\s+eng/i, color: '#06b6d4' },
-    { key: 'Security', pattern: /security\s+eng|cybersecurity|infosec/i, color: '#f97316' },
-    { key: 'Embedded', pattern: /embedded|firmware/i, color: '#84cc16' },
-  ];
-
   const freq: Record<string, number> = {};
   let other = 0;
 
   for (const row of rows) {
     if (!row.title) continue;
     let matched = false;
-    for (const fn of FUNCTIONS) {
+    for (const fn of JOB_FUNCTION_DEFS) {
       if (fn.pattern.test(row.title)) {
         freq[fn.key] = (freq[fn.key] ?? 0) + 1;
         matched = true;
@@ -551,11 +539,69 @@ export function aggregateJobFunctions(
 
   if (other > 0) freq['General SW'] = other;
 
-  const colorMap = Object.fromEntries([...FUNCTIONS.map(f => [f.key, f.color]), ['General SW', '#64748b']]);
-
   return Object.entries(freq)
-    .map(([fn, count]) => ({ function: fn, count, color: colorMap[fn] ?? '#64748b' }))
+    .map(([fn, count]) => ({ function: fn, count, color: JOB_FUNCTION_COLOR_MAP[fn] ?? '#64748b' }))
     .sort((a, b) => b.count - a.count);
+}
+
+// ---------------------------------------------------------------------------
+// Salary by job function aggregation
+// ---------------------------------------------------------------------------
+
+const JOB_FUNCTION_DEFS: { key: string; pattern: RegExp; color: string }[] = [
+  { key: 'Full Stack', pattern: /full.?stack/i, color: '#00d4aa' },
+  { key: 'Frontend', pattern: /front.?end|react\s+eng|angular\s+eng|vue\s+eng|ui\s+eng/i, color: '#3b82f6' },
+  { key: 'Backend', pattern: /back.?end|api\s+eng|server.side/i, color: '#4ade80' },
+  { key: 'Data Eng', pattern: /data\s+eng|etl\s+eng|analytics\s+eng|pipeline\s+eng/i, color: '#f59e0b' },
+  { key: 'ML/AI', pattern: /machine\s+learning|ml\s+eng|ai\s+eng|deep\s+learning|llm\s+eng|nlp\s+eng/i, color: '#a855f7' },
+  { key: 'DevOps/SRE', pattern: /devops|site\s+reliability|platform\s+eng|infrastructure\s+eng|cloud\s+eng/i, color: '#ef4444' },
+  { key: 'Mobile', pattern: /\bios\b|\bandroid\b|flutter|react\s+native|mobile\s+eng/i, color: '#06b6d4' },
+  { key: 'Security', pattern: /security\s+eng|cybersecurity|infosec/i, color: '#f97316' },
+  { key: 'Embedded', pattern: /embedded|firmware/i, color: '#84cc16' },
+];
+
+const JOB_FUNCTION_COLOR_MAP = Object.fromEntries([
+  ...JOB_FUNCTION_DEFS.map((f) => [f.key, f.color]),
+  ['General SW', '#64748b'],
+]);
+
+function classifyJobFunction(title: string): string {
+  for (const fn of JOB_FUNCTION_DEFS) {
+    if (fn.pattern.test(title)) return fn.key;
+  }
+  return 'General SW';
+}
+
+export function aggregateSalaryByFunction(
+  rows: { external_id: string; title: string | null; salary: string | null }[]
+): { function: string; median: number; count: number; color: string }[] {
+  const groups: Record<string, number[]> = {};
+
+  for (const row of rows) {
+    if (!row.title || !row.salary) continue;
+    const annual = parseSalaryToAnnual(row.salary);
+    if (annual === null) continue;
+    const fn = classifyJobFunction(row.title);
+    if (!groups[fn]) groups[fn] = [];
+    groups[fn].push(annual);
+  }
+
+  const result = Object.entries(groups).map(([fn, values]) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const median =
+      sorted.length % 2 === 0
+        ? Math.round((sorted[mid - 1] + sorted[mid]) / 2)
+        : Math.round(sorted[mid]);
+    return {
+      function: fn,
+      median,
+      count: values.length,
+      color: JOB_FUNCTION_COLOR_MAP[fn] ?? '#64748b',
+    };
+  });
+
+  return result.sort((a, b) => b.median - a.median);
 }
 
 // ---------------------------------------------------------------------------

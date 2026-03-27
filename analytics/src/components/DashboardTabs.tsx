@@ -17,6 +17,7 @@ import SeniorityChart from "@/components/SeniorityChart";
 import WeekdayChart from "@/components/WeekdayChart";
 import TitleKeywordsPanel from "@/components/TitleKeywordsPanel";
 import JobFunctionsChart from "@/components/JobFunctionsChart";
+import SalaryByJobFunctionChart from "@/components/SalaryByJobFunctionChart";
 import HiringVelocityChart from "@/components/HiringVelocityChart";
 import QueueHealth from "@/components/QueueHealth";
 import SkillCooccurrence from "@/components/SkillCooccurrence";
@@ -95,6 +96,9 @@ interface Experience {
 interface SalaryByLocation {
   cities: { city: string; median: number; count: number }[];
 }
+interface SalaryByFunction {
+  functions: { function: string; median: number; count: number; color: string }[];
+}
 interface HiringVelocity {
   companies: { name: string; color: string }[];
   data: Record<string, string | number>[];
@@ -115,6 +119,7 @@ interface Props {
   experience: Experience | null;
   salaryByLocation: SalaryByLocation | null;
   hiringVelocity: HiringVelocity | null;
+  salaryByFunction: SalaryByFunction | null;
 }
 
 function StatusBar() {
@@ -191,6 +196,7 @@ export default function DashboardTabs({
   experience,
   salaryByLocation,
   hiringVelocity,
+  salaryByFunction,
 }: Props) {
   const [activeTab, setActiveTab] = useState("market");
   // Track which tabs have been visited so we can keep them mounted (avoids
@@ -469,8 +475,8 @@ export default function DashboardTabs({
               </SafePanel>
             </div>
 
-            {/* Experience Distribution | Job Functions */}
-            <div className="chart-row chart-row--two" style={{ height: "248px", marginTop: "16px" }}>
+            {/* Experience Distribution | Job Functions | Salary by Function */}
+            <div className="chart-row chart-row--three" style={{ height: "248px", marginTop: "16px" }}>
               {(experience?.distribution ?? []).some((d) => d.count > 0) ? (
                 <ExperienceDistribution
                   distribution={experience?.distribution ?? []}
@@ -492,6 +498,15 @@ export default function DashboardTabs({
                   title="Job Functions"
                   message="No data yet"
                   suggestion="Engineering, product, design, and other function distribution."
+                />
+              )}
+              {(salaryByFunction?.functions ?? []).length > 0 ? (
+                <SalaryByJobFunctionChart data={salaryByFunction?.functions ?? []} />
+              ) : (
+                <EmptyPanel
+                  title="Salary by Function"
+                  message="No salary data by function yet"
+                  suggestion="Median salary per engineering function. Requires jobs with salary disclosed."
                 />
               )}
             </div>
