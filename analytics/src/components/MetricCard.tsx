@@ -58,6 +58,7 @@ export default function MetricCard({
       ref={cardRef}
       className="panel"
       style={{
+        position: "relative",
         padding: "16px",
         display: "flex",
         flexDirection: "column",
@@ -67,14 +68,14 @@ export default function MetricCard({
     >
       {/* Top row: rank badge + label */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", minWidth: 0, overflow: "hidden" }}>
           {rank !== undefined && (
             <span
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "7px",
                 color: "var(--muted)",
-                background: "#111",
+                background: "var(--bg-panel)",
                 border: "1px solid var(--border)",
                 padding: "1px 4px",
                 letterSpacing: "0.1em",
@@ -92,6 +93,10 @@ export default function MetricCard({
               letterSpacing: "0.2em",
               color: "var(--muted)",
               textTransform: "uppercase",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              minWidth: 0,
             }}
           >
             {label}
@@ -110,6 +115,10 @@ export default function MetricCard({
               color: color,
               lineHeight: 1,
               letterSpacing: "-0.02em",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              minWidth: 0,
             }}
           >
             {typeof value === "number" ? value.toLocaleString() : value}

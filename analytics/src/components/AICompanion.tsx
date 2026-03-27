@@ -23,12 +23,12 @@ function renderInline(text: string, keyOffset = 0): React.ReactNode[] {
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) nodes.push(text.slice(lastIndex, match.index));
     if (match[2]) {
-      nodes.push(<strong key={key++} style={{ color: "#ffffff", fontWeight: 700 }}>{match[2]}</strong>);
+      nodes.push(<strong key={key++} style={{ color: "var(--text)", fontWeight: 700 }}>{match[2]}</strong>);
     } else if (match[3]) {
       nodes.push(<em key={key++} style={{ fontStyle: "italic" }}>{match[3]}</em>);
     } else if (match[4]) {
       nodes.push(
-        <code key={key++} style={{ background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)", padding: "1px 4px", fontSize: "11px", color: "#ff8c00" }}>
+        <code key={key++} style={{ background: "var(--teal-dim)", border: "1px solid rgba(255,140,0,0.2)", padding: "1px 4px", fontSize: "11px", color: "var(--teal)" }}>
           {match[4]}
         </code>
       );
@@ -74,7 +74,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
             <thead>
               <tr>
                 {header.map((cell, j) => (
-                  <th key={j} style={{ textAlign: "left", padding: "4px 12px 4px 0", borderBottom: "1px solid rgba(255,140,0,0.35)", color: "#ff8c00", fontWeight: 700, letterSpacing: "0.06em", paddingRight: "16px" }}>
+                  <th key={j} style={{ textAlign: "left", padding: "4px 12px 4px 0", borderBottom: "1px solid var(--teal-glow)", color: "var(--teal)", fontWeight: 700, letterSpacing: "0.06em", paddingRight: "16px" }}>
                     {renderInline(cell, j * 1000)}
                   </th>
                 ))}
@@ -84,7 +84,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
               {body.map((row, ri) => (
                 <tr key={ri} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   {row.map((cell, ci) => (
-                    <td key={ci} style={{ padding: "5px 16px 5px 0", color: "#e8e8e8", verticalAlign: "top" }}>
+                    <td key={ci} style={{ padding: "5px 16px 5px 0", color: "var(--text)", verticalAlign: "top" }}>
                       {renderInline(cell, ri * 10000 + ci * 100)}
                     </td>
                   ))}
@@ -108,7 +108,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
         <ul key={bk++} style={{ margin: "4px 0", padding: 0, listStyle: "none" }}>
           {items.map((item, j) => (
             <li key={j} style={{ display: "flex", gap: "6px", marginBottom: "3px", alignItems: "flex-start" }}>
-              <span style={{ color: "#ff8c00", flexShrink: 0 }}>›</span>
+              <span style={{ color: "var(--teal)", flexShrink: 0 }}>›</span>
               <span>{renderInline(item, j * 100)}</span>
             </li>
           ))}
@@ -161,6 +161,7 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
           gap: "6px",
           background: "none",
           border: "1px solid rgba(255,140,0,0.2)",
+          borderRadius: "var(--radius)",
           padding: "3px 8px",
           cursor: "pointer",
           fontFamily: "var(--font-mono)",
@@ -168,7 +169,7 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
           fontWeight: 700,
           letterSpacing: "0.14em",
           textTransform: "uppercase",
-          color: "#ff8c00",
+          color: "var(--teal)",
           transition: "border-color 0.15s",
         }}
         onMouseEnter={(e) => {
@@ -193,10 +194,10 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
           {queryType === "hybrid" ? "SQL + VECTOR" : queryType.toUpperCase()}
         </span>
         {plan.rows_returned != null && (
-          <span style={{ color: "#888" }}>{plan.rows_returned} rows</span>
+          <span style={{ color: "var(--text-dim)" }}>{plan.rows_returned} rows</span>
         )}
         {elapsedLabel && (
-          <span style={{ color: "#888" }}>{elapsedLabel}</span>
+          <span style={{ color: "var(--text-dim)" }}>{elapsedLabel}</span>
         )}
       </button>
 
@@ -206,7 +207,7 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
           style={{
             marginTop: "4px",
             border: "1px solid rgba(255,140,0,0.12)",
-            background: "#0a0a0a",
+            background: "var(--bg-panel)",
             padding: "10px 12px",
             overflow: "auto",
           }}
@@ -221,17 +222,17 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
                 letterSpacing: "0.1em",
-                color: "#888",
+                color: "var(--text-dim)",
               }}
             >
               {sqlTimeLabel && (
                 <span>
-                  SQL EXEC: <span style={{ color: "#ff8c00" }}>{sqlTimeLabel}</span>
+                  SQL EXEC: <span style={{ color: "var(--teal)" }}>{sqlTimeLabel}</span>
                 </span>
               )}
               {elapsedLabel && (
                 <span>
-                  TOTAL: <span style={{ color: "#ff8c00" }}>{elapsedLabel}</span>
+                  TOTAL: <span style={{ color: "var(--teal)" }}>{elapsedLabel}</span>
                 </span>
               )}
             </div>
@@ -244,7 +245,7 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
                 fontFamily: "var(--font-mono)",
                 fontSize: "10px",
                 lineHeight: 1.5,
-                color: "#ccc",
+                color: "var(--text-dim)",
                 margin: 0,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-all",
@@ -279,8 +280,8 @@ function QueryBadge({ plan }: { plan: QueryPlan }) {
         fontSize: "9px",
         fontWeight: 700,
         letterSpacing: "0.14em",
-        color: "#ff8c00",
-        border: "1px solid rgba(255,140,0,0.35)",
+        color: "var(--teal)",
+        border: "1px solid var(--teal-glow)",
         padding: "1px 7px",
         marginTop: "6px",
         textTransform: "uppercase",
@@ -310,7 +311,7 @@ function TypingIndicator() {
             display: "inline-block",
             width: "5px",
             height: "5px",
-            background: "#ff8c00",
+            background: "var(--teal)",
             borderRadius: "50%",
             animation: `kb-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
           }}
@@ -346,7 +347,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: "9px",
-          color: "#555555",
+          color: "var(--muted)",
           letterSpacing: "0.14em",
           textTransform: "uppercase",
           marginBottom: "4px",
@@ -359,13 +360,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div
         style={{
           maxWidth: "88%",
-          background: isUser ? "#1a1a1a" : "#0d0d0d",
-          border: isUser ? "1px solid #2a2a2a" : "1px solid #1c1c1c",
+          background: isUser ? "var(--bg-panel-hover)" : "var(--bg-panel)",
+          border: isUser ? "1px solid var(--border-bright)" : "1px solid var(--border)",
           padding: "10px 14px",
           fontFamily: "var(--font-mono)",
           fontSize: "12px",
           lineHeight: 1.65,
-          color: "#e8e8e8",
+          color: "var(--text)",
           letterSpacing: "0.02em",
           whiteSpace: isUser ? "pre-wrap" : "normal",
           wordBreak: "break-word",
@@ -378,7 +379,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
               display: "inline-block",
               width: "8px",
               height: "12px",
-              background: "#ff8c00",
+              background: "var(--teal)",
               marginLeft: "2px",
               animation: "kb-blink 0.8s step-end infinite",
               verticalAlign: "middle",
@@ -408,8 +409,8 @@ function StatusBar({ status }: { status: string | null }) {
         alignItems: "center",
         gap: "8px",
         padding: "5px 14px",
-        background: "rgba(255, 140, 0, 0.06)",
-        borderBottom: "1px solid rgba(255,140,0,0.12)",
+        background: "var(--teal-dim)",
+        borderBottom: "1px solid var(--teal-dim)",
       }}
     >
       <span
@@ -417,7 +418,7 @@ function StatusBar({ status }: { status: string | null }) {
           width: "6px",
           height: "6px",
           borderRadius: "50%",
-          background: "#ff8c00",
+          background: "var(--teal)",
           flexShrink: 0,
           animation: "kb-pulse 1.2s ease-in-out infinite",
         }}
@@ -426,7 +427,7 @@ function StatusBar({ status }: { status: string | null }) {
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: "9px",
-          color: "#ff8c00",
+          color: "var(--teal)",
           letterSpacing: "0.14em",
           textTransform: "uppercase",
         }}
@@ -437,30 +438,8 @@ function StatusBar({ status }: { status: string | null }) {
   );
 }
 
-// ── Keyframe injection (once per page load) ───────────────────────────────────
-let stylesInjected = false;
-function injectStyles() {
-  if (stylesInjected || typeof document === "undefined") return;
-  stylesInjected = true;
-  const style = document.createElement("style");
-  style.textContent = `
-    @keyframes kb-pulse {
-      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-      40% { opacity: 1; transform: scale(1.1); }
-    }
-    @keyframes kb-blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-    .kb-scroll::-webkit-scrollbar { width: 4px; }
-    .kb-scroll::-webkit-scrollbar-track { background: #000; }
-    .kb-scroll::-webkit-scrollbar-thumb { background: #2a2a2a; }
-    .kb-input-row input::placeholder { color: #333; }
-  `;
-  document.head.appendChild(style);
-}
-
 // ── Main AICompanion component ────────────────────────────────────────────────
+// Note: kb-pulse, kb-blink, .kb-scroll, .kb-input-row styles live in globals.css
 export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?: boolean }) {
   const { sendMessage, messages, isStreaming, currentStatus, clearSession } =
     useKnowledgeBase();
@@ -468,11 +447,6 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
   const [inputFocused, setInputFocused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Inject keyframe styles
-  useEffect(() => {
-    injectStyles();
-  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -516,8 +490,8 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "#080808",
-        border: "1px solid #1c1c1c",
+        background: "var(--bg-panel)",
+        border: "1px solid var(--border)",
       }}
     >
       {/* Header */}
@@ -528,7 +502,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0 14px",
-          borderBottom: "1px solid #1c1c1c",
+          borderBottom: "1px solid var(--border)",
           flexShrink: 0,
         }}
       >
@@ -539,7 +513,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
               fontSize: "9px",
               fontWeight: 700,
               letterSpacing: "0.18em",
-              color: "#ff8c00",
+              color: "var(--teal)",
               textTransform: "uppercase",
             }}
           >
@@ -554,7 +528,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
                 width: "6px",
                 height: "6px",
                 borderRadius: "50%",
-                background: isStreaming ? "#ff8c00" : "#00B050",
+                background: isStreaming ? "var(--teal)" : "var(--muted)",
                 flexShrink: 0,
                 transition: "background 0.3s",
               }}
@@ -563,7 +537,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
-                color: isStreaming ? "#ff8c00" : "#555555",
+                color: isStreaming ? "var(--teal)" : "var(--muted)",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
               }}
@@ -579,8 +553,9 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
               title="Clear conversation"
               style={{
                 background: "none",
-                border: "1px solid #2a2a2a",
-                color: "#555555",
+                border: "1px solid var(--border-bright)",
+                borderRadius: "var(--radius)",
+                color: "var(--muted)",
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
                 letterSpacing: "0.1em",
@@ -590,13 +565,13 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "#ff3333";
-                (e.currentTarget as HTMLButtonElement).style.color = "#ff3333";
+                  "var(--red)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--red)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "#2a2a2a";
-                (e.currentTarget as HTMLButtonElement).style.color = "#555555";
+                  "var(--border-bright)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
               }}
             >
               CLEAR
@@ -610,8 +585,9 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
               title="Close AI Companion"
               style={{
                 background: "none",
-                border: "1px solid #2a2a2a",
-                color: "#555555",
+                border: "1px solid var(--border-bright)",
+                borderRadius: "var(--radius)",
+                color: "var(--muted)",
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
                 letterSpacing: "0.1em",
@@ -620,13 +596,13 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "#ff8c00";
-                (e.currentTarget as HTMLButtonElement).style.color = "#ff8c00";
+                  "var(--teal)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--teal)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "#2a2a2a";
-                (e.currentTarget as HTMLButtonElement).style.color = "#555555";
+                  "var(--border-bright)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--muted)";
               }}
             >
               ESC
@@ -668,12 +644,12 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
                   fontFamily: "var(--font-mono)",
                   fontSize: "9px",
                   letterSpacing: "0.18em",
-                  color: "#555555",
+                  color: "var(--muted)",
                   textTransform: "uppercase",
                   marginBottom: "12px",
                 }}
               >
-                TRY ASKING
+                SUGGESTED QUERIES
               </div>
               <div
                 style={{
@@ -686,10 +662,12 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
                   <button
                     key={prompt}
                     onClick={() => handleSuggestion(prompt)}
+                    className="ai-suggestion-btn"
                     style={{
-                      background: "#0d0d0d",
-                      border: "1px solid #1c1c1c",
-                      color: "#aaaaaa",
+                      background: "var(--bg-panel)",
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)",
+                      color: "var(--text-dim)",
                       fontFamily: "var(--font-mono)",
                       fontSize: "11px",
                       letterSpacing: "0.03em",
@@ -700,18 +678,18 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
                     }}
                     onMouseEnter={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.borderColor =
-                        "#ff8c00";
+                        "var(--teal)";
                       (e.currentTarget as HTMLButtonElement).style.color =
-                        "#f0f0f0";
+                        "var(--text)";
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.borderColor =
-                        "#1c1c1c";
+                        "var(--border)";
                       (e.currentTarget as HTMLButtonElement).style.color =
-                        "#aaaaaa";
+                        "var(--text-dim)";
                     }}
                   >
-                    <span style={{ color: "#ff8c00", marginRight: "8px" }}>
+                    <span style={{ color: "var(--teal)", marginRight: "8px" }}>
                       &gt;
                     </span>
                     {prompt}
@@ -731,8 +709,8 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
                 <div
                   style={{
                     alignSelf: "flex-start",
-                    background: "#0d0d0d",
-                    border: "1px solid #1c1c1c",
+                    background: "var(--bg-panel)",
+                    border: "1px solid var(--border)",
                     marginBottom: "12px",
                   }}
                 >
@@ -744,22 +722,39 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
         )}
       </div>
 
+      {/* Character limit warning */}
+      {input.length > 1800 && (
+        <div
+          style={{
+            padding: "2px 14px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "8px",
+            color: input.length > 1950 ? "var(--red)" : "var(--muted)",
+            letterSpacing: "0.08em",
+            textAlign: "right",
+            flexShrink: 0,
+          }}
+        >
+          {2000 - input.length} CHARS LEFT
+        </div>
+      )}
+
       {/* Input row */}
       <div
         style={{
-          borderTop: "1px solid #1c1c1c",
+          borderTop: "1px solid var(--border)",
           display: "flex",
           alignItems: "center",
           padding: "0 14px",
           flexShrink: 0,
-          background: "#080808",
+          background: "var(--bg-panel)",
         }}
       >
         <span
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: "13px",
-            color: inputFocused ? "#ff8c00" : "#555555",
+            color: inputFocused ? "var(--teal)" : "var(--muted)",
             marginRight: "10px",
             userSelect: "none",
             flexShrink: 0,
@@ -777,7 +772,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
           onFocus={() => setInputFocused(true)}
           onBlur={() => setInputFocused(false)}
           disabled={isStreaming}
-          placeholder={isStreaming ? "processing..." : "ask anything about your job market..."}
+          placeholder={isStreaming ? "processing..." : "query your job market data..."}
           maxLength={2000}
           aria-label="Ask a question about your job market"
           style={{
@@ -785,7 +780,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
             background: "transparent",
             border: "none",
             outline: "none",
-            color: "#f0f0f0",
+            color: "var(--text)",
             fontFamily: "var(--font-mono)",
             fontSize: "12px",
             letterSpacing: "0.02em",
@@ -801,7 +796,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
             background: "none",
             border: "none",
             color:
-              input.trim() && !isStreaming ? "#ff8c00" : "#333333",
+              input.trim() && !isStreaming ? "var(--teal)" : "var(--border-bright)",
             fontFamily: "var(--font-mono)",
             fontSize: "12px",
             cursor: input.trim() && !isStreaming ? "pointer" : "not-allowed",

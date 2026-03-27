@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Command, CommandGroup } from "@/types/knowledge-base";
 
@@ -38,7 +38,7 @@ function buildCommands(
     {
       id: "nav-top",
       label: "Scroll to Top",
-      description: "Jump to KPI cards",
+      description: "Jump to key metrics",
       group: "NAVIGATE",
       action: () => {
         onClose();
@@ -79,7 +79,7 @@ function buildCommands(
     {
       id: "nav-system",
       label: "System Health",
-      description: "Queue health and market intel",
+      description: "Data pipeline status and market coverage",
       group: "NAVIGATE",
       action: () => {
         onClose();
@@ -97,10 +97,10 @@ function GroupLabel({ label }: { label: string }) {
         fontFamily: "var(--font-mono)",
         fontSize: "9px",
         letterSpacing: "0.18em",
-        color: "#555555",
+        color: "var(--muted)",
         textTransform: "uppercase",
         padding: "8px 12px 4px",
-        borderBottom: "1px solid #1c1c1c",
+        borderBottom: "1px solid var(--border)",
         marginBottom: "2px",
       }}
     >
@@ -134,8 +134,8 @@ function CommandRow({
         justifyContent: "space-between",
         padding: "8px 12px",
         cursor: "pointer",
-        background: isSelected ? "#111111" : "transparent",
-        borderLeft: isSelected ? "2px solid #ff8c00" : "2px solid transparent",
+        background: isSelected ? "var(--bg-panel-hover)" : "transparent",
+        borderLeft: isSelected ? "2px solid var(--teal)" : "2px solid transparent",
         transition: "background 0.08s",
       }}
     >
@@ -144,7 +144,7 @@ function CommandRow({
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: "12px",
-            color: isSelected ? "#f0f0f0" : "#aaaaaa",
+            color: isSelected ? "var(--text)" : "var(--text-dim)",
             fontWeight: isSelected ? 600 : 400,
             letterSpacing: "0.04em",
           }}
@@ -156,7 +156,7 @@ function CommandRow({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: "9px",
-              color: "#555555",
+              color: "var(--muted)",
               letterSpacing: "0.06em",
             }}
           >
@@ -169,8 +169,8 @@ function CommandRow({
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: "9px",
-            color: "#555555",
-            border: "1px solid #2a2a2a",
+            color: "var(--muted)",
+            border: "1px solid var(--border-bright)",
             padding: "2px 6px",
             letterSpacing: "0.1em",
             flexShrink: 0,
@@ -202,7 +202,7 @@ export function CommandPalette() {
     toggleAICompanion();
   }, []);
 
-  const commands = buildCommands(onClose, onAskAI);
+  const commands = useMemo(() => buildCommands(onClose, onAskAI), [onClose, onAskAI]);
 
   // Filter by query
   const filtered = query.trim()
@@ -282,7 +282,6 @@ export function CommandPalette() {
             position: "fixed",
             inset: 0,
             background: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(2px)",
             zIndex: 200,
           }}
         />
@@ -298,8 +297,8 @@ export function CommandPalette() {
             transform: "translateX(-50%)",
             width: "100%",
             maxWidth: "560px",
-            background: "#0a0a0a",
-            border: "1px solid #2a2a2a",
+            background: "var(--bg-panel)",
+            border: "1px solid var(--border-bright)",
             borderRadius: 0,
             boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
             zIndex: 200,
@@ -312,7 +311,7 @@ export function CommandPalette() {
             style={{
               display: "flex",
               alignItems: "center",
-              borderBottom: "1px solid #1c1c1c",
+              borderBottom: "1px solid var(--border)",
               padding: "0 12px",
             }}
           >
@@ -320,7 +319,7 @@ export function CommandPalette() {
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "14px",
-                color: "#ff8c00",
+                color: "var(--teal)",
                 marginRight: "10px",
                 userSelect: "none",
                 flexShrink: 0,
@@ -337,6 +336,7 @@ export function CommandPalette() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a command or search..."
+              maxLength={120}
               role="combobox"
               aria-expanded={flatItems.length > 0}
               aria-controls="cmd-listbox"
@@ -350,7 +350,7 @@ export function CommandPalette() {
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                color: "#f0f0f0",
+                color: "var(--text)",
                 fontFamily: "var(--font-mono)",
                 fontSize: "13px",
                 letterSpacing: "0.02em",
@@ -361,8 +361,8 @@ export function CommandPalette() {
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
-                color: "#555555",
-                border: "1px solid #2a2a2a",
+                color: "var(--muted)",
+                border: "1px solid var(--border-bright)",
                 padding: "2px 6px",
                 flexShrink: 0,
                 letterSpacing: "0.08em",
@@ -389,7 +389,7 @@ export function CommandPalette() {
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: "11px",
-                  color: "#555555",
+                  color: "var(--muted)",
                   textAlign: "center",
                   padding: "24px",
                   letterSpacing: "0.1em",
@@ -424,7 +424,7 @@ export function CommandPalette() {
           {/* Footer hint */}
           <div
             style={{
-              borderTop: "1px solid #1c1c1c",
+              borderTop: "1px solid var(--border)",
               padding: "6px 12px",
               display: "flex",
               justifyContent: "flex-end",
@@ -434,11 +434,11 @@ export function CommandPalette() {
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
-                color: "#555555",
+                color: "var(--muted)",
                 letterSpacing: "0.1em",
               }}
             >
-              ESC \u00b7 \u2191\u2193 \u00b7 \u21b5
+              ESC CLOSE \u00b7 \u2191\u2193 NAVIGATE \u00b7 \u21b5 EXECUTE
             </span>
           </div>
         </Dialog.Content>

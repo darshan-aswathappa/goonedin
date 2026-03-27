@@ -45,7 +45,7 @@ function VelocityTooltip({
     <div
       style={{
         background: "rgba(8,8,8,0.96)",
-        border: "1px solid #1c2a2a",
+        border: "1px solid var(--border-bright)",
         borderRadius: "2px",
         padding: "10px 14px",
         fontFamily: "var(--font-mono)",
@@ -55,7 +55,7 @@ function VelocityTooltip({
       <div
         style={{
           fontSize: "10px",
-          color: "#aaaaaa",
+          color: "var(--text-dim)",
           marginBottom: "8px",
           letterSpacing: "0.05em",
         }}
@@ -72,14 +72,14 @@ function VelocityTooltip({
             marginBottom: "3px",
           }}
         >
-          <span style={{ fontSize: "9px", color: colorMap[String(entry.name ?? "")] ?? "#aaa" }}>
+          <span style={{ fontSize: "9px", color: colorMap[String(entry.name ?? "")] ?? "var(--text-dim)" }}>
             {String(entry.name ?? "").toLowerCase()}:
           </span>
           <span
             style={{
               fontSize: "9px",
               fontWeight: 700,
-              color: colorMap[String(entry.name ?? "")] ?? "#aaa",
+              color: colorMap[String(entry.name ?? "")] ?? "var(--text-dim)",
             }}
           >
             {entry.value}
@@ -145,14 +145,14 @@ export default function HiringVelocityChart({ companies, data }: Props) {
       <div style={{ padding: "8px 12px 0", height: "calc(100% - 68px)" }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 6, right: 16, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#111a1a" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#111111" vertical={false} />
             <XAxis
               dataKey="day"
               tickFormatter={(v) => {
                 try { return format(parseISO(v), "EEE"); } catch { return v; }
               }}
               tick={AXIS_TICK}
-              axisLine={{ stroke: "#1c2a2a" }}
+              axisLine={{ stroke: "var(--border)" }}
               tickLine={false}
             />
             <YAxis
@@ -166,7 +166,7 @@ export default function HiringVelocityChart({ companies, data }: Props) {
               content={(props: TooltipProps<ValueType, NameType>) => (
                 <VelocityTooltip {...props} colorMap={colorMap} />
               )}
-              cursor={{ stroke: "#334155", strokeWidth: 1, strokeDasharray: "4 2" }}
+              cursor={{ stroke: "var(--border-bright)", strokeWidth: 1, strokeDasharray: "4 2" }}
             />
             {companies.map((c) => (
               <Line
@@ -211,7 +211,12 @@ export default function HiringVelocityChart({ companies, data }: Props) {
                 color: c.color,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
+                maxWidth: "120px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
+              title={c.name}
             >
               {c.name}
             </span>
