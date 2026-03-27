@@ -27,6 +27,8 @@ import ExperienceDistribution from "@/components/ExperienceDistribution";
 import SalaryByLocationChart from "@/components/SalaryByLocationChart";
 import EmptyPanel from "@/components/EmptyPanel";
 import SafePanel from "@/components/SafePanel";
+import SkillDemandBar from "@/components/SkillDemandBar";
+import SkillVelocityScatter from "@/components/SkillVelocityScatter";
 
 interface Overview {
   total: number;
@@ -103,6 +105,18 @@ interface HiringVelocity {
   companies: { name: string; color: string }[];
   data: Record<string, string | number>[];
 }
+interface SkillGap {
+  skills: {
+    skill: string;
+    must_have: number;
+    good_to_have: number;
+    total: number;
+    recent: number;
+    prior: number;
+    growth: number;
+  }[];
+  dateRange: { start: string; end: string } | null;
+}
 
 interface Props {
   overview: Overview | null;
@@ -120,6 +134,7 @@ interface Props {
   salaryByLocation: SalaryByLocation | null;
   hiringVelocity: HiringVelocity | null;
   salaryByFunction: SalaryByFunction | null;
+  skillGap: SkillGap | null;
 }
 
 function StatusBar() {
@@ -197,6 +212,7 @@ export default function DashboardTabs({
   salaryByLocation,
   hiringVelocity,
   salaryByFunction,
+  skillGap,
 }: Props) {
   const [activeTab, setActiveTab] = useState("market");
   // Track which tabs have been visited so we can keep them mounted (avoids
@@ -395,6 +411,31 @@ export default function DashboardTabs({
                   title="Skill Momentum"
                   message="No skill data yet"
                   suggestion="Shows top 10 technical skills ranked by momentum with daily sparkline trends."
+                />
+              )}
+            </div>
+
+            {/* Skill Demand Bar | Skill Velocity Scatter */}
+            <div className="chart-row chart-row--two" style={{ height: "320px", marginTop: "16px" }}>
+              {(skillGap?.skills ?? []).length > 0 ? (
+                <SkillDemandBar skills={skillGap?.skills ?? []} />
+              ) : (
+                <EmptyPanel
+                  title="Skill Demand Split"
+                  message="No skill gap data yet"
+                  suggestion="Shows must-have vs nice-to-have split per skill."
+                />
+              )}
+              {(skillGap?.skills ?? []).length >= 3 ? (
+                <SkillVelocityScatter
+                  skills={skillGap?.skills ?? []}
+                  dateRange={skillGap?.dateRange ?? null}
+                />
+              ) : (
+                <EmptyPanel
+                  title="Skill Velocity Matrix"
+                  message="No velocity data yet"
+                  suggestion="Quadrant chart showing skill growth velocity vs total demand."
                 />
               )}
             </div>

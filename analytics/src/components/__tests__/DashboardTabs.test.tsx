@@ -24,6 +24,9 @@ jest.mock("@/components/TimeDistributionChart", () => () => <div data-testid="ti
 jest.mock("@/components/SkillMomentumTable", () => () => <div data-testid="skill-momentum" />);
 jest.mock("@/components/ExperienceDistribution", () => () => <div data-testid="experience-dist" />);
 jest.mock("@/components/SalaryByLocationChart", () => () => <div data-testid="salary-by-location" />);
+jest.mock("@/components/SalaryByJobFunctionChart", () => () => <div data-testid="salary-by-function" />);
+jest.mock("@/components/SkillDemandBar", () => () => <div data-testid="skill-demand-bar" />);
+jest.mock("@/components/SkillVelocityScatter", () => () => <div data-testid="skill-velocity-scatter" />);
 jest.mock("@/components/MetricCard", () => () => <div data-testid="metric-card" />);
 jest.mock("@/components/SafePanel", () => ({ children, title }: { children: React.ReactNode; title: string }) => (
   <div data-testid={`safe-panel-${title}`}>{children}</div>
@@ -95,6 +98,15 @@ const fullProps = {
     companies: [{ name: "Acme Corp", color: "#ff8c00" }],
     data: [{ day: "2026-03-01", "Acme Corp": 5 }],
   },
+  salaryByFunction: {
+    functions: [{ function: "Full Stack", median: 140000, count: 50, color: "#ff8c00" }],
+  },
+  skillGap: {
+    skills: [
+      { skill: "python", must_have: 145, good_to_have: 45, total: 190, recent: 89, prior: 78, growth: 14.1 },
+    ],
+    dateRange: { start: "2026-02-27", end: "2026-03-27" },
+  },
 };
 
 const defaultProps = {
@@ -112,6 +124,8 @@ const defaultProps = {
   experience: null,
   salaryByLocation: null,
   hiringVelocity: null,
+  salaryByFunction: null,
+  skillGap: null,
 };
 
 describe("DashboardTabs – tab switching via custom event", () => {

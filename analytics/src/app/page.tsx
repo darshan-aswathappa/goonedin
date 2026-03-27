@@ -92,6 +92,18 @@ interface HiringVelocity {
   companies: { name: string; color: string }[];
   data: Record<string, string | number>[];
 }
+interface SkillGap {
+  skills: {
+    skill: string;
+    must_have: number;
+    good_to_have: number;
+    total: number;
+    recent: number;
+    prior: number;
+    growth: number;
+  }[];
+  dateRange: { start: string; end: string } | null;
+}
 
 export default async function DashboardPage() {
   const [
@@ -110,6 +122,7 @@ export default async function DashboardPage() {
     salaryByLocation,
     hiringVelocity,
     salaryByFunction,
+    skillGap,
   ] = await Promise.all([
     fetchJson<Overview>("/api/analytics/overview"),
     fetchJson<Companies>("/api/analytics/companies"),
@@ -126,6 +139,7 @@ export default async function DashboardPage() {
     fetchJson<SalaryByLocation>("/api/analytics/salary-by-location"),
     fetchJson<HiringVelocity>("/api/analytics/hiring-velocity"),
     fetchJson<SalaryByFunction>("/api/analytics/salary-by-function"),
+    fetchJson<SkillGap>("/api/analytics/skill-gap"),
   ]);
 
   return (
@@ -158,6 +172,7 @@ export default async function DashboardPage() {
           salaryByLocation={salaryByLocation}
           hiringVelocity={hiringVelocity}
           salaryByFunction={salaryByFunction}
+          skillGap={skillGap}
         />
         <footer
           style={{
