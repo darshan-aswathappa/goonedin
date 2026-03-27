@@ -41,9 +41,6 @@ interface Timeline {
 interface Locations {
   locations: { city: string; count: number }[];
 }
-interface Sources {
-  sources: { source: string; count: number; color: string }[];
-}
 interface Visa {
   visa: { label: string; count: number; color: string }[];
   total: number;
@@ -100,8 +97,6 @@ export default async function DashboardPage() {
     skills,
     timeline,
     locations,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    sources,
     visa,
     salary,
     seniority,
@@ -117,7 +112,6 @@ export default async function DashboardPage() {
     fetchJson<Skills>("/api/analytics/skills"),
     fetchJson<Timeline>("/api/analytics/timeline"),
     fetchJson<Locations>("/api/analytics/locations"),
-    fetchJson<Sources>("/api/analytics/sources"),
     fetchJson<Visa>("/api/analytics/visa"),
     fetchJson<Salary>("/api/analytics/salary"),
     fetchJson<Seniority>("/api/analytics/seniority"),

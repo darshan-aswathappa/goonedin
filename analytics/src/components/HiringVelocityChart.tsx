@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   LineChart,
   Line,
@@ -29,8 +30,8 @@ function VelocityTooltip({
   active,
   payload,
   label,
-  companies,
-}: TooltipProps<ValueType, NameType> & { companies: CompanyMeta[] }) {
+  colorMap,
+}: TooltipProps<ValueType, NameType> & { colorMap: Record<string, string> }) {
   if (!active || !payload?.length) return null;
 
   let dayLabel = label as string;
@@ -39,8 +40,6 @@ function VelocityTooltip({
   } catch {
     // keep raw
   }
-
-  const colorMap = Object.fromEntries(companies.map((c) => [c.name, c.color]));
 
   return (
     <div
@@ -93,6 +92,10 @@ function VelocityTooltip({
 
 /* ── Main chart ──────────────────────────────────────────────────── */
 export default function HiringVelocityChart({ companies, data }: Props) {
+  const colorMap = useMemo(
+    () => Object.fromEntries(companies.map((c) => [c.name, c.color])),
+    [companies],
+  );
   if (!companies.length || !data.length) {
     return (
       <div className="panel chart-enter" style={{ height: "100%" }}>
@@ -161,7 +164,7 @@ export default function HiringVelocityChart({ companies, data }: Props) {
             />
             <Tooltip
               content={(props: TooltipProps<ValueType, NameType>) => (
-                <VelocityTooltip {...props} companies={companies} />
+                <VelocityTooltip {...props} colorMap={colorMap} />
               )}
               cursor={{ stroke: "#334155", strokeWidth: 1, strokeDasharray: "4 2" }}
             />
