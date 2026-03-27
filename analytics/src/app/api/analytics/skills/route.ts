@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
-import { aggregateSoftSkills, parseAnalysis } from "@/lib/analytics"; // eslint-disable-line @typescript-eslint/no-unused-vars
-
 export const revalidate = 60; // Cache for 60 seconds; revalidates in background
 
 export async function GET() {
   try {
     const sb = createServerClient();
 
-    // analytics_skill_cooccurrence is served by /api/analytics/cooccurrence — not duplicated here.
     const [techRes, goodRes, qualsRes] = await Promise.all([
       sb.rpc("analytics_tech_skills"),
       sb.rpc("analytics_good_to_have"),
@@ -64,9 +61,11 @@ export async function GET() {
       .map(([skill, count]) => ({ skill, count }))
       .sort((a, b) => b.count - a.count);
 
-    // cooccurrencePairs are served by the dedicated /api/analytics/cooccurrence route.
-    // Return empty array here to preserve the response shape without the duplicate RPC call.
-    const cooccurrencePairs: { a: string; b: string; count: number }[] = [];
+    const coocRes = await sb.rpc("analytics_skill_cooccurrence");
+    if (coocRes.error) throw coocRes.error;
+    const cooccurrencePairs = (coocRes.data as { skill_a: string; skill_b: string; pair_count: number }[]).map(
+      (r) => ({ a: r.skill_a, b: r.skill_b, count: Number(r.pair_count) })
+    );
 
     return NextResponse.json({ techSkills, softSkills, goodToHave, cooccurrencePairs });
   } catch (err) {

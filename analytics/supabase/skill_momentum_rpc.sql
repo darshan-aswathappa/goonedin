@@ -35,11 +35,13 @@ BEGIN
 
   -- -----------------------------------------------------------------------
   -- Step 1: Base rows — only completed analyses with a valid timestamp
+  -- NOTE: analysis is stored as a double-encoded JSONB string, so we unwrap
+  -- it once here using (analysis #>> '{}')::jsonb before any field access.
   -- -----------------------------------------------------------------------
   base AS (
     SELECT
       external_id,
-      analysis,
+      (analysis #>> '{}')::jsonb AS analysis,
       date_trunc('day', created_at)::date AS day
     FROM job_analysis_cache
     WHERE

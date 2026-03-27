@@ -27,8 +27,10 @@ BEGIN
   WITH
 
   -- Step 1: base rows — completed analyses only
+  -- NOTE: analysis is stored as a double-encoded JSONB string, so we unwrap
+  -- it once here using (analysis #>> '{}')::jsonb before any field access.
   base AS (
-    SELECT external_id, analysis
+    SELECT external_id, (analysis #>> '{}')::jsonb AS analysis
     FROM job_analysis_cache
     WHERE
       analysis_status = 'completed'
