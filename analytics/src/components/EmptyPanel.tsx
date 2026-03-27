@@ -9,7 +9,7 @@ interface Props {
 export default function EmptyPanel({
   title,
   message = "No data available yet",
-  suggestion = "Data will appear here once jobs are scraped and analyzed.",
+  suggestion = "Data will appear here once jobs are collected and analyzed.",
 }: Props) {
   return (
     <div className="panel chart-enter" style={{ height: "100%" }}>

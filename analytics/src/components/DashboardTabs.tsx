@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TabNav from "@/components/TabNav";
 import MetricCard from "@/components/MetricCard";
 import JobVolumeChart from "@/components/JobVolumeChart";
@@ -135,6 +135,15 @@ export default function DashboardTabs({
 }: Props) {
   const [activeTab, setActiveTab] = useState("market");
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const tabId = (e as CustomEvent<string>).detail;
+      if (tabId) setActiveTab(tabId);
+    };
+    window.addEventListener("dashboard:switchtab", handler);
+    return () => window.removeEventListener("dashboard:switchtab", handler);
+  }, []);
+
   const sparkline = (timeline?.timeline ?? []).map((d) => ({ v: d.count }));
 
   return (
@@ -149,7 +158,7 @@ export default function DashboardTabs({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(5, 1fr)",
+            gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
             gap: "12px",
             height: "110px",
           }}
@@ -165,7 +174,7 @@ export default function DashboardTabs({
           <MetricCard
             label="AI Analyzed"
             value={overview?.analyzed ?? 0}
-            subLabel={`${overview?.completionRate ?? 0}% coverage`}
+            subLabel={`${Math.round(overview?.completionRate ?? 0)}% of jobs analyzed`}
             accent="green"
             delay={60}
           />
@@ -186,7 +195,7 @@ export default function DashboardTabs({
           <MetricCard
             label="Salary Listed"
             value={salary?.listedRate ?? 0}
-            subLabel="% disclose salary"
+            subLabel="% with salary listed"
             accent="teal"
             delay={240}
           />
@@ -224,7 +233,7 @@ export default function DashboardTabs({
               ) : (
                 <EmptyPanel
                   title="Job Volume"
-                  message="Awaiting timeline data"
+                  message="No timeline data yet"
                   suggestion="This chart shows daily job posting volume with 7/14/30/90-day range filters."
                 />
               )}
@@ -341,7 +350,7 @@ export default function DashboardTabs({
               ) : (
                 <EmptyPanel
                   title="Skill Momentum"
-                  message="No skill data available"
+                  message="No skill data yet"
                   suggestion="Shows top 10 technical skills ranked by momentum with daily sparkline trends."
                 />
               )}

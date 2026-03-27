@@ -7,6 +7,7 @@ import { Command, CommandGroup } from "@/types/knowledge-base";
 // ── Palette open/close event (cross-component) ───────────────────────────────
 const OPEN_EVENT = "commandpalette:open";
 const AI_TOGGLE_EVENT = "ai:toggle";
+const SWITCH_TAB_EVENT = "dashboard:switchtab";
 
 export function openCommandPalette() {
   window.dispatchEvent(new Event(OPEN_EVENT));
@@ -14,6 +15,10 @@ export function openCommandPalette() {
 
 export function toggleAICompanion() {
   window.dispatchEvent(new Event(AI_TOGGLE_EVENT));
+}
+
+export function switchDashboardTab(tabId: string) {
+  window.dispatchEvent(new CustomEvent(SWITCH_TAB_EVENT, { detail: tabId }));
 }
 
 // ── Suggested commands ────────────────────────────────────────────────────────
@@ -25,7 +30,7 @@ function buildCommands(
     {
       id: "action-ai",
       label: "Ask AI Companion",
-      description: "Query job market with natural language",
+      description: "Ask questions about your job market",
       group: "ACTION",
       shortcut: "\u2318 J",
       action: onAskAI,
@@ -37,6 +42,7 @@ function buildCommands(
       group: "NAVIGATE",
       action: () => {
         onClose();
+        switchDashboardTab("market");
         window.scrollTo({ top: 0, behavior: "smooth" });
       },
     },
@@ -47,7 +53,7 @@ function buildCommands(
       group: "NAVIGATE",
       action: () => {
         onClose();
-        document.querySelector('[data-section="skills"]')?.scrollIntoView({ behavior: "smooth" });
+        switchDashboardTab("skills");
       },
     },
     {
@@ -57,7 +63,7 @@ function buildCommands(
       group: "NAVIGATE",
       action: () => {
         onClose();
-        document.querySelector('[data-section="who-where"]')?.scrollIntoView({ behavior: "smooth" });
+        switchDashboardTab("companies");
       },
     },
     {
@@ -67,7 +73,7 @@ function buildCommands(
       group: "NAVIGATE",
       action: () => {
         onClose();
-        document.querySelector('[data-section="compensation"]')?.scrollIntoView({ behavior: "smooth" });
+        switchDashboardTab("pipeline");
       },
     },
     {
@@ -77,7 +83,7 @@ function buildCommands(
       group: "NAVIGATE",
       action: () => {
         onClose();
-        document.querySelector('[data-section="system"]')?.scrollIntoView({ behavior: "smooth" });
+        switchDashboardTab("companies");
       },
     },
   ];
@@ -115,6 +121,7 @@ function CommandRow({
 }) {
   return (
     <div
+      id={`cmd-option-${command.id}`}
       role="option"
       aria-selected={isSelected}
       onMouseDown={(e) => {
@@ -222,6 +229,14 @@ export function CommandPalette() {
     setSelectedIndex(0);
   }, [query]);
 
+  // Scroll selected item into view when navigating with keyboard
+  useEffect(() => {
+    const selected = flatItems[selectedIndex];
+    if (!selected) return;
+    const el = document.getElementById(`cmd-option-${selected.id}`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Open via custom event
   useEffect(() => {
     const handleOpen = () => setOpen(true);
@@ -322,6 +337,14 @@ export function CommandPalette() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a command or search..."
+              role="combobox"
+              aria-expanded={flatItems.length > 0}
+              aria-controls="cmd-listbox"
+              aria-activedescendant={
+                flatItems[selectedIndex]
+                  ? `cmd-option-${flatItems[selectedIndex].id}`
+                  : undefined
+              }
               style={{
                 flex: 1,
                 background: "transparent",
@@ -352,7 +375,9 @@ export function CommandPalette() {
           {/* Command list */}
           <div
             ref={listRef}
+            id="cmd-listbox"
             role="listbox"
+            aria-label="Commands"
             style={{
               maxHeight: "360px",
               overflowY: "auto",

@@ -263,7 +263,7 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
 function QueryBadge({ plan }: { plan: QueryPlan }) {
   const labels: Record<string, string> = {
     sql: "SQL",
-    vector: "VECTOR",
+    vector: "SEMANTIC",
     hybrid: "HYBRID",
     none: "NONE",
   };
@@ -641,6 +641,8 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
       {/* Messages area */}
       <div
         className="kb-scroll"
+        aria-live="polite"
+        aria-label="Conversation"
         style={{
           flex: 1,
           overflowY: "auto",
@@ -671,7 +673,7 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
                   marginBottom: "12px",
                 }}
               >
-                SUGGESTED QUERIES
+                TRY ASKING
               </div>
               <div
                 style={{
@@ -776,6 +778,8 @@ export function AICompanion({ onClose, isOpen }: { onClose?: () => void; isOpen?
           onBlur={() => setInputFocused(false)}
           disabled={isStreaming}
           placeholder={isStreaming ? "processing..." : "ask anything about your job market..."}
+          maxLength={2000}
+          aria-label="Ask a question about your job market"
           style={{
             flex: 1,
             background: "transparent",
