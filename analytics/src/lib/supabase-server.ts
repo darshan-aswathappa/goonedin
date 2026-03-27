@@ -1,8 +1,15 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 // Server-only Supabase client using service key
 // NEVER export this to client components
-export function createServerClient() {
+
+// Module-level singleton: one client per Node.js process, shared across requests.
+// This avoids the overhead of creating a new HTTP connection pool per route handler.
+let _client: SupabaseClient | null = null;
+
+export function createServerClient(): SupabaseClient {
+  if (_client) return _client;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
 
@@ -12,7 +19,9 @@ export function createServerClient() {
     );
   }
 
-  return createClient(url, key, {
+  _client = createClient(url, key, {
     auth: { persistSession: false },
   });
+
+  return _client;
 }

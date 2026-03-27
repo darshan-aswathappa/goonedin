@@ -142,19 +142,6 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
             justifyContent: "flex-end",
           }}
         >
-          <span
-            className="header-shortcut"
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "8px",
-              color: "var(--muted)",
-              border: "1px solid var(--border)",
-              padding: "2px 6px",
-              letterSpacing: "0.08em",
-            }}
-          >
-            / ⌘ K
-          </span>
           {onRefresh && (
             <button
               onClick={onRefresh}
@@ -172,8 +159,12 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
                 borderRadius: "var(--radius)",
                 transition: "color 0.15s",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "var(--teal)")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted)")}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = "var(--teal)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "var(--muted)")
+              }
             >
               <ArrowClockwise size={11} weight="bold" />
               <span>REFRESH</span>
@@ -209,15 +200,24 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
         <div className="ticker-track">
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
             <div key={i} className="ticker-item">
-              <span style={{ color: "var(--muted)", marginRight: "4px" }}>{item.label}:</span>
-              <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>{item.value}</span>
+              <span style={{ color: "var(--muted)", marginRight: "4px" }}>
+                {item.label}:
+              </span>
+              <span style={{ color: "var(--text-dim)", fontWeight: 600 }}>
+                {item.value}
+              </span>
               {item.change && (
-                <span className={item.up ? "up" : "down"} style={{ marginLeft: "4px" }}>
+                <span
+                  className={item.up ? "up" : "down"}
+                  style={{ marginLeft: "4px" }}
+                >
                   {item.up ? "▲" : "▼"} {item.change}
                 </span>
               )}
               {item.count && (
-                <span style={{ color: "var(--muted)", marginLeft: "4px" }}>({item.count})</span>
+                <span style={{ color: "var(--muted)", marginLeft: "4px" }}>
+                  ({item.count})
+                </span>
               )}
             </div>
           ))}

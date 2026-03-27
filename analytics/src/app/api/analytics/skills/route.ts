@@ -2,24 +2,22 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import { aggregateSoftSkills, parseAnalysis } from "@/lib/analytics"; // eslint-disable-line @typescript-eslint/no-unused-vars
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache for 60 seconds; revalidates in background
 
 export async function GET() {
   try {
     const sb = createServerClient();
 
-    const [techRes, goodRes, qualsRes, cooccRes] = await Promise.all([
+    // analytics_skill_cooccurrence is served by /api/analytics/cooccurrence — not duplicated here.
+    const [techRes, goodRes, qualsRes] = await Promise.all([
       sb.rpc("analytics_tech_skills"),
       sb.rpc("analytics_good_to_have"),
       sb.rpc("analytics_qualifications"),
-      sb.rpc("analytics_skill_cooccurrence"),
     ]);
 
     if (techRes.error) throw techRes.error;
     if (goodRes.error) throw goodRes.error;
     if (qualsRes.error) throw qualsRes.error;
-    if (cooccRes.error) console.error("[skills] cooccurrence RPC error:", cooccRes.error);
-    else console.log("[skills] cooccurrence rows:", cooccRes.data?.length ?? 0);
 
     const techSkills = (techRes.data as { keyword: string; count: number }[]).map((r) => ({
       keyword: r.keyword,
@@ -66,13 +64,9 @@ export async function GET() {
       .map(([skill, count]) => ({ skill, count }))
       .sort((a, b) => b.count - a.count);
 
-    const cooccurrencePairs = cooccRes.error
-      ? []
-      : (cooccRes.data as { skill_a: string; skill_b: string; pair_count: number }[]).map((r) => ({
-          a: r.skill_a,
-          b: r.skill_b,
-          count: Number(r.pair_count),
-        }));
+    // cooccurrencePairs are served by the dedicated /api/analytics/cooccurrence route.
+    // Return empty array here to preserve the response shape without the duplicate RPC call.
+    const cooccurrencePairs: { a: string; b: string; count: number }[] = [];
 
     return NextResponse.json({ techSkills, softSkills, goodToHave, cooccurrencePairs });
   } catch (err) {

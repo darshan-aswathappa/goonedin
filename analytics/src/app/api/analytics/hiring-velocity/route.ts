@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase-server";
 import { getBlockedCompanies, isBlocked } from "@/lib/blocked-companies";
 import { resolveJobDate } from "@/lib/analytics";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache for 60 seconds; revalidates in background
 
 const COMPANY_COLORS = ["#00bfff", "#ff6b6b", "#4ade80", "#ffd700", "#f97316"];
 

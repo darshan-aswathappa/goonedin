@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase-server";
 import { aggregateSalary } from "@/lib/analytics";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Cache for 60 seconds; revalidates in background
 
 export async function GET() {
   try {

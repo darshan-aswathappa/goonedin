@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 60; // Revalidate the page every 60 seconds (ISR)
 
 import TerminalHeader from "@/components/TerminalHeader";
 import ScanlineOverlay from "@/components/ScanlineOverlay";
@@ -9,7 +9,7 @@ import DashboardTabs from "@/components/DashboardTabs";
 async function fetchJson<T>(path: string): Promise<T | null> {
   try {
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
-    const res = await fetch(`${base}${path}`, { cache: "no-store" });
+    const res = await fetch(`${base}${path}`, { next: { revalidate: 60 } });
     if (!res.ok) return null;
     return res.json() as Promise<T>;
   } catch {
