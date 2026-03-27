@@ -12,6 +12,8 @@ interface Props {
   delta?: string;
   deltaPositive?: boolean;
   delay?: number;
+  rank?: number;
+  updatedAt?: string;
 }
 
 const ACCENT_COLORS = {
@@ -31,6 +33,8 @@ export default function MetricCard({
   delta,
   deltaPositive,
   delay = 0,
+  rank,
+  updatedAt,
 }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -61,18 +65,38 @@ export default function MetricCard({
         minHeight: "100px",
       }}
     >
-      {/* Label */}
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "8px",
-          fontWeight: 600,
-          letterSpacing: "0.2em",
-          color: "var(--muted)",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
+      {/* Top row: rank badge + label */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          {rank !== undefined && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "7px",
+                color: "var(--muted)",
+                background: "#111",
+                border: "1px solid var(--border)",
+                padding: "1px 4px",
+                letterSpacing: "0.1em",
+                flexShrink: 0,
+              }}
+            >
+              {String(rank).padStart(2, "0")}
+            </span>
+          )}
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "8px",
+              fontWeight: 600,
+              letterSpacing: "0.2em",
+              color: "var(--muted)",
+              textTransform: "uppercase",
+            }}
+          >
+            {label}
+          </div>
+        </div>
       </div>
 
       {/* Value + sparkline row */}
@@ -90,10 +114,19 @@ export default function MetricCard({
           >
             {typeof value === "number" ? value.toLocaleString() : value}
           </div>
+
+          {/* Separator rule between value and sub-label */}
+          <div
+            style={{
+              height: "1px",
+              background: "var(--border)",
+              margin: "5px 0 4px",
+            }}
+          />
+
           {(subLabel || delta) && (
             <div
               style={{
-                marginTop: "5px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
@@ -146,7 +179,24 @@ export default function MetricCard({
         )}
       </div>
 
-      {/* Bottom accent bar */}
+      {/* Updated at timestamp */}
+      {updatedAt && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "6px",
+            right: "8px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "7px",
+            color: "var(--muted)",
+            letterSpacing: "0.08em",
+          }}
+        >
+          UPD {updatedAt}
+        </div>
+      )}
+
+      {/* Bottom accent bar — striped terminal data-bar */}
       <div
         style={{
           position: "absolute",
@@ -154,8 +204,9 @@ export default function MetricCard({
           left: 0,
           right: 0,
           height: "2px",
-          background: color,
-          opacity: 0.5,
+          background: `repeating-linear-gradient(90deg, ${color} 0px, ${color} 3px, transparent 3px, transparent 6px)`,
+          opacity: 0.6,
+          color: color,
         }}
       />
     </div>

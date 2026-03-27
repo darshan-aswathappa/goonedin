@@ -42,10 +42,10 @@
   --radius: 2px;
 
   /* Spacing scale — use these for gaps and padding, not arbitrary values */
-  --gap-xs: 8px;
-  --gap-sm: 12px;
-  --gap-md: 16px;
-  --gap-lg: 20px;
+  --gap-xs: 4px;
+  --gap-sm: 8px;
+  --gap-md: 10px;
+  --gap-lg: 14px;
   --gap-xl: 32px;
   --gap-2xl: 48px;
 
@@ -109,7 +109,7 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--teal);
-  padding: 11px 14px 9px;
+  padding: 4px 8px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -267,14 +267,14 @@ body {
 
 /* ── Panel content area (below panel-header) ─────────────────────── */
 .panel-body {
-  padding: 10px 14px;
-  height: calc(100% - 37px);
+  padding: 6px 8px;
+  height: calc(100% - 29px);
   overflow-y: auto;
 }
 
 .panel-body-chart {
-  padding: 12px 12px 0;
-  height: calc(100% - 37px);
+  padding: 6px 8px 0;
+  height: calc(100% - 29px);
 }
 
 /* ── Ranked-list row ─────────────────────────────────────────────── */
@@ -632,6 +632,98 @@ body {
   .time-filter-row::-webkit-scrollbar {
     display: none; /* Chrome/Safari */
   }
+}
+
+/* ── Status bar (fixed bottom) ───────────────────────────────────── */
+.status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: #0a0a0a;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  z-index: 100;
+}
+
+/* ── Ticker strip (below header) ─────────────────────────────────── */
+.ticker-strip {
+  height: 20px;
+  background: #080808;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.ticker-item {
+  padding: 0 12px;
+  color: var(--text-dim);
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.ticker-item .up {
+  color: var(--green);
+}
+
+.ticker-item .down {
+  color: var(--red);
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  animation: ticker-scroll 30s linear infinite;
+  display: flex;
+}
+
+/* ── Panel function code badge ───────────────────────────────────── */
+.panel-code {
+  font-size: 7px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  background: #111;
+  padding: 1px 4px;
+  border: 1px solid var(--border);
+  margin-right: 6px;
+}
+
+/* ── Command bar (above tab nav) ─────────────────────────────────── */
+.cmd-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: #0a0a0a;
+  border-bottom: 1px solid var(--border-bright);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  height: 24px;
+}
+
+/* ── Rank number (metric card corner index) ──────────────────────── */
+.rank-number {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  min-width: 20px;
+  text-align: right;
+  padding-right: 8px;
 }
 
 /* ── Skill Momentum Table responsive ────────────────────────────── */

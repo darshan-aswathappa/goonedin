@@ -117,6 +117,65 @@ interface Props {
   hiringVelocity: HiringVelocity | null;
 }
 
+function StatusBar() {
+  const [currentTime, setCurrentTime] = useState<string>("");
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString("en-US", {
+          hour12: false,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div className="status-bar">
+      {/* Left cluster */}
+      <span style={{ color: "var(--teal)", fontWeight: 700, letterSpacing: "0.1em" }}>
+        HIREFEED ANALYTICS v2.0
+      </span>
+      <span style={{ color: "var(--border-bright)" }}>|</span>
+      <span>
+        DATA:{" "}
+        <span style={{ color: "var(--green)", fontWeight: 600 }}>LIVE</span>
+      </span>
+      <span style={{ color: "var(--border-bright)" }}>|</span>
+      <span>
+        LATENCY:{" "}
+        <span style={{ color: "var(--green)" }}>&lt;50ms</span>
+      </span>
+
+      {/* Center */}
+      <span style={{ flex: 1, textAlign: "center" }}>
+        LAST UPD:{" "}
+        <span style={{ color: "var(--text-dim)" }}>{currentTime}</span>
+      </span>
+
+      {/* Right cluster */}
+      <span>
+        <span style={{ color: "var(--border-bright)" }}>[ESC]</span> CLEAR
+      </span>
+      <span style={{ color: "var(--border-bright)" }}>|</span>
+      <span>
+        <span style={{ color: "var(--border-bright)" }}>[⌘K]</span> COMMAND
+      </span>
+      <span style={{ color: "var(--border-bright)" }}>|</span>
+      <span>
+        <span style={{ color: "var(--border-bright)" }}>[R]</span> REFRESH
+      </span>
+    </div>
+  );
+}
+
 export default function DashboardTabs({
   overview,
   companies,
@@ -511,6 +570,12 @@ export default function DashboardTabs({
           </div>
         )}
       </main>
+
+      {/* Fixed status bar at bottom of viewport */}
+      <StatusBar />
+
+      {/* Spacer so the last row of content isn't hidden behind the fixed status bar */}
+      <div style={{ height: "20px" }} />
     </div>
   );
 }
