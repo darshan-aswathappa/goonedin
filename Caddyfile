@@ -1,0 +1,14 @@
+goonedin.xyz, www.goonedin.xyz {
+      encode zstd gzip
+      reverse_proxy frontend:3000
+}
+
+api.goonedin.xyz {
+      encode zstd gzip
+      reverse_proxy backend:8000
+}
+
+analytics.goonedin.xyz {
+      encode zstd gzip
+      reverse_proxy analytics:3001
+}

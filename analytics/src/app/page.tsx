@@ -5,17 +5,24 @@ import ScanlineOverlay from "@/components/ScanlineOverlay";
 import BootSequence from "@/components/BootSequence";
 import AutoRefresh from "@/components/AutoRefresh";
 import DashboardTabs from "@/components/DashboardTabs";
-
-async function fetchJson<T>(path: string): Promise<T | null> {
-  try {
-    const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3001";
-    const res = await fetch(`${base}${path}`, { next: { revalidate: 60 } });
-    if (!res.ok) return null;
-    return res.json() as Promise<T>;
-  } catch {
-    return null;
-  }
-}
+import {
+  fetchOverview,
+  fetchCompanies,
+  fetchSkills,
+  fetchTimeline,
+  fetchLocations,
+  fetchVisa,
+  fetchSalary,
+  fetchSeniority,
+  fetchWeekday,
+  fetchQueue,
+  fetchSkillMomentum,
+  fetchExperience,
+  fetchSalaryByLocation,
+  fetchHiringVelocity,
+  fetchSalaryByFunction,
+  fetchSkillGap,
+} from "@/lib/analytics-fetchers";
 
 interface Overview {
   total: number;
@@ -124,22 +131,22 @@ export default async function DashboardPage() {
     salaryByFunction,
     skillGap,
   ] = await Promise.all([
-    fetchJson<Overview>("/api/analytics/overview"),
-    fetchJson<Companies>("/api/analytics/companies"),
-    fetchJson<Skills>("/api/analytics/skills"),
-    fetchJson<Timeline>("/api/analytics/timeline"),
-    fetchJson<Locations>("/api/analytics/locations"),
-    fetchJson<Visa>("/api/analytics/visa"),
-    fetchJson<Salary>("/api/analytics/salary"),
-    fetchJson<Seniority>("/api/analytics/seniority"),
-    fetchJson<Weekday>("/api/analytics/weekday"),
-    fetchJson<Queue>("/api/analytics/queue"),
-    fetchJson<SkillMomentum>("/api/analytics/skill-momentum"),
-    fetchJson<Experience>("/api/analytics/experience"),
-    fetchJson<SalaryByLocation>("/api/analytics/salary-by-location"),
-    fetchJson<HiringVelocity>("/api/analytics/hiring-velocity"),
-    fetchJson<SalaryByFunction>("/api/analytics/salary-by-function"),
-    fetchJson<SkillGap>("/api/analytics/skill-gap"),
+    fetchOverview(),
+    fetchCompanies(),
+    fetchSkills(),
+    fetchTimeline(),
+    fetchLocations(),
+    fetchVisa(),
+    fetchSalary(),
+    fetchSeniority(),
+    fetchWeekday(),
+    fetchQueue(),
+    fetchSkillMomentum(),
+    fetchExperience(),
+    fetchSalaryByLocation(),
+    fetchHiringVelocity(),
+    fetchSalaryByFunction(),
+    fetchSkillGap(),
   ]);
 
   return (
