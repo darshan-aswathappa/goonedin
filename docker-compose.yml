@@ -50,7 +50,6 @@ services:
       context: ./analytics
       args:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
         NEXT_PUBLIC_API_URL: https://api.goonedin.xyz
     restart: unless-stopped
     environment:
