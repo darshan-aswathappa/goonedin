@@ -1,6 +1,8 @@
 FROM node:22-slim AS builder
 WORKDIR /app
-COPY package*.json ./
+# .npmrc carries legacy-peer-deps=true, required because react-simple-maps@3
+# declares a react <=18 peer. It must land before npm ci, not with COPY . .
+COPY package.json package-lock.json .npmrc ./
 RUN npm ci
 COPY . .
 
