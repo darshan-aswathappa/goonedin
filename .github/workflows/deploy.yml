@@ -6,6 +6,12 @@ on:
       - main
     paths:
       - "backend/**"
+      - "frontend/**"
+      - "analytics/**"
+      - "resume_service/**"
+      - "docker-compose.yml"
+      - "Caddyfile"
+      - ".github/workflows/deploy.yml"
 
 jobs:
   deploy:
@@ -19,7 +25,14 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            cd /opt/goonedin/goonedin/backend
+            set -eu
+            cd /opt/goonedin/goonedin
             git pull origin main
-            docker compose up -d --build
+            # Build serially: the 4GB host OOMs when BuildKit runs the two
+            # Next.js builds plus the Playwright install concurrently.
+            docker compose build resume-service
+            docker compose build backend
+            docker compose build frontend
+            docker compose build analytics
+            docker compose up -d
             docker image prune -f

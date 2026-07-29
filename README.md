@@ -183,14 +183,25 @@ ALTER TABLE custom_sources ADD COLUMN ats_type TEXT DEFAULT 'other';
 ALTER TABLE custom_sources ADD COLUMN department TEXT;
 ```
 
-### Docker (Backend + Resume Service)
+### Docker (full stack)
+
+From the repository root:
 
 ```bash
-cd backend
-docker-compose up --build
+docker compose build resume-service
+docker compose build backend
+docker compose build frontend
+docker compose build analytics
+docker compose up -d
 ```
 
-This starts the backend on `:8000` and resume service on `:8001`.
+This starts Caddy on `:80`/`:443` as the only publicly exposed service, reverse
+proxying to frontend (`:3000`), analytics (`:3001`), and backend (`:8000`).
+Resume service (`:8001`) is internal-only. Requires a `.env` at the repo root —
+see [Configuration](#configuration).
+
+Build serially as shown: on a 4GB host, BuildKit's default parallelism runs both
+Next.js builds plus the Playwright install at once and trips the OOM killer.
 
 ---
 
@@ -324,16 +335,27 @@ SQL migration files live in `backend/migrations/`. Apply them in order (001-007)
 
 ### Production Stack
 
-- **Backend + Resume Service**: Docker Compose on Hetzner VPS
-- **Frontend**: Deployed separately (Next.js hosting)
+- **All services**: Docker Compose on a single Hetzner VPS, fronted by Caddy
+  (automatic Let's Encrypt TLS)
 - **Database**: Supabase managed PostgreSQL
 - **CI/CD**: GitHub Actions (push to `main` triggers deploy)
+
+### Domains
+
+| Host | Service |
+|------|---------|
+| `goonedin.xyz`, `www.goonedin.xyz` | frontend |
+| `api.goonedin.xyz` | backend (REST + `/ws/jobs`, `/ws/logs`) |
+| `analytics.goonedin.xyz` | analytics |
 
 ### Deploy Workflow
 
 ```
-Push to main (backend/) → GitHub Actions → SSH to Hetzner → git pull → docker-compose up --build
+Push to main → GitHub Actions → SSH to Hetzner → git pull → docker compose build (serial) → up -d
 ```
+
+Requires repository secrets `HETZNER_HOST`, `HETZNER_USER`, `HETZNER_SSH_KEY`.
+The root `.env` lives only on the server and is never committed.
 
 ### Docker Compose Services
 
@@ -405,8 +427,9 @@ goonedin/
 │   │       ├── job_queue.py        # Queue operations
 │   │       └── knowledge_base/     # AI chatbox services
 │   ├── migrations/                 # SQL migration files
-│   ├── Dockerfile
-│   └── docker-compose.yml
+│   └── Dockerfile
+├── docker-compose.yml              # Full stack (all services + Caddy)
+├── Caddyfile                       # Reverse proxy + TLS
 ├── frontend/
 │   └── src/
 │       ├── app/                    # Next.js pages
