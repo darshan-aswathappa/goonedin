@@ -31,7 +31,7 @@ interface Resume {
   id: string;
   filename: string;
   file_path: string;
-  uploaded_at: string;
+  created_at: string;
   analysis_status?: string;
 }
 
@@ -489,7 +489,7 @@ export function ResumeManager() {
                       >
                         {(() => {
                           try {
-                            return formatDistanceToNow(new Date(resume.uploaded_at), { addSuffix: true });
+                            return formatDistanceToNow(new Date(resume.created_at), { addSuffix: true });
                           } catch {
                             return "recently";
                           }

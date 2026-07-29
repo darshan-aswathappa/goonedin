@@ -1350,7 +1350,7 @@ async def get_resumes(user: dict = Depends(get_current_user)):
             return _supabase_client.table("user_resumes") \
                 .select("*") \
                 .eq("user_id", user["user_id"]) \
-                .order("uploaded_at", desc=True) \
+                .order("created_at", desc=True) \
                 .execute()
 
         response = await asyncio.to_thread(_fetch_resumes)
