@@ -9,6 +9,9 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    # Lets the Caddyfile reach host nginx on :8080, which fronts DassTracker.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on: [frontend, backend, analytics]
 
   resume-service:
