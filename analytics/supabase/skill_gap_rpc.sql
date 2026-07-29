@@ -4,7 +4,7 @@
 --
 -- What this does in Postgres:
 --   1. Filters job_analysis_cache to analysis_status = 'completed'
---   2. Unwraps the double-encoded JSONB column: (analysis #>> '{}')::jsonb
+--   2. Parses the TEXT analysis column via analytics_analysis_jsonb()
 --   3. Unnests must_have_keywords and good_to_have_keywords separately,
 --      preserving the source bucket per keyword
 --   4. Lowercases, trims, applies length guard (2..50 chars)
@@ -37,38 +37,47 @@ BEGIN
   WITH
 
   -- -------------------------------------------------------------------------
-  -- Step 1: Base rows — completed analyses only, unwrap double-encoded JSONB
+  -- Step 1: Base rows — completed analyses only, parse the TEXT analysis column
   -- -------------------------------------------------------------------------
+  -- The recent/prior windows key off the job's POSTING date, not
+  -- job_analysis_cache.created_at. Cache created_at records when the analyzer wrote
+  -- the row, so on a freshly populated database every posting collapses into the
+  -- recent window, prior is 0 for every skill, and growth reads +100% across the
+  -- board. analytics_resolved_at() also keeps this consistent with the other
+  -- time-series RPCs.
+  posted AS (
+    SELECT DISTINCT ON (external_id)
+      external_id, analytics_resolved_at(posted_at, created_at) AS resolved_at
+    FROM scraped_jobs
+    ORDER BY external_id, created_at ASC
+  ),
   base AS (
     SELECT
-      external_id,
-      (analysis #>> '{}')::jsonb AS analysis,
-      created_at
-    FROM job_analysis_cache
+      c.external_id,
+      analytics_analysis_jsonb(c.analysis) AS analysis,
+      coalesce(p.resolved_at, c.created_at) AS posted_ts
+    FROM job_analysis_cache c
+    LEFT JOIN posted p ON p.external_id = c.external_id
     WHERE
-      analysis_status = 'completed'
-      AND created_at IS NOT NULL
-      AND analysis IS NOT NULL
+      c.analysis_status = 'completed'
+      AND c.analysis IS NOT NULL
+      AND coalesce(p.resolved_at, c.created_at) IS NOT NULL
   ),
 
   -- -------------------------------------------------------------------------
-  -- Step 2a: Unnest must_have_keywords — one row per (job, keyword, created_at)
+  -- Step 2a: Unnest must_have_keywords — one row per (job, keyword, posted_ts)
   -- -------------------------------------------------------------------------
   raw_must_have AS (
     SELECT
       b.external_id,
-      b.created_at,
+      b.posted_ts,
       lower(trim(kw)) AS skill,
       'must_have' AS bucket
     FROM base b,
     LATERAL (
-      SELECT jsonb_array_elements_text(
-        CASE jsonb_typeof(b.analysis->'must_have_keywords')
-          WHEN 'array' THEN b.analysis->'must_have_keywords'
-          ELSE '[]'::jsonb
-        END
-      )
+      SELECT jsonb_array_elements_text(analytics_jsonb_array(b.analysis->'must_have_keywords'))
     ) AS kw_unnest(kw)
+    WHERE b.analysis IS NOT NULL
   ),
 
   -- -------------------------------------------------------------------------
@@ -77,27 +86,23 @@ BEGIN
   raw_good_to_have AS (
     SELECT
       b.external_id,
-      b.created_at,
+      b.posted_ts,
       lower(trim(kw)) AS skill,
       'good_to_have' AS bucket
     FROM base b,
     LATERAL (
-      SELECT jsonb_array_elements_text(
-        CASE jsonb_typeof(b.analysis->'good_to_have_keywords')
-          WHEN 'array' THEN b.analysis->'good_to_have_keywords'
-          ELSE '[]'::jsonb
-        END
-      )
+      SELECT jsonb_array_elements_text(analytics_jsonb_array(b.analysis->'good_to_have_keywords'))
     ) AS kw_unnest(kw)
+    WHERE b.analysis IS NOT NULL
   ),
 
   -- -------------------------------------------------------------------------
   -- Step 2c: Union both buckets together (preserving bucket label)
   -- -------------------------------------------------------------------------
   raw_all AS (
-    SELECT external_id, created_at, skill, bucket FROM raw_must_have
+    SELECT external_id, posted_ts, skill, bucket FROM raw_must_have
     UNION ALL
-    SELECT external_id, created_at, skill, bucket FROM raw_good_to_have
+    SELECT external_id, posted_ts, skill, bucket FROM raw_good_to_have
   ),
 
   -- -------------------------------------------------------------------------
@@ -105,51 +110,9 @@ BEGIN
   --         analytics_skill_momentum)
   -- -------------------------------------------------------------------------
   filtered AS (
-    SELECT external_id, created_at, skill, bucket
+    SELECT external_id, posted_ts, skill, bucket
     FROM raw_all
-    WHERE
-      -- Length guard
-      char_length(skill) >= 2
-      AND char_length(skill) <= 50
-
-      -- Exact blocklist
-      AND skill NOT IN (
-        'communication', 'communication skills', 'written communication',
-        'teamwork', 'collaboration', 'collaborative', 'team player',
-        'problem solving', 'problem-solving', 'analytical thinking',
-        'leadership', 'mentoring', 'coaching', 'mentorship',
-        'agile', 'scrum', 'agile/scrum', 'agile methodologies',
-        'detail-oriented', 'detail oriented', 'attention to detail',
-        'self-starter', 'self-motivated', 'self starter',
-        'time management', 'project management',
-        'critical thinking', 'creative thinking',
-        'fast-paced', 'fast-paced environment', 'fast paced',
-        'cross-functional', 'cross functional',
-        'adaptability', 'flexibility', 'adaptable',
-        'ownership', 'accountability',
-        'presentation skills', 'public speaking',
-        'english fluency', 'english', 'bilingual',
-        'recruitment', 'hiring', 'onboarding',
-        'commercialization', 'business development', 'sales',
-        'stakeholder management', 'client-facing', 'client facing',
-        'strategic thinking', 'strategy', 'strategic planning',
-        'organizational skills', 'multitasking', 'multi-tasking',
-        'interpersonal skills', 'negotiation', 'conflict resolution',
-        'remote work', 'hybrid', 'on-site',
-        'bachelor''s degree', 'master''s degree', 'phd', 'degree',
-        'years of experience', 'experience', 'proven track record',
-        'passion', 'passionate', 'enthusiastic', 'motivated',
-        'excellent communication', 'strong communication',
-        'team-oriented', 'results-driven', 'results driven',
-        'waterfall', 'technical team leadership', 'technical leadership',
-        'technical writing', 'lustre', 'lustre development'
-      )
-
-      -- Regex-based soft-skill patterns (mirrors isSoftSkill() in route.ts)
-      AND skill !~ '\m(communicat|leadership|collaborat|mentor|coach|passion|motivated|enthusias)'
-      AND skill !~ '\m(stakeholder|interpersonal|organizational|accountability|ownership)'
-      AND skill !~ '\myears?\s+(of\s+)?experience\M'
-      AND skill !~ '\mdegree\M'
+    WHERE NOT analytics_is_soft_skill(skill)
   ),
 
   -- -------------------------------------------------------------------------
@@ -159,7 +122,7 @@ BEGIN
   -- counts once in each bucket (intentional — shows overlap).
   -- -------------------------------------------------------------------------
   deduped_by_bucket AS (
-    SELECT DISTINCT external_id, created_at, skill, bucket
+    SELECT DISTINCT external_id, posted_ts, skill, bucket
     FROM filtered
   ),
 
@@ -204,7 +167,7 @@ BEGIN
       skill,
       count(DISTINCT external_id) AS recent
     FROM deduped_by_bucket
-    WHERE created_at >= v_now - INTERVAL '14 days'
+    WHERE posted_ts >= v_now - INTERVAL '14 days'
     GROUP BY skill
   ),
 
@@ -217,8 +180,8 @@ BEGIN
       count(DISTINCT external_id) AS prior
     FROM deduped_by_bucket
     WHERE
-      created_at >= v_now - INTERVAL '28 days'
-      AND created_at <  v_now - INTERVAL '14 days'
+      posted_ts >= v_now - INTERVAL '28 days'
+      AND posted_ts <  v_now - INTERVAL '14 days'
     GROUP BY skill
   ),
 

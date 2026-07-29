@@ -20,6 +20,10 @@ interface CompanyBlockedMessage {
   type: "COMPANY_BLOCKED";
   data: { company: string; deleted_job_ids: string[] };
 }
+interface JobsFilteredMessage {
+  type: "JOBS_FILTERED";
+  data: { external_ids: string[] };
+}
 interface JobDismissedMessage {
   type: "JOB_DISMISSED";
   data: { external_id: string };
@@ -40,6 +44,7 @@ interface ScrapeCycleMessage {
 type WebSocketMessage =
   | NewJobMessage
   | CompanyBlockedMessage
+  | JobsFilteredMessage
   | JobDismissedMessage
   | UpdateJobMessage
   | CustomSourceStatusMessage
@@ -54,6 +59,7 @@ export function useWebSocket({ enabled = true } = {}) {
   const {
     addJob,
     removeJob,
+    removeJobs,
     removeJobsByCompany,
     updateJob,
     setConnectionStatus,
@@ -145,6 +151,13 @@ export function useWebSocket({ enabled = true } = {}) {
             description: "Future jobs from this company will be hidden",
             id: `blocked-${message.data.company}`,
           });
+        } else if (message.type === "JOBS_FILTERED" && message.data) {
+          const count = message.data.external_ids.length;
+          removeJobs(message.data.external_ids);
+          toast.success(`Removed ${count} job${count === 1 ? "" : "s"}`, {
+            description: "Matched your title filter keywords",
+            id: "jobs-filtered",
+          });
         } else if (message.type === "JOB_DISMISSED" && message.data) {
           removeJob(message.data.external_id);
         } else if (message.type === "UPDATE_JOB" && message.data) {
@@ -188,6 +201,7 @@ export function useWebSocket({ enabled = true } = {}) {
   }, [
     addJob,
     removeJob,
+    removeJobs,
     removeJobsByCompany,
     updateJob,
     setConnectionStatus,

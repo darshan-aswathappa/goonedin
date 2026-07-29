@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timezone, timedelta
 from app.core.config import get_settings
 from app.core.supabase_config import get_target_keywords, get_blocked_companies, get_title_filter_keywords
+from app.core.title_filter import is_title_blocked
 
 from app.models.job import JobCreate
 from random_user_agent.user_agent import UserAgent
@@ -171,7 +172,7 @@ async def fetch_linkedin_jobs(supabase, user_id: str, keywords: str = None, loca
                         if not title:
                             continue
 
-                        if any(kw in title.lower() for kw in title_filter_keywords):
+                        if is_title_blocked(title, title_filter_keywords):
                             logger.debug(f"Skipping job with filtered title: {title}")
                             continue
 

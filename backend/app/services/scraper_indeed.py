@@ -22,6 +22,7 @@ from bs4 import BeautifulSoup
 
 from app.core.config import get_settings
 from app.core.supabase_config import get_target_keywords, get_title_filter_keywords
+from app.core.title_filter import is_title_blocked
 from app.models.job import JobCreate
 
 logger = logging.getLogger("VelocityScraper")
@@ -134,8 +135,7 @@ def _is_relevant(title: str, target_keywords: list[str]) -> bool:
 
 def _is_blocked(title: str, title_filter_keywords: list[str]) -> bool:
     """Check if title matches any of the user's title filter (block) keywords."""
-    lower = title.lower()
-    return any(kw.lower() in lower for kw in title_filter_keywords)
+    return is_title_blocked(title, title_filter_keywords)
 
 
 def _format_salary(compensation: Optional[dict]) -> Optional[str]:

@@ -254,6 +254,15 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
     [skills, dailyJobs, filteredDays]
   );
 
+  // Momentum compares an early window against a late one, so a single day of
+  // history cannot yield a value at all. Report that separately from "no skills
+  // found" — collapsing both into one message makes a young dataset look
+  // identical to a failed query.
+  const emptyReason =
+    skills.length > 0 && filteredDays.length < 2
+      ? `Awaiting history — momentum needs 2+ days, have ${filteredDays.length}`
+      : "No skill data available";
+
   const leftCol = computed.slice(0, 10);
   const rightCol = computed.slice(10, 20);
 
@@ -293,7 +302,7 @@ export default function SkillMomentumTable({ skills, dailyJobs }: Props) {
               textTransform: "uppercase",
             }}
           >
-            No skill data available
+            {emptyReason}
           </div>
         ) : (
           <>

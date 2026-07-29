@@ -35,19 +35,32 @@ BEGIN
 
   -- -----------------------------------------------------------------------
   -- Step 1: Base rows — only completed analyses with a valid timestamp
-  -- NOTE: analysis is stored as a double-encoded JSONB string, so we unwrap
-  -- it once here using (analysis #>> '{}')::jsonb before any field access.
+  -- NOTE: analysis is a TEXT column holding a plain JSON object, so we parse it
+  -- once here via analytics_analysis_jsonb() (NULL-safe on malformed JSON)
+  -- before any field access.
   -- -----------------------------------------------------------------------
+  -- Days are bucketed by the job's POSTING date, not job_analysis_cache.created_at.
+  -- Cache created_at records when the analyzer wrote the row, i.e. analyzer
+  -- throughput: a backfill of older postings lands them all on one day and spikes
+  -- every skill at once. analytics_resolved_at() also keeps this RPC consistent
+  -- with analytics_timeline / analytics_weekday / analytics_overview.
+  posted AS (
+    SELECT DISTINCT ON (external_id)
+      external_id, analytics_resolved_at(posted_at, created_at) AS resolved_at
+    FROM scraped_jobs
+    ORDER BY external_id, created_at ASC
+  ),
   base AS (
     SELECT
-      external_id,
-      (analysis #>> '{}')::jsonb AS analysis,
-      date_trunc('day', created_at)::date AS day
-    FROM job_analysis_cache
+      c.external_id,
+      analytics_analysis_jsonb(c.analysis) AS analysis,
+      (coalesce(p.resolved_at, c.created_at) AT TIME ZONE 'UTC')::date AS day
+    FROM job_analysis_cache c
+    LEFT JOIN posted p ON p.external_id = c.external_id
     WHERE
-      analysis_status = 'completed'
-      AND created_at IS NOT NULL
-      AND analysis IS NOT NULL
+      c.analysis_status = 'completed'
+      AND c.analysis IS NOT NULL
+      AND coalesce(p.resolved_at, c.created_at) IS NOT NULL
   ),
 
   -- -----------------------------------------------------------------------
@@ -61,20 +74,11 @@ BEGIN
       lower(trim(kw)) AS skill
     FROM base b,
     LATERAL (
-      SELECT jsonb_array_elements_text(
-        CASE jsonb_typeof(b.analysis->'must_have_keywords')
-          WHEN 'array' THEN b.analysis->'must_have_keywords'
-          ELSE '[]'::jsonb
-        END
-      )
+      SELECT jsonb_array_elements_text(analytics_jsonb_array(b.analysis->'must_have_keywords'))
       UNION ALL
-      SELECT jsonb_array_elements_text(
-        CASE jsonb_typeof(b.analysis->'good_to_have_keywords')
-          WHEN 'array' THEN b.analysis->'good_to_have_keywords'
-          ELSE '[]'::jsonb
-        END
-      )
+      SELECT jsonb_array_elements_text(analytics_jsonb_array(b.analysis->'good_to_have_keywords'))
     ) AS kw_unnest(kw)
+    WHERE b.analysis IS NOT NULL
   ),
 
   -- -----------------------------------------------------------------------
@@ -86,49 +90,7 @@ BEGIN
   filtered AS (
     SELECT external_id, day, skill
     FROM raw_keywords
-    WHERE
-      -- Length guard
-      char_length(skill) >= 2
-      AND char_length(skill) <= 50
-
-      -- Exact blocklist (covers the most common offenders cheaply)
-      AND skill NOT IN (
-        'communication', 'communication skills', 'written communication',
-        'teamwork', 'collaboration', 'collaborative', 'team player',
-        'problem solving', 'problem-solving', 'analytical thinking',
-        'leadership', 'mentoring', 'coaching', 'mentorship',
-        'agile', 'scrum', 'agile/scrum', 'agile methodologies',
-        'detail-oriented', 'detail oriented', 'attention to detail',
-        'self-starter', 'self-motivated', 'self starter',
-        'time management', 'project management',
-        'critical thinking', 'creative thinking',
-        'fast-paced', 'fast-paced environment', 'fast paced',
-        'cross-functional', 'cross functional',
-        'adaptability', 'flexibility', 'adaptable',
-        'ownership', 'accountability',
-        'presentation skills', 'public speaking',
-        'english fluency', 'english', 'bilingual',
-        'recruitment', 'hiring', 'onboarding',
-        'commercialization', 'business development', 'sales',
-        'stakeholder management', 'client-facing', 'client facing',
-        'strategic thinking', 'strategy', 'strategic planning',
-        'organizational skills', 'multitasking', 'multi-tasking',
-        'interpersonal skills', 'negotiation', 'conflict resolution',
-        'remote work', 'hybrid', 'on-site',
-        'bachelor''s degree', 'master''s degree', 'phd', 'degree',
-        'years of experience', 'experience', 'proven track record',
-        'passion', 'passionate', 'enthusiastic', 'motivated',
-        'excellent communication', 'strong communication',
-        'team-oriented', 'results-driven', 'results driven',
-        'waterfall', 'technical team leadership', 'technical leadership',
-        'technical writing', 'lustre', 'lustre development'
-      )
-
-      -- Regex-based soft-skill patterns (mirrors isSoftSkill() in route.ts)
-      AND skill !~ '\m(communicat|leadership|collaborat|mentor|coach|passion|motivated|enthusias)'
-      AND skill !~ '\m(stakeholder|interpersonal|organizational|accountability|ownership)'
-      AND skill !~ '\myears?\s+(of\s+)?experience\M'
-      AND skill !~ '\mdegree\M'
+    WHERE NOT analytics_is_soft_skill(skill)
   ),
 
   -- -----------------------------------------------------------------------

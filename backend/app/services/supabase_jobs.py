@@ -10,6 +10,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
 from app.core.supabase_retry import retry_supabase
+from app.core.title_filter import is_title_blocked
 
 logger = logging.getLogger("SupabaseJobs")
 
@@ -294,6 +295,53 @@ async def delete_jobs_by_company(
     except Exception as e:
         logger.error(f"delete_jobs_by_company (custom_source_jobs) failed: {e}")
 
+    return all_hidden
+
+
+async def hide_jobs_by_title_keywords(
+    supabase: Any, user_id: str, keywords: list[str]
+) -> list[str]:
+    """Soft-delete every visible job whose title matches a blacklist keyword.
+
+    Called when the user edits their title filter so keywords added after a job
+    was ingested still take it off the dashboard. Returns affected external_ids.
+    """
+    if not keywords:
+        return []
+
+    all_hidden: list[str] = []
+
+    for table in ("scraped_jobs", "custom_source_jobs"):
+        try:
+            resp = await asyncio.to_thread(
+                lambda t=table: supabase.table(t)
+                .select("external_id, title")
+                .eq("user_id", user_id)
+                .eq("visible", True)
+                .execute()
+            )
+            to_hide = [
+                row["external_id"]
+                for row in (resp.data or [])
+                if is_title_blocked(row.get("title") or "", keywords)
+            ]
+
+            if to_hide:
+                await asyncio.to_thread(
+                    lambda t=table, ids=to_hide: supabase.table(t)
+                    .update({"visible": False})
+                    .eq("user_id", user_id)
+                    .in_("external_id", ids)
+                    .execute()
+                )
+                all_hidden.extend(to_hide)
+        except Exception as e:
+            logger.error(f"hide_jobs_by_title_keywords ({table}) failed: {e}")
+
+    if all_hidden:
+        logger.info(
+            f"Hid {len(all_hidden)} job(s) for user {user_id} after title filter update"
+        )
     return all_hidden
 
 

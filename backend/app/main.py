@@ -21,6 +21,7 @@ from app.core.supabase_config import (
     get_location_filter,
     set_location_filter,
 )
+from app.core.title_filter import is_title_blocked
 from app.core.location_map import normalize_location
 from app.services.supabase_jobs import (
     is_already_seen as is_already_seen_sb,
@@ -31,6 +32,7 @@ from app.services.supabase_jobs import (
     get_job,
     dismiss_job as dismiss_job_sb,
     delete_jobs_by_company,
+    hide_jobs_by_title_keywords,
     cleanup_expired_jobs,
     cleanup_old_invisible_jobs,
 )
@@ -793,6 +795,10 @@ async def get_jobs_endpoint(ctx: UserContext = Depends(_get_ctx)):
     supabase = get_supabase_client()
     blocked_companies = await get_blocked_companies(supabase, ctx.user_id)
     blocked_lower = [b.lower() for b in blocked_companies]
+    # Second filtering layer: scrapers filter at ingestion, but rows already in
+    # the table predate any keyword the user adds later. Re-check on every read
+    # so a new blacklist entry takes effect immediately.
+    title_filter_keywords = await get_title_filter_keywords(supabase, ctx.user_id)
     try:
         # Fetch all visible scraped jobs from Supabase
         all_scraped = await get_all_jobs(supabase, ctx.user_id)
@@ -800,6 +806,8 @@ async def get_jobs_endpoint(ctx: UserContext = Depends(_get_ctx)):
         for job_data in all_scraped:
             company = (job_data.get("company") or "").lower()
             if any(b in company for b in blocked_lower):
+                continue
+            if is_title_blocked(job_data.get("title") or "", title_filter_keywords):
                 continue
             jobs.append(job_data)
     except Exception as e:
@@ -812,6 +820,8 @@ async def get_jobs_endpoint(ctx: UserContext = Depends(_get_ctx)):
         for cj in custom_jobs:
             company = (cj.get("company") or "").lower()
             if any(b in company for b in blocked_lower):
+                continue
+            if is_title_blocked(cj.get("title") or "", title_filter_keywords):
                 continue
             jobs.append({
                 "title": cj.get("title", ""),
@@ -1036,7 +1046,20 @@ async def update_title_filter_keywords(
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update config")
     _seen_linkedin.pop(ctx.user_id, None)
-    return {"message": "Updated", "title_filter_keywords": request.values}
+
+    # Apply the new blacklist retroactively to jobs already on the dashboard.
+    hidden_ids = await hide_jobs_by_title_keywords(supabase, ctx.user_id, request.values)
+    if hidden_ids:
+        await manager.broadcast(
+            ctx.user_id,
+            {"type": "JOBS_FILTERED", "data": {"external_ids": hidden_ids}},
+        )
+
+    return {
+        "message": "Updated",
+        "title_filter_keywords": request.values,
+        "removed_jobs_count": len(hidden_ids),
+    }
 
 
 class LocationFilterRequest(BaseModel):

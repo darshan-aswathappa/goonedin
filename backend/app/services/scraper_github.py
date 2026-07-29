@@ -3,6 +3,7 @@ import httpx
 import logging
 from datetime import datetime, timezone, timedelta
 from app.core.supabase_config import get_blocked_companies, get_title_filter_keywords
+from app.core.title_filter import is_title_blocked
 from app.models.job import JobCreate
 
 GITHUB_LISTINGS_URL = "https://raw.githubusercontent.com/SimplifyJobs/New-Grad-Positions/refs/heads/dev/.github/scripts/listings.json"
@@ -95,7 +96,7 @@ async def fetch_github_jobs(supabase, user_id: str) -> dict:
                     if not title:
                         continue
 
-                    if any(kw in title.lower() for kw in title_filter_keywords):
+                    if is_title_blocked(title, title_filter_keywords):
                         logger.debug(f"Skipping job with filtered title: {title}")
                         continue
 

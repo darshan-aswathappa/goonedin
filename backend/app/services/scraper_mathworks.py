@@ -5,6 +5,7 @@ import logging
 from bs4 import BeautifulSoup
 from app.core.config import get_settings
 from app.core.supabase_config import get_blocked_companies, get_title_filter_keywords
+from app.core.title_filter import is_title_blocked
 from app.models.job import JobCreate
 
 settings = get_settings()
@@ -93,7 +94,7 @@ async def fetch_mathworks_jobs(supabase, user_id: str) -> dict:
                     if not title or len(title) < 3:
                         continue
 
-                    if any(kw.lower() in title.lower() for kw in title_filter_keywords):
+                    if is_title_blocked(title, title_filter_keywords):
                         logger.debug(f"Skipping job with filtered title: {title}")
                         continue
 

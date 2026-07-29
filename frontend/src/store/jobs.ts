@@ -105,6 +105,7 @@ interface JobsState {
   apiError: string | null;
   addJob: (job: Job) => void;
   removeJob: (externalId: string) => void;
+  removeJobs: (externalIds: string[]) => void;
   removeJobsByCompany: (company: string) => void;
   updateJob: (externalId: string, updates: Partial<Job>) => void;
   setJobs: (jobs: Job[]) => void;
@@ -195,6 +196,22 @@ export const useJobsStore = create<JobsState>((set) => ({
         indeedJobs: state.indeedJobs.filter((j) => j.external_id !== externalId),
         locationFilteredJobs: state.locationFilteredJobs.filter((j) => j.external_id !== externalId),
         dismissedJobIds: newDismissed,
+      };
+    }),
+
+  removeJobs: (externalIds) =>
+    set((state) => {
+      const ids = new Set(externalIds);
+      const keep = (j: Job) => !ids.has(j.external_id);
+      return {
+        jobs: state.jobs.filter(keep),
+        linkedinJobs: state.linkedinJobs.filter(keep),
+        jobrightJobs: state.jobrightJobs.filter(keep),
+        mathworksJobs: state.mathworksJobs.filter(keep),
+        githubJobs: state.githubJobs.filter(keep),
+        indeedJobs: state.indeedJobs.filter(keep),
+        locationFilteredJobs: state.locationFilteredJobs.filter(keep),
+        dismissedJobIds: new Set([...state.dismissedJobIds, ...ids]),
       };
     }),
 
