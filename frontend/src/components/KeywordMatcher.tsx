@@ -97,7 +97,7 @@ function BadgeSection({
                   <button
                     onClick={() => onToggle(kw)}
                     aria-pressed={isDone}
-                    className={`rounded-[4px] border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.09em] transition-colors duration-[120ms] ${
+                    className={`max-w-full break-words rounded-[4px] border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.09em] transition-colors duration-[120ms] ${
                       isDone
                         ? "border-hairline bg-paper-sunk text-ink-faint line-through"
                         : "border-hairline-strong bg-paper-card text-ink-2 hover:border-brick hover:text-brick"
@@ -133,26 +133,51 @@ export function KeywordMatcher() {
     hardGroup.keywords.length > 0 || softGroup.keywords.length > 0;
 
   const handleAnalyze = async () => {
-    if (!jobDescription.trim()) return;
+    if (!jobDescription.trim() || loading) return;
     setLoading(true);
     setError(null);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`${API_URL}/keywords/extract`, {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ job_description: jobDescription }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/keywords/extract`, {
+          method: "POST",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            job_description: jobDescription.slice(0, 50000),
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || "Failed to extract keywords");
+        let detail = "Failed to extract keywords";
+        try {
+          const data = await res.json();
+          detail = data.detail || detail;
+        } catch {
+          if (res.status === 401) detail = "Please sign in again";
+          else if (res.status === 429) detail = "Too many requests. Wait a moment and try again.";
+          else if (res.status >= 500) detail = "Server error. Try again shortly.";
+        }
+        throw new Error(detail);
       }
       const data = await res.json();
       setHardGroup(dedup(data.hard_skills || []));
       setSoftGroup(dedup(data.soft_skills || []));
       setChecked(new Set());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Request timed out. Try a shorter description or try again.");
+      } else if (err instanceof TypeError) {
+        setError("Network error. Check your connection and try again.");
+      } else {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
     } finally {
       setLoading(false);
     }
@@ -223,7 +248,7 @@ export function KeywordMatcher() {
       </header>
 
       <div className="bg-paper">
-        <main className="shell-main mx-auto grid max-w-[1100px] grid-cols-1 gap-6 md:grid-cols-2">
+        <main className="shell-main mx-auto grid max-w-[1100px] grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Left column — Job Description */}
           <div className="flex flex-col">
             <TextField
@@ -231,22 +256,19 @@ export function KeywordMatcher() {
               label="JOB DESCRIPTION"
               placeholder="Paste job description here..."
               value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              rows={20}
-              className="min-h-[360px] resize-none bg-paper-sunk text-[13px] leading-relaxed"
+              onChange={(e) => setJobDescription(e.target.value.slice(0, 50000))}
+              rows={12}
+              maxLength={50000}
+              disabled={loading}
+              error={error || undefined}
+              className="min-h-[240px] resize-none bg-paper-sunk text-[16px] leading-relaxed sm:min-h-[360px] sm:text-[13px] lg:min-h-[420px]"
             />
-
-            {error && (
-              <div className="mt-2 rounded-[4px] border border-brick bg-brick-tint px-3 py-2 font-sans text-[13px] text-brick">
-                {error}
-              </div>
-            )}
 
             <DsButton
               variant="primary"
               onClick={handleAnalyze}
               disabled={loading || !jobDescription.trim()}
-              className="mt-3 w-full"
+              className="mt-3 min-h-11 w-full sm:min-h-0"
             >
               {loading ? (
                 <>

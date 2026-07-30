@@ -17,6 +17,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { JobAnalysisModal } from "./JobAnalysisModal";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -30,10 +31,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /** Hairline icon button: neutral at rest, brick on hover. */
 const ICON_BUTTON_CLASS =
-  "flex flex-1 items-center justify-center rounded-md border border-hairline bg-paper-card p-1.5 text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink-muted sm:flex-none min-h-10 min-w-10";
-
-const TOOLTIP_CLASS =
-  "hidden rounded-[4px] bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.09em] text-paper-card sm:block";
+  "flex flex-1 items-center justify-center rounded-md border border-hairline bg-paper-card p-1.5 text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40 disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink-muted sm:flex-none min-h-11 min-w-11";
 
 const META_CLASS = "font-mono text-[11px] tracking-[0.09em] text-ink-muted";
 
@@ -52,6 +50,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   const [analysisOpen, setAnalysisOpen] = useState(false);
 
   const removeJob = useJobsStore((state) => state.removeJob);
+  const removeJobsByCompany = useJobsStore((state) => state.removeJobsByCompany);
   const savedJobIds = useJobsStore((state) => state.savedJobIds);
   const addSavedJobId = useJobsStore((state) => state.addSavedJobId);
   const removeSavedJobId = useJobsStore((state) => state.removeSavedJobId);
@@ -102,7 +101,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      await fetch(`${API_URL}/jobs/block`, {
+      const response = await fetch(`${API_URL}/jobs/block`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
         body: JSON.stringify({ company: job.company }),
@@ -110,8 +109,23 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
       });
 
       clearTimeout(timeoutId);
-    } catch {
-      // Timeout or network error — WebSocket broadcast handles UI update
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          toast.error("Please sign in again");
+        } else {
+          toast.error(`Couldn't block ${job.company}. Try again.`);
+        }
+      } else {
+        removeJobsByCompany(job.company);
+        toast.success(`Blocked ${job.company}`);
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        toast.error("Request timed out. Try again.");
+      } else {
+        toast.error("Network error. Couldn't block company.");
+      }
     } finally {
       setIsBlocking(false);
     }
@@ -143,9 +157,17 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
       if (response.ok) {
         setIsExiting(true);
         setTimeout(() => removeJob(job.external_id), 180);
+      } else if (response.status === 401) {
+        toast.error("Please sign in again");
+      } else {
+        toast.error("Couldn't dismiss job. Try again.");
       }
-    } catch {
-      // Timeout or network error — job stays visible
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        toast.error("Request timed out. Try again.");
+      } else {
+        toast.error("Network error. Couldn't dismiss job.");
+      }
     } finally {
       setIsDismissing(false);
     }
@@ -170,6 +192,10 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
         clearTimeout(timeoutId);
         if (res.ok) {
           removeSavedJobId(job.external_id);
+        } else if (res.status === 401) {
+          toast.error("Please sign in again");
+        } else {
+          toast.error("Couldn't unsave job. Try again.");
         }
       } else {
         const res = await fetch(`${API_URL}/jobs/save`, {
@@ -191,10 +217,18 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
           addSavedJobId(job.external_id);
           setAnimateSave(true);
           setTimeout(() => setAnimateSave(false), 400);
+        } else if (res.status === 401) {
+          toast.error("Please sign in again");
+        } else {
+          toast.error("Couldn't save job. Try again.");
         }
       }
-    } catch {
-      // Timeout or network error — save state unchanged
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        toast.error("Request timed out. Try again.");
+      } else {
+        toast.error("Network error. Couldn't update saved jobs.");
+      }
     } finally {
       setIsSaving(false);
     }
@@ -220,7 +254,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
         )}
 
         {/* Source badge — mono corner tab */}
-        <div className="absolute right-0 top-0 rounded-bl-[4px] rounded-tr-[3px] border-b border-l border-hairline bg-paper-sunk px-2 py-[3px] font-mono text-[10px] uppercase tracking-[0.09em] text-ink-muted">
+        <div className="absolute right-0 top-0 max-w-[45%] truncate rounded-bl-[4px] rounded-tr-[3px] border-b border-l border-hairline bg-paper-sunk px-2 py-[3px] font-mono text-[10px] uppercase tracking-[0.09em] text-ink-muted">
           {job.source}
         </div>
 
@@ -302,7 +336,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className={TOOLTIP_CLASS}>
+                  <TooltipContent className="hidden sm:block">
                     <p>{isSaved ? "Unsave" : "Save"}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -324,7 +358,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className={TOOLTIP_CLASS}>
+                  <TooltipContent className="hidden sm:block">
                     <p>Dismiss</p>
                   </TooltipContent>
                 </Tooltip>
@@ -346,7 +380,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent className={TOOLTIP_CLASS}>
+                  <TooltipContent className="hidden sm:block">
                     <p>Block company</p>
                   </TooltipContent>
                 </Tooltip>

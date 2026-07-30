@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import {
   Briefcase,
   Sparkle,
@@ -13,7 +14,8 @@ import {
   Terminal,
 } from "@phosphor-icons/react";
 import Link from "next/link";
-import { Kicker, DsButton } from "@/components/ds";
+import { Kicker, DsButton, dsButtonVariants } from "@/components/ds";
+import { cn } from "@/lib/utils";
 
 const ONBOARDING_KEY = "hirefeed-onboarding-v1";
 
@@ -44,74 +46,96 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
     setOpen(false);
   };
 
-  if (!open) return null;
-
   const steps = ["INIT", "PROCESS", "READY"];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(28,27,25,0.35)] p-4">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-[10px] border border-hairline bg-paper shadow-[0_24px_64px_rgba(28,27,25,0.22)]">
-        {/* Masthead */}
-        <div className="flex items-center justify-between border-b border-hairline bg-paper-card px-5 py-3">
-          <div className="flex items-center gap-2.5">
-            <Terminal weight="regular" className="size-4 text-ink-muted" />
-            <span className="font-serif text-[17px] font-semibold leading-none text-ink">
-              HireFeed
-            </span>
-            <span aria-hidden className="h-3 w-px bg-hairline-strong" />
-            <Kicker>System Initialization</Kicker>
-          </div>
-          <button
-            onClick={dismiss}
-            className="rounded-[4px] p-1 text-ink-muted transition-colors hover:bg-paper-sunk hover:text-ink"
-            aria-label="Skip onboarding"
-          >
-            <X weight="regular" className="size-4" />
-          </button>
-        </div>
-
-        {/* Step tabs */}
-        <div className="flex border-b border-hairline">
-          {steps.map((label, i) => (
-            <div
-              key={i}
-              className={`flex-1 border-r border-hairline px-3 py-2.5 text-center transition-colors last:border-r-0 ${
-                i < step
-                  ? "bg-paper-card text-ink-2"
-                  : i === step
-                  ? "-mb-px border-b-2 border-b-brick bg-paper-card text-ink"
-                  : "bg-paper-sunk text-ink-faint"
-              }`}
-            >
-              <span className="font-mono text-[11px] uppercase tracking-[0.09em]">
-                {i < step ? "✓ " : ""}
-                {label}
-              </span>
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) dismiss();
+      }}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[var(--scrim)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className="fixed bottom-0 left-1/2 z-50 flex max-h-[min(92dvh,100%)] w-full max-w-lg -translate-x-1/2 flex-col overflow-y-auto rounded-t-[10px] border border-hairline bg-paper pb-[env(safe-area-inset-bottom)] shadow-[var(--shadow-modal)] outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:rounded-[10px]"
+        >
+          {/* Masthead */}
+          <div className="flex items-center justify-between gap-2 border-b border-hairline bg-paper-card px-4 py-3 sm:px-5">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Terminal weight="regular" className="size-4 shrink-0 text-ink-muted" />
+              <DialogPrimitive.Title className="font-serif text-[17px] font-semibold leading-none text-ink">
+                HireFeed
+              </DialogPrimitive.Title>
+              <span aria-hidden className="hidden h-3 w-px bg-hairline-strong sm:block" />
+              <Kicker className="hidden sm:block">System Initialization</Kicker>
             </div>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="flex min-h-[300px] flex-col p-6">
-          {step === 0 && <StepWelcome userEmail={userEmail} />}
-          {step === 1 && <StepHowItWorks />}
-          {step === 2 && <StepGetStarted onDone={dismiss} />}
-        </div>
-
-        {/* Navigation */}
-        {step < 2 && (
-          <div className="flex items-center justify-between gap-3 border-t border-hairline bg-paper-card px-5 py-4">
-            <DsButton variant="ghost" size="sm" onClick={dismiss}>
-              Skip setup
-            </DsButton>
-            <DsButton variant="primary" size="sm" onClick={() => setStep((s) => s + 1)}>
-              Continue
-              <ArrowRight weight="regular" className="size-4" />
-            </DsButton>
+            <DialogPrimitive.Close
+              className="flex size-10 shrink-0 items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-paper-sunk hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40"
+              aria-label="Skip onboarding"
+            >
+              <X weight="regular" className="size-4" />
+            </DialogPrimitive.Close>
           </div>
-        )}
-      </div>
-    </div>
+
+          {/* Step indicators — completed steps are revisitable */}
+          <div className="flex border-b border-hairline" role="tablist" aria-label="Onboarding steps">
+            {steps.map((label, i) => (
+              <button
+                key={label}
+                type="button"
+                role="tab"
+                aria-selected={i === step}
+                aria-current={i === step ? "step" : undefined}
+                disabled={i > step}
+                onClick={() => {
+                  if (i < step) setStep(i);
+                }}
+                className={cn(
+                  "flex min-h-11 flex-1 items-center justify-center border-r border-hairline px-2 py-2.5 text-center transition-colors last:border-r-0 sm:px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brick/40 disabled:cursor-default",
+                  i < step
+                    ? "bg-paper-card text-ink-2 hover:bg-paper-sunk"
+                    : i === step
+                      ? "-mb-px border-b-2 border-b-brick bg-paper-card text-ink"
+                      : "bg-paper-sunk text-ink-faint"
+                )}
+              >
+                <span className="font-mono text-[11px] uppercase tracking-[0.09em]">
+                  {i < step ? "✓ " : ""}
+                  {label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Content */}
+          <div className="flex min-h-[260px] flex-col p-5 sm:min-h-[300px] sm:p-6">
+            {step === 0 && <StepWelcome userEmail={userEmail} />}
+            {step === 1 && <StepHowItWorks />}
+            {step === 2 && <StepGetStarted onDone={dismiss} />}
+          </div>
+
+          {/* Navigation */}
+          {step < 2 && (
+            <div className="flex items-center justify-between gap-3 border-t border-hairline bg-paper-card px-4 py-4 sm:px-5">
+              <DsButton variant="ghost" size="sm" onClick={dismiss} className="min-h-11 sm:min-h-0">
+                Skip setup
+              </DsButton>
+              <DsButton
+                variant="primary"
+                size="sm"
+                onClick={() => setStep((s) => s + 1)}
+                className="min-h-11 sm:min-h-0"
+              >
+                Continue
+                <ArrowRight weight="regular" className="size-4" />
+              </DsButton>
+            </div>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -250,12 +274,14 @@ function StepGetStarted({ onDone }: { onDone: () => void }) {
       </div>
 
       <div className="mt-auto flex flex-col gap-2">
-        <Link href="/settings" onClick={onDone} className="w-full">
-          <DsButton variant="primary" className="w-full">
-            <Gear weight="regular" className="size-4" />
-            Configure settings
-            <ArrowRight weight="regular" className="size-4" />
-          </DsButton>
+        <Link
+          href="/settings"
+          onClick={onDone}
+          className={cn(dsButtonVariants({ variant: "primary" }), "w-full")}
+        >
+          <Gear weight="regular" className="size-4" />
+          Configure settings
+          <ArrowRight weight="regular" className="size-4" />
         </Link>
         <DsButton variant="secondary" size="sm" onClick={onDone} className="w-full">
           Explore on my own

@@ -263,7 +263,7 @@ export function AddJobSourceModal({
         )}
       </DialogTrigger>
 
-      <DialogContent className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] md:max-w-lg max-h-[90dvh] overflow-y-auto p-0 gap-0 rounded-[10px] border border-hairline bg-paper shadow-[0_24px_64px_rgba(28,27,25,0.22)]">
+      <DialogContent className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] md:max-w-lg max-h-[90dvh] overflow-y-auto p-0 gap-0 rounded-[10px] border border-hairline bg-paper shadow-[var(--shadow-modal)]">
         {/* Modal Header */}
         <DialogHeader className="flex flex-col gap-1 border-b border-hairline bg-paper-card px-5 py-5 text-left sm:px-7 sm:py-6">
           <Kicker>{editingId ? "Edit source" : "Feed the press"}</Kicker>

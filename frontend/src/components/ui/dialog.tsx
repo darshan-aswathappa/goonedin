@@ -39,7 +39,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-[rgba(28,27,25,0.35)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-[var(--scrim)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
         className
       )}
       {...props}
@@ -61,7 +61,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[10px] border border-hairline bg-paper p-8 text-ink shadow-[0_24px_64px_rgba(28,27,25,0.22)] duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-1.5rem)] max-h-[min(90dvh,90vh)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[10px] border border-hairline bg-paper p-5 text-ink shadow-[var(--shadow-modal)] duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg sm:p-8",
           className
         )}
         {...props}
@@ -70,7 +70,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-6 right-6 rounded-[4px] p-1 text-ink-muted transition-colors hover:bg-paper-sunk hover:text-ink focus-visible:ring-2 focus-visible:ring-brick/40 focus-visible:outline-none disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-3 right-3 flex size-11 items-center justify-center rounded-[4px] text-ink-muted transition-colors hover:bg-paper-sunk hover:text-ink focus-visible:ring-2 focus-visible:ring-brick/40 focus-visible:outline-none disabled:pointer-events-none sm:top-5 sm:right-5 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -126,7 +126,7 @@ function DialogTitle({
     <DialogPrimitive.Title
       data-slot="dialog-title"
       className={cn(
-        "font-serif text-[28px] font-semibold leading-tight text-ink",
+        "font-serif text-[22px] font-semibold leading-tight text-ink sm:text-[28px]",
         className
       )}
       {...props}
@@ -141,7 +141,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("font-sans text-[15px] text-ink-2", className)}
+      className={cn("font-sans text-[15px] leading-relaxed text-ink-2", className)}
       {...props}
     />
   )

@@ -35,6 +35,8 @@ export function useJobsApi(enabled: boolean = true) {
         let errorMsg = "Failed to load jobs";
         if (jobsRes.status === 401) {
           errorMsg = "Please sign in again";
+        } else if (jobsRes.status === 403) {
+          errorMsg = "You don't have permission to view these jobs.";
         } else if (jobsRes.status === 429) {
           errorMsg = "Too many requests. Please try again in a moment.";
         } else if (jobsRes.status >= 500) {

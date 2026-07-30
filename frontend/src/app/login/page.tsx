@@ -7,7 +7,6 @@ import {
   CircleNotch,
   Rocket,
   ArrowRight,
-  Warning,
 } from "@phosphor-icons/react";
 import { Kicker, DsButton, StatusBadge, TextField } from "@/components/ds";
 
@@ -38,31 +37,51 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Enter your email address");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setError("Enter a valid email address");
+      return;
+    }
+    if (loading) return;
 
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: trimmed,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    setLoading(false);
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setSent(true);
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("rate") || msg.includes("limit") || error.status === 429) {
+          setError("Too many attempts. Wait a minute, then try again.");
+        } else if (msg.includes("invalid") || msg.includes("email")) {
+          setError("Enter a valid email address");
+        } else {
+          setError(error.message || "Couldn't send access link. Try again.");
+        }
+      } else {
+        setSent(true);
+      }
+    } catch {
+      setError("Network error. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <div className="flex min-h-dvh flex-col bg-paper text-ink">
       {/* Masthead */}
-      <header className="flex shrink-0 items-center justify-between border-b border-hairline px-6 py-4">
+      <header className="flex shrink-0 items-center justify-between border-b border-hairline px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
         <div className="flex items-baseline gap-4">
           <span className="font-serif text-[19px] font-semibold leading-none text-ink">
             HireFeed<span className="text-brick">.</span>
@@ -73,11 +92,11 @@ export default function LoginPage() {
       </header>
 
       {/* Main */}
-      <main className="flex flex-1 items-center justify-center px-6 py-16">
+      <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16">
         <div className="w-full max-w-[400px]">
           <div className="mb-8">
             <Kicker className="mb-3">Access</Kicker>
-            <h1 className="font-serif text-[34px] font-semibold leading-tight text-ink">
+            <h1 className="font-serif text-[28px] font-semibold leading-tight text-ink sm:text-[34px]">
               Sign in
             </h1>
             <p className="mt-3 font-sans text-[15px] leading-relaxed text-ink-2">
@@ -104,7 +123,7 @@ export default function LoginPage() {
                     </h2>
                     <p className="font-sans text-[15px] leading-relaxed text-ink-2">
                       Access link dispatched to{" "}
-                      <span className="font-mono text-[13px] text-ink">{email}</span>
+                      <span className="break-all font-mono text-[13px] text-ink">{email}</span>
                     </p>
                   </div>
                   <div className="border-t border-hairline pt-5">
@@ -120,24 +139,26 @@ export default function LoginPage() {
                     id="email"
                     label="Email address"
                     type="email"
+                    inputMode="email"
+                    autoComplete="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value.slice(0, 254));
+                      if (error) setError("");
+                    }}
                     placeholder="user@domain.com"
                     required
+                    maxLength={254}
+                    disabled={loading}
+                    error={error || undefined}
                   />
 
-                  {error && (
-                    <div className="flex items-start gap-2 rounded-[4px] border border-brick bg-brick-tint px-3 py-2.5">
-                      <Warning className="mt-px size-[14px] shrink-0 text-brick" />
-                      <span className="font-sans text-[13px] leading-snug text-brick">
-                        {error}
-                      </span>
-                    </div>
-                  )}
-
-                  <DsButton type="submit" disabled={loading} className="w-full">
+                  <DsButton type="submit" disabled={loading || !email.trim()} className="w-full">
                     {loading ? (
-                      <CircleNotch className="size-4 animate-spin" />
+                      <>
+                        <CircleNotch className="size-4 animate-spin" aria-hidden />
+                        <span>Sending link…</span>
+                      </>
                     ) : (
                       <>
                         <Envelope className="size-4" />
@@ -186,9 +207,9 @@ export default function LoginPage() {
       </main>
 
       {/* Footer */}
-      <footer className="flex shrink-0 items-center justify-between border-t border-hairline px-6 py-3">
+      <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-hairline px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
         <Kicker>Auth via Supabase</Kicker>
-        <Kicker>&copy; 2025 HireFeed</Kicker>
+        <Kicker>&copy; 2026 HireFeed</Kicker>
       </footer>
     </div>
   );

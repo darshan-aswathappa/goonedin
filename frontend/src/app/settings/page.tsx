@@ -73,13 +73,27 @@ function ConfigEditor({
 }) {
   const [newItem, setNewItem] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [addError, setAddError] = useState("");
+
+  const ITEM_MAX = 120;
 
   const handleAdd = () => {
     const trimmed = newItem.trim();
-    if (trimmed && !values.includes(trimmed)) {
-      onChange([...values, trimmed]);
-      setNewItem("");
+    if (!trimmed) {
+      setAddError("Enter a value");
+      return;
     }
+    if (trimmed.length > ITEM_MAX) {
+      setAddError(`Keep it under ${ITEM_MAX} characters`);
+      return;
+    }
+    if (values.some((v) => v.toLowerCase() === trimmed.toLowerCase())) {
+      setAddError("Already in the list");
+      return;
+    }
+    onChange([...values, trimmed]);
+    setNewItem("");
+    setAddError("");
   };
 
   const handleRemove = (index: number) => {
@@ -100,19 +114,19 @@ function ConfigEditor({
   return (
     <section className="rounded-[4px] border border-hairline bg-paper-card">
       {/* Panel header */}
-      <header className="flex items-start justify-between gap-4 border-b border-hairline px-4 py-3">
-        <div className="flex items-start gap-3">
+      <header className="flex flex-col gap-3 border-b border-hairline px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="flex min-w-0 items-start gap-3">
           <span className="mt-px shrink-0">{section.icon}</span>
-          <div>
+          <div className="min-w-0">
             <h2 className="font-serif text-[17px] font-semibold leading-tight text-ink">
               {section.title}
             </h2>
-            <p className="mt-1 font-sans text-[13px] leading-snug text-ink-muted">
+            <p className="mt-1 break-words font-sans text-[13px] leading-snug text-ink-muted">
               {section.description}
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-[4px] border border-hairline px-2 py-0.5 font-mono text-[11px] tracking-[0.09em] text-ink-muted">
+        <span className="w-fit shrink-0 self-start rounded-[4px] border border-hairline px-2 py-0.5 font-mono text-[11px] tracking-[0.09em] text-ink-muted">
           {values.length}
         </span>
       </header>
@@ -124,21 +138,36 @@ function ConfigEditor({
           <input
             type="text"
             value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
+            maxLength={ITEM_MAX}
+            onChange={(e) => {
+              setNewItem(e.target.value.slice(0, ITEM_MAX));
+              if (addError) setAddError("");
+            }}
             onKeyDown={handleKeyDown}
             placeholder={`Add new ${section.title.toLowerCase().slice(0, -1)}...`}
-            className="min-w-0 flex-1 rounded-[4px] border border-hairline bg-paper-card px-3 py-2 font-mono text-[13px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick"
+            aria-invalid={addError ? true : undefined}
+            aria-describedby={addError ? `${section.key}-add-error` : undefined}
+            className="min-h-11 min-w-0 flex-1 rounded-[4px] border border-hairline bg-paper-card px-3 py-2 font-mono text-[16px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick sm:min-h-0 sm:text-[13px]"
           />
           <DsButton
             onClick={handleAdd}
-            disabled={!newItem.trim()}
+            disabled={!newItem.trim() || isSaving}
             size="icon"
             aria-label={`Add ${section.title.toLowerCase()}`}
-            className="shrink-0"
+            className="size-11 shrink-0"
           >
             <Plus className="size-4" />
           </DsButton>
         </div>
+        {addError && (
+          <p
+            id={`${section.key}-add-error`}
+            role="alert"
+            className="font-mono text-[11px] uppercase tracking-[0.09em] text-brick"
+          >
+            {addError}
+          </p>
+        )}
 
         {/* Search filter (when > 5 items) */}
         {values.length > 5 && (
@@ -149,7 +178,8 @@ function ConfigEditor({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Filter items..."
-              className="w-full rounded-[4px] border border-hairline bg-paper-card py-2 pl-9 pr-3 font-mono text-[13px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick"
+              aria-label={`Filter ${section.title.toLowerCase()}`}
+              className="w-full rounded-[4px] border border-hairline bg-paper-card py-2.5 pl-9 pr-3 font-mono text-[16px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick sm:text-[13px]"
             />
           </div>
         )}
@@ -168,16 +198,18 @@ function ConfigEditor({
                 return (
                   <span
                     key={chipKey}
-                    className="group inline-flex items-center gap-2 rounded-[4px] border border-hairline bg-paper-card px-2.5 py-1 font-mono text-[13px] leading-none text-ink-2 transition-colors duration-[120ms] hover:border-hairline-strong"
+                    className="group inline-flex max-w-full items-center gap-1 rounded-[4px] border border-hairline bg-paper-card py-1 pl-2.5 pr-1 font-mono text-[13px] leading-none text-ink-2 transition-colors duration-[120ms] hover:border-hairline-strong"
                   >
-                    {item}
+                    <span className="min-w-0 truncate py-0.5" title={item}>
+                      {item}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleRemove(originalIndex)}
                       aria-label={`Remove ${item}`}
-                      className="flex p-0.5 text-ink-faint transition-colors duration-[120ms] hover:text-brick"
+                      className="flex size-8 shrink-0 items-center justify-center text-ink-faint transition-colors duration-[120ms] hover:text-brick"
                     >
-                      <Trash className="size-3" />
+                      <Trash className="size-3.5" />
                     </button>
                   </span>
                 );
@@ -187,8 +219,8 @@ function ConfigEditor({
         </div>
 
         {/* Save button */}
-        <div className="flex justify-end pt-1">
-          <DsButton onClick={onSave} disabled={isSaving} size="sm">
+        <div className="flex justify-stretch pt-1 sm:justify-end">
+          <DsButton onClick={onSave} disabled={isSaving} size="sm" className="min-h-11 w-full sm:min-h-0 sm:w-auto">
             {isSaving ? (
               <>
                 <CircleNotch className="size-[14px] animate-spin" />
@@ -211,20 +243,43 @@ export default function SettingsPage() {
   const [config, setConfig] = useState<Record<string, string[]>>({});
   const [originalConfig, setOriginalConfig] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
 
   const fetchConfig = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const headers = await getAuthHeaders();
-      const configRes = await fetch(`${API_URL}/config`, { headers });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      let configRes: Response;
+      try {
+        configRes = await fetch(`${API_URL}/config`, {
+          headers,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (configRes.ok) {
         const data = await configRes.json();
         setConfig(data);
         setOriginalConfig(data);
+      } else if (configRes.status === 401) {
+        setLoadError("Please sign in again to manage settings.");
+      } else {
+        setLoadError("Couldn't load configuration. Try again.");
+        toast.error("Failed to load configuration");
       }
     } catch (error) {
       console.error("Failed to fetch config:", error);
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setLoadError("Request timed out. Check your connection and try again.");
+      } else {
+        setLoadError("Network error. Check your connection and try again.");
+      }
       toast.error("Failed to load configuration");
     } finally {
       setLoading(false);
@@ -240,14 +295,23 @@ export default function SettingsPage() {
   };
 
   const handleSave = async (section: ConfigSection) => {
+    if (savingSection) return;
     setSavingSection(section.key);
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}${section.endpoint}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ values: config[section.key] || [] }),
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      let response: Response;
+      try {
+        response = await fetch(`${API_URL}${section.endpoint}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", ...headers },
+          body: JSON.stringify({ values: config[section.key] || [] }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (response.ok) {
         setOriginalConfig((prev) => ({
@@ -255,12 +319,20 @@ export default function SettingsPage() {
           [section.key]: config[section.key] || [],
         }));
         toast.success(`${section.title} updated successfully`);
+      } else if (response.status === 401) {
+        toast.error("Please sign in again");
+      } else if (response.status === 429) {
+        toast.error("Too many requests. Wait a moment and try again.");
       } else {
         throw new Error("Failed to save");
       }
     } catch (error) {
       console.error("Failed to save config:", error);
-      toast.error(`Failed to update ${section.title}`);
+      if (error instanceof DOMException && error.name === "AbortError") {
+        toast.error("Request timed out. Try again.");
+      } else {
+        toast.error(`Failed to update ${section.title}`);
+      }
     } finally {
       setSavingSection(null);
     }
@@ -274,29 +346,44 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-dvh bg-paper">
-      <div className="shell-main mx-auto max-w-[860px]">
-        {/* Page header */}
-        <header className="mb-8 flex items-center gap-4">
-          <Link
-            href="/"
-            title="Back to Dashboard"
-            aria-label="Back to Dashboard"
-            className="shell-back"
-          >
-            <ArrowLeft className="size-[14px]" />
-          </Link>
-          <div>
-            <h1 className="font-serif text-[28px] font-semibold leading-tight text-ink">
-              Job search filters
-            </h1>
-            <Kicker className="mt-1.5">Settings</Kicker>
+      <header className="shell-header bg-paper-card">
+        <div className="shell-header-inner">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/"
+              title="Back to Dashboard"
+              aria-label="Back to Dashboard"
+              className="shell-back"
+            >
+              <ArrowLeft className="size-[14px]" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="font-serif text-[19px] font-semibold leading-none text-ink sm:text-[22px]">
+                Job search filters
+              </h1>
+              <Kicker className="mt-1">Settings</Kicker>
+            </div>
           </div>
-        </header>
+        </div>
+      </header>
 
+      <div className="shell-main mx-auto max-w-[860px]">
         {loading ? (
           <div className="flex flex-col items-center gap-4 py-20">
             <CircleNotch className="size-7 animate-spin text-brick" />
             <Kicker>Loading configuration</Kicker>
+          </div>
+        ) : loadError ? (
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-4 rounded-[4px] border border-brick bg-brick-tint px-5 py-12 text-center"
+          >
+            <p className="max-w-[360px] break-words font-sans text-[15px] leading-relaxed text-ink">
+              {loadError}
+            </p>
+            <DsButton variant="primary" size="sm" onClick={fetchConfig}>
+              Try again
+            </DsButton>
           </div>
         ) : (
           <div className="flex flex-col gap-6">
@@ -307,6 +394,8 @@ export default function SettingsPage() {
               <div key={section.key} className="relative">
                 {hasUnsavedChanges(section.key) && (
                   <span
+                    role="status"
+                    aria-label="Unsaved changes"
                     title="Unsaved changes"
                     className="absolute -left-3 top-4 size-1.5 rounded-full bg-brick"
                   />
@@ -325,7 +414,7 @@ export default function SettingsPage() {
       </div>
 
       <Toaster
-        position="bottom-right"
+        position="bottom-center"
         toastOptions={{
           className:
             "rounded-[4px] font-mono text-[13px] bg-paper-card border border-hairline-strong text-ink",

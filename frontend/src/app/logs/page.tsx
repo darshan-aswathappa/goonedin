@@ -21,6 +21,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const PING_INTERVAL = 30000;
 const MAX_LOGS = 1000;
+const INITIAL_RECONNECT_INTERVAL = 1000;
+const MAX_RECONNECT_INTERVAL = 30000;
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -29,10 +31,19 @@ export default function LogsPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
   const mountedRef = useRef(true);
+  const connectWebSocketRef = useRef<() => Promise<void>>(async () => {});
 
   const connectWebSocket = useCallback(async () => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
+    if (wsRef.current) {
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
 
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
@@ -45,6 +56,7 @@ export default function LogsPage() {
       if (mountedRef.current) {
         setConnected(true);
       }
+      reconnectAttemptsRef.current = 0;
       pingIntervalRef.current = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
           ws.send("ping");
@@ -71,13 +83,27 @@ export default function LogsPage() {
       }
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
       }
+      if (!mountedRef.current) return;
+      const delay = Math.min(
+        INITIAL_RECONNECT_INTERVAL * 2 ** reconnectAttemptsRef.current,
+        MAX_RECONNECT_INTERVAL
+      );
+      reconnectAttemptsRef.current += 1;
+      reconnectTimeoutRef.current = setTimeout(() => {
+        void connectWebSocketRef.current();
+      }, delay);
     };
 
     ws.onerror = () => {
       ws.close();
     };
   }, []);
+
+  useEffect(() => {
+    connectWebSocketRef.current = connectWebSocket;
+  }, [connectWebSocket]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -102,12 +128,12 @@ export default function LogsPage() {
       } finally {
         if (mountedRef.current) {
           setLoading(false);
-          connectWebSocket();
+          void connectWebSocket();
         }
       }
     };
 
-    init();
+    void init();
 
     return () => {
       mountedRef.current = false;
@@ -115,7 +141,12 @@ export default function LogsPage() {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
       }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       if (wsRef.current) {
+        wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -201,7 +232,7 @@ export default function LogsPage() {
       {/* Log panel — sunk well, terminal output */}
       <div
         ref={scrollRef}
-        className="ds-well m-3 min-h-0 flex-1 overflow-y-auto rounded-[4px] px-4 py-3 mb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="ds-well m-2 min-h-0 flex-1 overflow-y-auto rounded-[4px] px-3 py-3 mb-[max(0.5rem,env(safe-area-inset-bottom))] sm:m-3 sm:px-4"
       >
         {loading ? (
           <Kicker>Loading logs&hellip;</Kicker>
@@ -233,7 +264,11 @@ export default function LogsPage() {
 
         {/* Live feed indicator */}
         <div className="mt-2 flex items-center gap-2 border-t border-hairline-strong pt-2">
-          <StatusBadge label="Live feed active" tone="complete" live />
+          {connected ? (
+            <StatusBadge label="Live feed active" tone="complete" live />
+          ) : (
+            <StatusBadge label="Reconnecting…" tone="pending" />
+          )}
           <span className="animate-cursor-blink font-mono text-[11px] text-brick">_</span>
         </div>
       </div>

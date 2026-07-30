@@ -140,7 +140,7 @@ export function AICompanion() {
           <div className="flex items-center gap-[7px]">
             <span
               className={`size-1.5 shrink-0 rounded-full transition-colors duration-300 ${
-                isStreaming ? "bg-brick animate-live-pulse" : "bg-forest"
+                isStreaming ? "bg-brick animate-live-pulse" : "bg-ink-faint"
               }`}
             />
             <span
@@ -182,7 +182,7 @@ export function AICompanion() {
                   <button
                     key={prompt}
                     onClick={() => handleSuggestion(prompt)}
-                    className="rounded-[4px] border border-hairline bg-paper-sunk px-3 py-2.5 text-left font-sans text-[15px] text-ink-2 transition-colors duration-[120ms] hover:border-brick hover:text-ink"
+                    className="min-h-11 rounded-[4px] border border-hairline bg-paper-sunk px-3 py-2.5 text-left font-sans text-[15px] text-ink-2 transition-colors duration-[120ms] hover:border-brick hover:text-ink"
                   >
                     <span className="mr-2 font-mono text-brick">&gt;</span>
                     {prompt}
@@ -210,7 +210,7 @@ export function AICompanion() {
       </div>
 
       {/* Input row */}
-      <div className="group flex shrink-0 items-center border-t border-hairline bg-paper-card px-3.5">
+      <div className="group flex shrink-0 items-center border-t border-hairline bg-paper-card px-3.5 pb-[max(0px,env(safe-area-inset-bottom))]">
         <span className="mr-2.5 shrink-0 select-none font-mono text-[15px] text-ink-muted transition-colors duration-[150ms] group-focus-within:text-brick">
           &gt;
         </span>
@@ -222,14 +222,14 @@ export function AICompanion() {
           onKeyDown={handleKeyDown}
           disabled={isStreaming}
           placeholder={isStreaming ? "processing..." : "ask anything about your job market..."}
-          className="flex-1 border-none bg-transparent py-3.5 font-mono text-[13px] text-ink outline-none placeholder:text-ink-faint disabled:opacity-50"
+          className="min-w-0 flex-1 border-none bg-transparent py-3.5 font-mono text-[16px] text-ink outline-none placeholder:text-ink-faint disabled:opacity-50 sm:text-[13px]"
         />
         <button
           onClick={handleSubmit}
           disabled={!input.trim() || isStreaming}
           title="Send"
           aria-label="Send"
-          className="shrink-0 border-none bg-transparent py-1 pl-2.5 font-mono text-[15px] text-brick transition-colors duration-[150ms] disabled:cursor-not-allowed disabled:text-ink-faint"
+          className="flex size-11 shrink-0 items-center justify-center border-none bg-transparent font-mono text-[15px] text-brick transition-colors duration-[150ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40 disabled:cursor-not-allowed disabled:text-ink-faint"
         >
           ↵
         </button>

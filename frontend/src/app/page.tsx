@@ -16,7 +16,8 @@ import {
   FileText,
   Bell,
 } from "@phosphor-icons/react";
-import { Kicker, DsButton, StatusBadge } from "@/components/ds";
+import { Kicker, StatusBadge, dsButtonVariants } from "@/components/ds";
+import { cn } from "@/lib/utils";
 
 const SOURCES = [
   { icon: LinkedinLogo, label: "LinkedIn" },
@@ -222,18 +223,18 @@ function CompactFeedProof() {
       </div>
       <div className="divide-y divide-hairline">
         {FEED_JOBS.slice(0, 4).map((job, i) => (
-          <div key={job.company} className="flex items-baseline justify-between gap-3 px-5 py-2.5">
-            <div className="min-w-0">
-              <span
-                className={`font-serif text-[15px] leading-tight ${
+          <div key={job.company} className="flex items-baseline justify-between gap-3 px-4 py-2.5 sm:px-5">
+            <div className="min-w-0 flex-1">
+              <div
+                className={`truncate font-serif text-[15px] leading-tight ${
                   i === 0 ? "font-semibold text-ink" : "text-ink-2"
                 }`}
               >
                 {job.company}
-              </span>
-              <span className="ml-2 truncate font-sans text-[13px] text-ink-muted">
+              </div>
+              <div className="truncate font-sans text-[13px] text-ink-muted">
                 {job.role}
-              </span>
+              </div>
             </div>
             <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-faint">
               {job.age}
@@ -267,7 +268,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-paper">
+      <div className="flex min-h-dvh items-center justify-center bg-paper" role="status" aria-label="Loading">
         <CircleNotch className="size-6 animate-spin text-brick" />
       </div>
     );
@@ -280,18 +281,18 @@ export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col bg-paper text-ink">
       {/* Masthead */}
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="flex items-baseline gap-4">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:gap-4 sm:px-5">
+        <div className="flex min-w-0 items-baseline gap-3 sm:gap-4">
           <span className="font-serif text-[19px] font-semibold leading-none text-ink">
             HireFeed<span className="text-brick">.</span>
           </span>
           <Kicker className="hidden sm:block">Job Intelligence Desk</Kicker>
         </div>
-        <div className="flex items-center gap-5">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-5">
           <StatusBadge label="Live" tone="complete" live className="hidden sm:inline-flex" />
           <Link
             href="/login"
-            className="flex min-h-10 items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2 transition-colors duration-[120ms] hover:text-brick"
+            className="flex min-h-11 items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2 transition-colors duration-[120ms] hover:text-brick focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40 rounded-[4px]"
           >
             Sign in
             <ArrowRight className="size-3" />
@@ -300,10 +301,10 @@ export default function Home() {
       </header>
 
       {/* Hero — copy leads; feed proof sits beside on lg+ and below on narrow */}
-      <section className="grid grid-cols-1 border-b border-hairline lg:min-h-[560px] lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_500px]">
-        <div className="flex flex-col justify-center gap-8 px-5 pb-10 pt-12 lg:border-r lg:border-hairline lg:py-14">
+      <section className="grid grid-cols-1 border-b border-hairline lg:min-h-[560px] lg:grid-cols-[1fr_minmax(360px,440px)] xl:grid-cols-[1fr_500px]">
+        <div className="flex flex-col justify-center gap-8 px-4 pb-10 pt-10 sm:px-5 sm:pt-12 lg:border-r lg:border-hairline lg:py-14">
           <div>
-            <h1 className="mb-5 max-w-[16ch] font-serif text-[38px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink sm:text-[46px] lg:text-[56px]">
+            <h1 className="mb-5 max-w-[16ch] font-serif text-[32px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink sm:text-[46px] lg:text-[56px]">
               Every opening, the minute it posts.
             </h1>
             <p className="mb-8 max-w-[52ch] font-sans text-[17px] leading-relaxed text-ink-2">
@@ -326,11 +327,9 @@ export default function Home() {
               ))}
             </div>
 
-            <Link href="/login">
-              <DsButton>
-                Get access
-                <ArrowRight className="size-4" />
-              </DsButton>
+            <Link href="/login" className={cn(dsButtonVariants({ variant: "primary" }))}>
+              Get access
+              <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>
@@ -369,18 +368,16 @@ export default function Home() {
         <p className="max-w-[46ch] font-sans text-[15px] leading-relaxed text-ink-2">
           Passwordless access. Magic link only. Your feed starts the moment you sign in.
         </p>
-        <Link href="/login" className="shrink-0">
-          <DsButton variant="secondary">
-            Sign in / Register
-            <ArrowRight className="size-4" />
-          </DsButton>
+        <Link href="/login" className={cn(dsButtonVariants({ variant: "secondary" }), "shrink-0")}>
+          Sign in / Register
+          <ArrowRight className="size-4" />
         </Link>
       </section>
 
       {/* Footer */}
       <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-hairline px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Kicker>Powered by DeepSeek + Supabase</Kicker>
-        <Kicker>&copy; 2025 HireFeed</Kicker>
+        <Kicker>&copy; 2026 HireFeed</Kicker>
       </footer>
     </div>
   );

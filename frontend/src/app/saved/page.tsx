@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { BookmarkSimple, CircleNotch, ArrowLeft } from "@phosphor-icons/react";
 import { Job, useJobsStore } from "@/store/jobs";
@@ -13,30 +13,60 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export default function SavedJobsPage() {
   const [savedJobs, setSavedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const storeSavedJobIds = useJobsStore((state) => state.savedJobIds);
   const setSavedJobIds = useJobsStore((state) => state.setSavedJobIds);
 
-  const fetchSavedJobs = async () => {
+  const fetchSavedJobs = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const headers = await getAuthHeaders();
-      const response = await fetch(`${API_URL}/jobs/saved`, { headers });
-      if (response.ok) {
-        const data = await response.json();
-        const jobs: Job[] = data.jobs || [];
-        setSavedJobs(jobs);
-        setSavedJobIds(jobs.map((j) => j.external_id));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      let response: Response;
+      try {
+        response = await fetch(`${API_URL}/jobs/saved`, {
+          headers,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
       }
-    } catch (error) {
-      console.error("Failed to fetch saved jobs:", error);
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("Please sign in again to view saved jobs.");
+        } else if (response.status === 429) {
+          setError("Too many requests. Please try again in a moment.");
+        } else if (response.status >= 500) {
+          setError("Server error. Couldn't load saved jobs.");
+        } else {
+          setError("Failed to load saved jobs. Please try again.");
+        }
+        return;
+      }
+
+      const data = await response.json();
+      const jobs: Job[] = data.jobs || [];
+      setSavedJobs(jobs);
+      setSavedJobIds(jobs.map((j) => j.external_id));
+    } catch (err) {
+      console.error("Failed to fetch saved jobs:", err);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("Request timed out. Check your connection and try again.");
+      } else {
+        setError("Network error. Check your connection and try again.");
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [setSavedJobIds]);
 
   useEffect(() => {
-    fetchSavedJobs();
-  }, []);
+    void fetchSavedJobs();
+  }, [fetchSavedJobs]);
 
   const displayJobs = savedJobs.filter((job) =>
     storeSavedJobIds.has(job.external_id)
@@ -81,6 +111,8 @@ export default function SavedJobsPage() {
           <JobList
             jobs={displayJobs}
             emptyMessage="No saved jobs yet. Bookmark a posting to keep it here."
+            error={error}
+            onRetry={fetchSavedJobs}
           />
         )}
       </main>

@@ -52,7 +52,7 @@ export function Slider({
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 size-4 rounded-full border-2 border-paper-card bg-brick shadow-[0_1px_2px_rgba(28,27,25,0.05)]"
+          className="pointer-events-none absolute top-0 size-4 rounded-full border-2 border-paper-card bg-brick shadow-[var(--shadow-xs)]"
           style={{ left: `calc(${pct}% - 8px)` }}
         />
         <input

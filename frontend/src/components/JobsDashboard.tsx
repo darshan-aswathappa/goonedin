@@ -57,9 +57,9 @@ import Link from "next/link";
  */
 const TAB_BASE = "flex-none shrink-0 cursor-pointer";
 
-/** 40px hairline icon button — usable touch target across the masthead. */
+/** 44px hairline icon button — usable touch target across the masthead. */
 const HEADER_ICON_BUTTON =
-  "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-hairline bg-paper-card text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick";
+  "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md border border-hairline bg-paper-card text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40";
 
 const SOURCE_META_CHIP = "px-2 py-0.5 text-[11px] uppercase tracking-[0.09em]";
 
@@ -153,8 +153,15 @@ export function JobsDashboard() {
         setMoreMenuOpen(false);
       }
     };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMoreMenuOpen(false);
+    };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [moreMenuOpen]);
   const [countBumpKey, setCountBumpKey] = useState(0);
   useEffect(() => {
@@ -222,7 +229,7 @@ export function JobsDashboard() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-paper">
+      <div className="flex min-h-dvh items-center justify-center bg-paper" role="status" aria-label="Loading">
         <CircleNotch weight="regular" className="size-8 animate-spin text-ink-muted" />
       </div>
     );
@@ -232,49 +239,62 @@ export function JobsDashboard() {
     <div className="min-h-dvh bg-paper text-ink">
       {/* Editorial masthead */}
       <header className="sticky top-0 z-40 border-b border-hairline bg-paper-card pt-[env(safe-area-inset-top)]">
-        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-5">
+        <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-5">
           {/* Left: brand */}
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-[4px] bg-brick">
               <Briefcase weight="fill" className="size-3.5 text-paper-card" />
             </div>
-            <span className="truncate font-serif text-[19px] font-semibold leading-none text-ink">
+            <span className="truncate font-serif text-[17px] font-semibold leading-none text-ink sm:text-[19px]">
               HireFeed<span className="text-brick">.</span>
             </span>
-          </div>
-
-          {/* Center: live status + job count */}
-          <div className="flex items-center justify-center gap-2">
             {user && (
-              <>
-                <span className="size-1.5 shrink-0 animate-live-pulse rounded-full bg-forest" />
+              <span className="ml-1 hidden items-baseline gap-1.5 sm:inline-flex">
+                <span aria-hidden className="h-3 w-px bg-hairline-strong" />
                 <span
                   key={countBumpKey}
-                  className="animate-count-bump font-serif text-[17px] font-semibold tabular-nums text-ink"
+                  className="animate-count-bump font-serif text-[15px] font-semibold tabular-nums text-ink"
                 >
                   {jobs.length}
                 </span>
                 <Kicker>Jobs</Kicker>
-              </>
+              </span>
             )}
           </div>
 
-          {/* Right: action buttons */}
+          {/* Center: live count on narrow screens only */}
           {user && (
-            <div className="flex items-center justify-end gap-1.5">
-              <Link href="/saved" title="Saved jobs" aria-label="Saved jobs">
-                <div className={HEADER_ICON_BUTTON}>
-                  <BookmarkSimple weight="regular" className="size-4" />
-                </div>
+            <div className="flex items-center gap-1.5 sm:hidden">
+              <span className="size-1.5 shrink-0 animate-live-pulse rounded-full bg-forest" />
+              <span
+                key={`m-${countBumpKey}`}
+                className="animate-count-bump font-serif text-[15px] font-semibold tabular-nums text-ink"
+              >
+                {jobs.length}
+              </span>
+            </div>
+          )}
+
+          {/* Right: action buttons — sign-out lives in More on phone */}
+          {user && (
+            <div className="flex items-center justify-end gap-1 sm:gap-1.5">
+              <Link
+                href="/saved"
+                title="Saved jobs"
+                aria-label="Saved jobs"
+                className={HEADER_ICON_BUTTON}
+              >
+                <BookmarkSimple weight="regular" className="size-4" />
               </Link>
 
-              {/* More menu: Settings, Keywords, Logs */}
               <div ref={moreMenuRef} className="relative">
                 <button
+                  type="button"
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   title="More"
                   aria-label="More"
                   aria-expanded={moreMenuOpen}
+                  aria-haspopup="menu"
                   className={cn(
                     HEADER_ICON_BUTTON,
                     moreMenuOpen && "border-brick text-brick"
@@ -284,22 +304,39 @@ export function JobsDashboard() {
                 </button>
 
                 {moreMenuOpen && (
-                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[150px] overflow-hidden rounded-[4px] border border-hairline bg-paper-card shadow-[var(--shadow-md)]">
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[168px] overflow-hidden rounded-[4px] border border-hairline bg-paper-card shadow-[var(--shadow-md)]"
+                  >
                     {[
                       { href: "/settings", icon: <Gear weight="regular" className="size-4" />, label: "Settings" },
                       { href: "/keyword-matcher", icon: <Tag weight="regular" className="size-4" />, label: "Keywords" },
+                      { href: "/analytics", icon: <Monitor weight="regular" className="size-4" />, label: "Analytics" },
                       { href: "/logs", icon: <TerminalWindow weight="regular" className="size-4" />, label: "Logs" },
                     ].map(({ href, icon, label }) => (
                       <Link
                         key={href}
                         href={href}
+                        role="menuitem"
                         onClick={() => setMoreMenuOpen(false)}
-                        className="flex w-full items-center gap-2 border-b border-hairline px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted no-underline transition-colors duration-[120ms] last:border-b-0 hover:bg-paper-sunk hover:text-ink"
+                        className="flex min-h-11 w-full items-center gap-2 border-b border-hairline px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted no-underline transition-colors duration-[120ms] last:border-b-0 hover:bg-paper-sunk hover:text-ink focus-visible:bg-paper-sunk focus-visible:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brick/40"
                       >
                         {icon}
                         <span>{label}</span>
                       </Link>
                     ))}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMoreMenuOpen(false);
+                        void signOut();
+                      }}
+                      className="flex min-h-11 w-full items-center gap-2 px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted transition-colors duration-[120ms] hover:bg-paper-sunk hover:text-brick focus-visible:bg-paper-sunk focus-visible:text-brick focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brick/40 sm:hidden"
+                    >
+                      <SignOut weight="regular" className="size-4" />
+                      <span>Sign out</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -310,7 +347,7 @@ export function JobsDashboard() {
                 onClick={signOut}
                 title="Sign Out"
                 aria-label="Sign out"
-                className={HEADER_ICON_BUTTON}
+                className={cn(HEADER_ICON_BUTTON, "hidden sm:flex")}
               >
                 <SignOut weight="regular" className="size-4" />
               </button>
@@ -333,10 +370,10 @@ export function JobsDashboard() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "mt-3 w-full" : "w-full"}>
           {user && (
-            <div className="mb-5 flex flex-col gap-3 sm:mb-6">
+            <div className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
               <TabsList
                 variant="line"
-                className="w-full max-w-full flex-nowrap justify-start overflow-x-auto whitespace-nowrap scrollbar-hide"
+                className="w-full max-w-full flex-nowrap justify-start overflow-x-auto whitespace-nowrap scrollbar-hide sm:w-auto sm:flex-1"
               >
                 <TabsTrigger value="all" className={TAB_BASE}>
                   <div className="flex items-center gap-1.5">
@@ -424,14 +461,14 @@ export function JobsDashboard() {
                 })}
               </TabsList>
 
-              <div className="flex justify-start sm:justify-end">
+              <div className="flex shrink-0 justify-stretch sm:justify-end">
                 <AddJobSourceModal
                   onSuccess={(id: string) => setActiveTab(id)}
                   triggerNode={
                     <DsButton
                       variant="secondary"
                       size="sm"
-                      className="gap-1.5 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.09em]"
+                      className="min-h-11 w-full gap-1.5 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.09em] sm:min-h-0 sm:w-auto"
                     >
                       <span className="text-[13px] leading-none">+</span>
                       <span>Source</span>
@@ -615,9 +652,9 @@ export function JobsDashboard() {
                       </span>
                     </div>
                     {isProcessing && (
-                      <div className="h-0.5 w-full overflow-hidden bg-paper-sunk">
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-hairline-strong">
                         <div
-                          className="h-full bg-brick transition-all duration-700 ease-out"
+                          className="h-full rounded-full bg-brick transition-all duration-700 ease-out"
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>
@@ -672,8 +709,9 @@ export function JobsDashboard() {
       </main>
 
       <Toaster
-        position="bottom-right"
+        position="bottom-center"
         theme="light"
+        className="sm:!bottom-8"
         toastOptions={{
           style: {
             background: "var(--paper-card)",

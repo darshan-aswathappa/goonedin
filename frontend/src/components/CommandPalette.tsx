@@ -225,13 +225,13 @@ export function CommandPalette() {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         {/* Backdrop */}
-        <Dialog.Overlay className="fixed inset-0 z-[200] bg-[rgba(28,27,25,0.35)]" />
+        <Dialog.Overlay className="fixed inset-0 z-[200] bg-[var(--scrim)]" />
 
         {/* Panel */}
         <Dialog.Content
           aria-label="Command Palette"
           onOpenAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-[20%] z-[200] w-full max-w-[560px] -translate-x-1/2 overflow-hidden rounded-[10px] border border-hairline bg-paper-card shadow-[0_8px_24px_rgba(28,27,25,0.10)] outline-none"
+          className="fixed left-1/2 top-[20%] z-[200] w-full max-w-[560px] -translate-x-1/2 overflow-hidden rounded-[10px] border border-hairline bg-paper-card shadow-[var(--shadow-md)] outline-none"
         >
           {/* Search input row */}
           <div className="flex items-center border-b border-hairline px-3">

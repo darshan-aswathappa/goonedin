@@ -27,21 +27,23 @@ export function TextField(props: InputProps | TextareaProps) {
     React.ComponentProps<"textarea"> & { multiline?: boolean };
   const generatedId = useId();
   const fieldId = id ?? generatedId;
+  const messageId = `${fieldId}-message`;
   const { multiline, ...fieldProps } = rest as typeof rest & { multiline?: boolean };
+  const describedBy = error || hint ? messageId : undefined;
 
   const fieldClass = cn(
-    "w-full rounded-[4px] border bg-paper-card px-4 py-3 font-mono text-[15px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick disabled:opacity-50",
+    "w-full min-w-0 rounded-[4px] border bg-paper-card px-4 py-3 font-mono text-[16px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick disabled:opacity-50 sm:text-[15px]",
     error ? "border-brick" : "border-hairline",
     multiline && "resize-y",
     className
   );
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       {(label || action) && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           {label && (
-            <Kicker as="label" htmlFor={fieldId}>
+            <Kicker as="label" htmlFor={fieldId} className="min-w-0 truncate">
               {label}
             </Kicker>
           )}
@@ -49,14 +51,36 @@ export function TextField(props: InputProps | TextareaProps) {
         </div>
       )}
       {multiline ? (
-        <textarea id={fieldId} className={fieldClass} {...fieldProps} />
+        <textarea
+          id={fieldId}
+          className={fieldClass}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          {...fieldProps}
+        />
       ) : (
-        <input id={fieldId} className={fieldClass} {...fieldProps} />
+        <input
+          id={fieldId}
+          className={fieldClass}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
+          {...fieldProps}
+        />
       )}
       {error ? (
-        <p className="font-mono text-[11px] uppercase tracking-[0.09em] text-brick">{error}</p>
+        <p
+          id={messageId}
+          role="alert"
+          className="break-words font-mono text-[11px] uppercase tracking-[0.09em] text-brick"
+        >
+          {error}
+        </p>
       ) : (
-        hint && <p className="font-sans text-[13px] text-ink-muted">{hint}</p>
+        hint && (
+          <p id={messageId} className="break-words font-sans text-[13px] text-ink-muted">
+            {hint}
+          </p>
+        )
       )}
     </div>
   );

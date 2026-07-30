@@ -310,8 +310,8 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: var(--radius-sm);
     border: var(--border-w) solid var(--border-default);
     color: var(--text-muted);
@@ -322,6 +322,22 @@
     border-color: var(--accent);
     color: var(--accent);
   }
+  .shell-back:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
+  }
+
+  /* Minimum hit area for icon-only controls (44×44 visual or padded). */
+  .touch-target {
+    position: relative;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .touch-target-expand::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+  }
 
   .job-card-grid {
     display: grid;
@@ -329,28 +345,49 @@
     gap: var(--space-3);
     align-items: stretch;
   }
-  @media (min-width: 640px) {
+  /* Phone landscape / large phone: two columns */
+  @media (min-width: 480px) {
     .job-card-grid {
       grid-template-columns: repeat(2, 1fr);
       gap: var(--space-3);
     }
   }
+  /* Tablet portrait: fluid cards */
   @media (min-width: 768px) {
     .job-card-grid {
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: var(--space-4);
     }
   }
+  /* Desktop */
   @media (min-width: 1024px) {
     .job-card-grid {
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
       gap: var(--space-4);
     }
   }
   @media (min-width: 1280px) {
     .job-card-grid {
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
       gap: var(--space-5);
+    }
+  }
+
+  /* Coarse pointer (touch): reinforce shell hit areas without bloating every control */
+  @media (pointer: coarse) {
+    .shell-back {
+      width: 44px;
+      height: 44px;
+    }
+  }
+
+  /* Prefer active feedback when hover is unavailable */
+  @media (hover: none) {
+    .ds-card:hover {
+      border-color: var(--border-default);
+    }
+    .ds-card:active {
+      border-color: var(--border-emphasis);
     }
   }
 

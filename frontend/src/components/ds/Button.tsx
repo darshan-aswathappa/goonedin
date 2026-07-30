@@ -20,8 +20,8 @@ const dsButtonVariants = cva(
       size: {
         md: "px-5 py-2.5 text-[15px]",
         sm: "px-3.5 py-[7px] text-[13px]",
-        icon: "size-9 p-0",
-        "icon-sm": "size-8 p-0",
+        icon: "size-11 p-0",
+        "icon-sm": "size-9 p-0",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },

@@ -27,6 +27,8 @@ import {
 } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const MAX_RESUME_BYTES = 10 * 1024 * 1024;
+const MAX_FILENAME_LENGTH = 100;
 
 interface Resume {
   id: string;
@@ -115,10 +117,22 @@ export function ResumeManager() {
       return;
     }
 
-    const newStaged = pdfFiles.map(file => ({
+    const oversized = pdfFiles.filter((file) => file.size > MAX_RESUME_BYTES);
+    if (oversized.length > 0) {
+      toast.error(
+        oversized.length === 1
+          ? `${oversized[0].name} is over 10MB`
+          : `${oversized.length} files are over 10MB`
+      );
+    }
+
+    const validFiles = pdfFiles.filter((file) => file.size <= MAX_RESUME_BYTES);
+    if (validFiles.length === 0) return;
+
+    const newStaged = validFiles.map(file => ({
       id: Math.random().toString(36).substring(7),
       file,
-      name: file.name.replace(/\.[^/.]+$/, "")
+      name: file.name.replace(/\.[^/.]+$/, "").slice(0, MAX_FILENAME_LENGTH)
     }));
 
     setStagedFiles(prev => [...prev, ...newStaged]);
@@ -126,6 +140,12 @@ export function ResumeManager() {
 
   const handleUpload = async () => {
     if (stagedFiles.length === 0 || isUploading) return;
+
+    const invalidNames = stagedFiles.filter((s) => !s.name.trim());
+    if (invalidNames.length > 0) {
+      toast.error("Give each resume a filename before uploading");
+      return;
+    }
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -135,18 +155,31 @@ export function ResumeManager() {
 
     for (let i = 0; i < stagedFiles.length; i++) {
       const { file, name } = stagedFiles[i];
+      if (file.size > MAX_RESUME_BYTES) {
+        toast.error(`${file.name} is over 10MB`);
+        setUploadProgress(((i + 1) / stagedFiles.length) * 100);
+        continue;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
-      const finalName = name.toLowerCase().endsWith('.pdf') ? name.slice(0, -4) + '.pdf' : `${name}.pdf`;
+      const trimmedName = name.trim().slice(0, MAX_FILENAME_LENGTH);
+      const finalName = trimmedName.toLowerCase().endsWith('.pdf')
+        ? trimmedName.slice(0, -4) + '.pdf'
+        : `${trimmedName}.pdf`;
       formData.append("filename", finalName);
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
         const response = await fetch(`${API_URL}/resumes`, {
           method: "POST",
           headers: { ...headers },
           body: formData,
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           successCount++;
@@ -155,12 +188,20 @@ export function ResumeManager() {
             const errData = await response.json();
             toast.error(errData.detail || `Failed to upload ${file.name}`);
           } catch {
-            toast.error(`Failed to upload ${file.name}`);
+            if (response.status === 413) {
+              toast.error(`${file.name} is too large`);
+            } else {
+              toast.error(`Failed to upload ${file.name}`);
+            }
           }
         }
       } catch (error) {
         console.error(`Error uploading ${file.name}:`, error);
-        toast.error(`Error uploading ${file.name}`);
+        if (error instanceof DOMException && error.name === "AbortError") {
+          toast.error(`Upload timed out for ${file.name}`);
+        } else {
+          toast.error(`Error uploading ${file.name}`);
+        }
       }
 
       setUploadProgress(((i + 1) / stagedFiles.length) * 100);
@@ -183,7 +224,18 @@ export function ResumeManager() {
     accept: {
       "application/pdf": [".pdf"],
     },
+    maxSize: MAX_RESUME_BYTES,
     disabled: isUploading,
+    onDropRejected: (rejections) => {
+      const tooLarge = rejections.some((r) =>
+        r.errors.some((e) => e.code === "file-too-large")
+      );
+      if (tooLarge) {
+        toast.error("PDF must be 10MB or smaller");
+      } else {
+        toast.error("Only PDF files are allowed");
+      }
+    },
   });
 
   const openDeleteDialog = (resume: Resume) => {
@@ -259,9 +311,10 @@ export function ResumeManager() {
     switch (status) {
       case "completed":
         return "success";
-      case "processing":
       case "failed":
         return "brand";
+      case "processing":
+        return "neutral";
       default:
         return "neutral";
     }
@@ -285,7 +338,8 @@ export function ResumeManager() {
         <div className="flex items-start gap-3 border-b border-hairline px-5 py-4">
           <FileText className="mt-1 size-4 shrink-0 text-ink-muted" />
           <div>
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+            <Kicker className="mb-1">Documents</Kicker>
+            <h2 className="font-serif text-[22px] font-semibold leading-tight text-ink">
               Resume Management
             </h2>
             <p className="mt-1 font-sans text-[13px] text-ink-muted">
@@ -340,9 +394,10 @@ export function ResumeManager() {
                         type="text"
                         aria-label="Resume filename"
                         value={staged.name}
+                        maxLength={MAX_FILENAME_LENGTH}
                         onChange={(e) => {
                           const newStaged = [...stagedFiles];
-                          newStaged[index].name = e.target.value;
+                          newStaged[index].name = e.target.value.slice(0, MAX_FILENAME_LENGTH);
                           setStagedFiles(newStaged);
                         }}
                         className="min-w-0 flex-1 border-none bg-transparent font-mono text-[13px] text-ink outline-none"
@@ -412,7 +467,7 @@ export function ResumeManager() {
                           e.stopPropagation();
                           openDeleteDialog(resume);
                         }}
-                        className="-mr-1 -mt-1 shrink-0 rounded-[4px] p-1 text-ink-faint transition-colors duration-[120ms] hover:bg-brick-tint hover:text-brick"
+                        className="-mr-1 -mt-1 flex size-10 shrink-0 items-center justify-center rounded-[4px] text-ink-faint transition-colors duration-[120ms] hover:bg-brick-tint hover:text-brick focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brick/40"
                         title="Delete resume"
                         aria-label="Delete resume"
                       >

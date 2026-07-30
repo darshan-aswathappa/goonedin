@@ -117,7 +117,8 @@ export function JobList({
     );
   }
 
-  if (error && !isLocked) {
+  /* Soft failures keep the last-good feed; full error only when there's nothing to show. */
+  if (error && !isLocked && displayJobs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-3 py-8 text-center sm:py-24">
         <DsCard
@@ -205,10 +206,11 @@ export function JobList({
                 Sign up free to see all jobs and get real-time alerts.
               </p>
             </div>
-            <Link href="/login" className="w-full">
-              <DsButton variant="primary" size="md" className="w-full" tabIndex={-1}>
-                Get started free
-              </DsButton>
+            <Link
+              href="/login"
+              className={cn(dsButtonVariants({ variant: "primary", size: "md" }), "w-full")}
+            >
+              Get started free
             </Link>
           </DsCard>
         </div>

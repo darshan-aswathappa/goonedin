@@ -79,7 +79,7 @@ function BusiestPostingDays({ jobs }: { jobs: Job[] }) {
   const maxCount = Math.max(...data.map((d) => d.count), 1);
 
   if (jobs.length === 0) {
-    return <EmptyState message="No job data yet." />;
+    return <EmptyState />;
   }
 
   return (
@@ -151,7 +151,7 @@ function PostingTimesByDay({ jobs }: { jobs: Job[] }) {
   const maxCount = Math.max(...data.map((d) => d.count), 1);
 
   if (jobs.length === 0) {
-    return <EmptyState message="No job data yet." />;
+    return <EmptyState />;
   }
 
   return (
@@ -288,10 +288,14 @@ function SalaryDistribution({ jobs }: { jobs: Job[] }) {
 }
 
 // ── Shared empty state ───────────────────────────────────────────────────────
-function EmptyState({ message }: { message: string }) {
+function EmptyState({
+  message = "Open the live feed first — analytics use your current session.",
+}: {
+  message?: string;
+}) {
   return (
-    <div className="flex h-[160px] items-center justify-center rounded-[4px] bg-paper-sunk">
-      <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+    <div className="flex h-[160px] items-center justify-center rounded-[4px] bg-paper-sunk px-4 text-center">
+      <span className="max-w-[36ch] font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
         {message}
       </span>
     </div>

@@ -192,10 +192,10 @@ function SummaryStat({
   tone?: StatTone;
 }) {
   return (
-    <div className="flex flex-col gap-1 border-r border-hairline px-5 py-3">
+    <div className="flex min-w-0 flex-col gap-1 border-b border-r border-hairline px-4 py-3 sm:border-b-0 sm:px-5 [&:nth-child(2n)]:border-r-0 sm:[&:nth-child(2n)]:border-r sm:[&:nth-child(4)]:border-r-0">
       <Kicker>{label}</Kicker>
       <span
-        className={`font-serif text-[28px] font-semibold leading-none tabular-nums ${statToneClass[tone]}`}
+        className={`font-serif text-[22px] font-semibold leading-none tabular-nums sm:text-[28px] ${statToneClass[tone]}`}
       >
         {value}
       </span>
@@ -238,28 +238,31 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+          <span className="hidden shrink-0 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2 sm:inline-flex">
             {jobs.length} jobs loaded
+          </span>
+          <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-card px-2.5 py-1.5 font-mono text-[11px] tabular-nums text-ink-2 sm:hidden">
+            {jobs.length}
           </span>
         </div>
       </header>
 
-      {/* Summary stat strip */}
-      <div className="flex shrink-0 overflow-x-auto border-b border-hairline bg-paper-card scrollbar-hide">
+      {/* Summary: 2×2 on phone, single row from tablet up */}
+      <div className="grid shrink-0 grid-cols-2 border-b border-hairline bg-paper-card sm:flex sm:overflow-x-auto sm:scrollbar-hide">
         <SummaryStat label="Total jobs" value={jobs.length} />
         <SummaryStat label="Companies" value={stats.uniqueCompanies} tone="brick" />
         <SummaryStat label="Remote roles" value={stats.remote} tone="forest" />
         <SummaryStat label="With salary" value={stats.withSalary} />
       </div>
 
-      {/* Chart band leads; AI supports below on narrow, beside on wide */}
-      <main className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto border-b border-hairline p-4 sm:p-5 xl:border-b-0 xl:border-r">
-          <div className="min-h-[280px]">
+      {/* Chart band leads; AI supports below on narrow, beside from lg */}
+      <main className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto border-b border-hairline p-4 sm:p-5 lg:border-b-0 lg:border-r">
+          <div className="min-h-[240px] sm:min-h-[280px]">
             <AnalyticsPanel jobs={jobs} />
           </div>
 
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))]">
             <StatCard title="Top companies">
               <TopCompanies jobs={jobs} />
             </StatCard>
@@ -274,7 +277,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="flex min-h-[320px] flex-col xl:min-h-0 xl:w-[380px] xl:shrink-0">
+        <div className="flex min-h-[min(420px,55dvh)] flex-col lg:min-h-0 lg:w-[min(380px,38%)] lg:shrink-0">
           <AICompanion />
         </div>
       </main>
