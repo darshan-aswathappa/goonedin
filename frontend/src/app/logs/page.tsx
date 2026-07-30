@@ -170,37 +170,38 @@ export default function LogsPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-paper">
-      {/* Top bar */}
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper px-4 py-3">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            title="Back to Dashboard"
-            aria-label="Back to Dashboard"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
-          >
-            <ArrowLeft className="size-[14px]" />
-          </Link>
-          <div>
-            <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
-              System log
-            </h1>
-            <Kicker className="mt-1">Extraction feed</Kicker>
+    <div className="flex h-dvh flex-col bg-paper">
+      <header className="shell-header shrink-0 bg-paper-card">
+        <div className="shell-header-inner">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/"
+              title="Back to Dashboard"
+              aria-label="Back to Dashboard"
+              className="shell-back"
+            >
+              <ArrowLeft className="size-[14px]" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
+                System log
+              </h1>
+              <Kicker className="mt-1">Extraction feed</Kicker>
+            </div>
           </div>
-        </div>
 
-        <StatusBadge
-          label={connected ? "Live" : "Offline"}
-          tone={connected ? "complete" : "failed"}
-          live={connected}
-        />
+          <StatusBadge
+            label={connected ? "Live" : "Offline"}
+            tone={connected ? "complete" : "failed"}
+            live={connected}
+          />
+        </div>
       </header>
 
       {/* Log panel — sunk well, terminal output */}
       <div
         ref={scrollRef}
-        className="ds-well m-3 min-h-0 flex-1 overflow-y-auto rounded-[4px] px-4 py-3"
+        className="ds-well m-3 min-h-0 flex-1 overflow-y-auto rounded-[4px] px-4 py-3 mb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         {loading ? (
           <Kicker>Loading logs&hellip;</Kicker>

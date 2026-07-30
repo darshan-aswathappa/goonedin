@@ -273,23 +273,23 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-paper px-5 py-4">
-      <div className="mx-auto max-w-[860px]">
+    <div className="min-h-dvh bg-paper">
+      <div className="shell-main mx-auto max-w-[860px]">
         {/* Page header */}
         <header className="mb-8 flex items-center gap-4">
           <Link
             href="/"
             title="Back to Dashboard"
             aria-label="Back to Dashboard"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
+            className="shell-back"
           >
             <ArrowLeft className="size-[14px]" />
           </Link>
           <div>
-            <Kicker>Settings</Kicker>
-            <h1 className="mt-1 font-serif text-[28px] font-semibold leading-tight text-ink">
+            <h1 className="font-serif text-[28px] font-semibold leading-tight text-ink">
               Job search filters
             </h1>
+            <Kicker className="mt-1.5">Settings</Kicker>
           </div>
         </header>
 
@@ -299,7 +299,7 @@ export default function SettingsPage() {
             <Kicker>Loading configuration</Kicker>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             <ResumeManager />
             <JobrightCredentialsManager />
 

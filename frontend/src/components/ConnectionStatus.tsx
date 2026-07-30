@@ -15,7 +15,7 @@ export function ConnectionStatus() {
       role="status"
       aria-label={isConnected ? "Connected" : isConnecting ? "Reconnecting" : "Disconnected"}
       className={cn(
-        "inline-flex h-8 shrink-0 items-center rounded-[4px] border px-2.5 transition-colors duration-[180ms]",
+        "inline-flex h-10 shrink-0 items-center rounded-[4px] border px-2.5 transition-colors duration-[180ms]",
         isConnected && "border-hairline bg-forest-tint",
         isConnecting && "border-hairline bg-paper-card",
         connectionStatus === "disconnected" && "border-brick bg-brick-tint"

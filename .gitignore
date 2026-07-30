@@ -3,6 +3,11 @@
 *.env
 backend/.env
 .git
+.impeccable/
+impeccable.json
+.impeccable.md
+.github/skills
+.github/hooks
 
 # macOS
 .DS_Store
