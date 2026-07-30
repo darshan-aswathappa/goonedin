@@ -117,7 +117,9 @@ describe("aggregateSalaryByFunction", () => {
     ];
     const result = aggregateSalaryByFunction(rows);
     expect(result[0].color).toBeTruthy();
-    expect(result[0].color).toMatch(/^#[0-9a-f]{6}$/i);
+    // Colors are design-token references, not hex literals, so the paper
+    // palette can be retuned in globals.css without touching aggregation.
+    expect(result[0].color).toMatch(/^var\(--[a-z0-9-]+\)$/);
   });
 
   it("skips unparseable salary strings", () => {

@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { ResumeManager } from "@/components/ResumeManager";
 import { JobrightCredentialsManager } from "@/components/JobrightCredentialsManager";
+import { Kicker, DsButton } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -35,7 +36,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "target_locations",
     title: "Target Locations",
     description: "Locations to search for jobs (e.g., 'United States', 'Remote')",
-    icon: <MapPin style={{ color: "#000", width: "12px", height: "12px" }} />,
+    icon: <MapPin className="size-4 text-ink-muted" />,
     endpoint: "/config/target-locations",
     dataKey: "target_locations",
   },
@@ -43,7 +44,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "blocked_companies",
     title: "Blocked Companies",
     description: "Companies to filter out from results (e.g., staffing agencies)",
-    icon: <Prohibit style={{ color: "#000", width: "12px", height: "12px" }} />,
+    icon: <Prohibit className="size-4 text-ink-muted" />,
     endpoint: "/config/blocked-companies",
     dataKey: "blocked_companies",
   },
@@ -51,7 +52,7 @@ const CONFIG_SECTIONS: ConfigSection[] = [
     key: "title_filter_keywords",
     title: "Title Filter Keywords",
     description: "Keywords to exclude from job titles (e.g., 'senior', 'lead', 'manager')",
-    icon: <Funnel style={{ color: "#000", width: "12px", height: "12px" }} />,
+    icon: <Funnel className="size-4 text-ink-muted" />,
     endpoint: "/config/title-filter-keywords",
     dataKey: "title_filter_keywords",
   },
@@ -72,10 +73,6 @@ function ConfigEditor({
 }) {
   const [newItem, setNewItem] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [inputFocused, setInputFocused] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [hoveredChip, setHoveredChip] = useState<string | null>(null);
-  const [hoveredTrash, setHoveredTrash] = useState<string | null>(null);
 
   const handleAdd = () => {
     const trimmed = newItem.trim();
@@ -101,159 +98,88 @@ function ConfigEditor({
     : values;
 
   return (
-    <div style={{ background: "#080808", border: "1px solid #1c1c1c", borderRadius: "2px" }}>
+    <section className="rounded-[4px] border border-hairline bg-paper-card">
       {/* Panel header */}
-      <div style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ width: "22px", height: "22px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            {section.icon}
-          </div>
+      <header className="flex items-start justify-between gap-4 border-b border-hairline px-4 py-3">
+        <div className="flex items-start gap-3">
+          <span className="mt-px shrink-0">{section.icon}</span>
           <div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
-              // {section.title.toUpperCase()}
-            </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "2px" }}>
+            <h2 className="font-serif text-[17px] font-semibold leading-tight text-ink">
+              {section.title}
+            </h2>
+            <p className="mt-1 font-sans text-[13px] leading-snug text-ink-muted">
               {section.description}
-            </div>
+            </p>
           </div>
         </div>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", border: "1px solid #1c1c1c", padding: "2px 8px", letterSpacing: "0.1em" }}>
+        <span className="shrink-0 rounded-[4px] border border-hairline px-2 py-0.5 font-mono text-[11px] tracking-[0.09em] text-ink-muted">
           {values.length}
-        </div>
-      </div>
+        </span>
+      </header>
 
       {/* Card body */}
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div className="flex flex-col gap-3 p-4">
         {/* Add input row */}
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div className="flex gap-2">
           <input
             type="text"
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
             placeholder={`Add new ${section.title.toLowerCase().slice(0, -1)}...`}
-            style={{
-              background: "#0a0a0a",
-              border: inputFocused ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-              color: "#f0f0f0",
-              fontFamily: "var(--font-mono)",
-              fontSize: "11px",
-              padding: "7px 10px",
-              flex: 1,
-              outline: "none",
-              borderRadius: "2px",
-            }}
+            className="min-w-0 flex-1 rounded-[4px] border border-hairline bg-paper-card px-3 py-2 font-mono text-[13px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick"
           />
-          <button
+          <DsButton
             onClick={handleAdd}
             disabled={!newItem.trim()}
-            style={{
-              border: "1px solid #ff8c00",
-              background: "rgba(255,140,0,0.1)",
-              color: "#ff8c00",
-              width: "36px",
-              height: "36px",
-              cursor: newItem.trim() ? "pointer" : "not-allowed",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              opacity: newItem.trim() ? 1 : 0.4,
-            }}
+            size="icon"
+            aria-label={`Add ${section.title.toLowerCase()}`}
+            className="shrink-0"
           >
-            <Plus style={{ width: "14px", height: "14px" }} />
-          </button>
+            <Plus className="size-4" />
+          </DsButton>
         </div>
 
         {/* Search filter (when > 5 items) */}
         {values.length > 5 && (
-          <div style={{ position: "relative" }}>
-            <MagnifyingGlass
-              style={{
-                position: "absolute",
-                left: "10px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#555",
-                width: "12px",
-                height: "12px",
-                pointerEvents: "none",
-              }}
-            />
+          <div className="relative">
+            <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-[14px] -translate-y-1/2 text-ink-muted" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
               placeholder="Filter items..."
-              style={{
-                background: "#0a0a0a",
-                border: searchFocused ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-                color: "#f0f0f0",
-                fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                padding: "7px 10px 7px 30px",
-                width: "100%",
-                outline: "none",
-                borderRadius: "2px",
-                boxSizing: "border-box",
-              }}
+              className="w-full rounded-[4px] border border-hairline bg-paper-card py-2 pl-9 pr-3 font-mono text-[13px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick"
             />
           </div>
         )}
 
         {/* Items list */}
-        <div style={{ background: "#000", border: "1px solid #1c1c1c", padding: "12px", maxHeight: "200px", overflowY: "auto" }}>
+        <div className="ds-well max-h-[200px] overflow-y-auto p-3">
           {filteredValues.length === 0 ? (
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", textAlign: "center", padding: "16px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              {searchTerm ? "NO MATCHES FOUND" : "NO ITEMS YET"}
-            </div>
+            <Kicker className="py-4 text-center">
+              {searchTerm ? "No matches found" : "No items yet"}
+            </Kicker>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            <div className="flex flex-wrap gap-2">
               {filteredValues.map((item, index) => {
                 const originalIndex = values.indexOf(item);
                 const chipKey = `${item}-${index}`;
                 return (
-                  <div
+                  <span
                     key={chipKey}
-                    onMouseEnter={() => setHoveredChip(chipKey)}
-                    onMouseLeave={() => setHoveredChip(null)}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      border: hoveredChip === chipKey ? "1px solid #333" : "1px solid #1c1c1c",
-                      background: "#080808",
-                      padding: "4px 10px",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "10px",
-                      color: "#aaa",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      transition: "border-color 0.1s",
-                    }}
+                    className="group inline-flex items-center gap-2 rounded-[4px] border border-hairline bg-paper-card px-2.5 py-1 font-mono text-[13px] leading-none text-ink-2 transition-colors duration-[120ms] hover:border-hairline-strong"
                   >
-                    <span>{item}</span>
+                    {item}
                     <button
+                      type="button"
                       onClick={() => handleRemove(originalIndex)}
-                      onMouseEnter={() => setHoveredTrash(chipKey)}
-                      onMouseLeave={() => setHoveredTrash(null)}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: hoveredTrash === chipKey ? "#ff3333" : "#555",
-                        cursor: "pointer",
-                        display: "flex",
-                        padding: "2px",
-                        transition: "color 0.1s",
-                      }}
+                      aria-label={`Remove ${item}`}
+                      className="flex p-0.5 text-ink-faint transition-colors duration-[120ms] hover:text-brick"
                     >
-                      <Trash style={{ width: "12px", height: "12px" }} />
+                      <Trash className="size-3" />
                     </button>
-                  </div>
+                  </span>
                 );
               })}
             </div>
@@ -261,42 +187,23 @@ function ConfigEditor({
         </div>
 
         {/* Save button */}
-        <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "4px" }}>
-          <button
-            onClick={onSave}
-            disabled={isSaving}
-            style={{
-              border: "1px solid #ff8c00",
-              background: "rgba(255,140,0,0.1)",
-              color: "#ff8c00",
-              fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              fontWeight: 700,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              padding: "7px 20px",
-              cursor: isSaving ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              opacity: isSaving ? 0.6 : 1,
-            }}
-          >
+        <div className="flex justify-end pt-1">
+          <DsButton onClick={onSave} disabled={isSaving} size="sm">
             {isSaving ? (
               <>
-                <CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />
-                SAVING...
+                <CircleNotch className="size-[14px] animate-spin" />
+                Saving
               </>
             ) : (
               <>
-                <FloppyDisk style={{ width: "12px", height: "12px" }} />
-                SAVE CHANGES
+                <FloppyDisk className="size-[14px]" />
+                Save Changes
               </>
             )}
-          </button>
+          </DsButton>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -305,7 +212,6 @@ export default function SettingsPage() {
   const [originalConfig, setOriginalConfig] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [savingSection, setSavingSection] = useState<string | null>(null);
-  const [backHovered, setBackHovered] = useState(false);
 
   const fetchConfig = useCallback(async () => {
     try {
@@ -367,63 +273,42 @@ export default function SettingsPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#000", padding: "16px 20px" }}>
-      <div style={{ maxWidth: "860px", margin: "0 auto" }}>
+    <div className="min-h-screen bg-paper px-5 py-4">
+      <div className="mx-auto max-w-[860px]">
         {/* Page header */}
-        <div style={{ marginBottom: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/">
-            <div
-              onMouseEnter={() => setBackHovered(true)}
-              onMouseLeave={() => setBackHovered(false)}
-              style={{
-                width: "32px",
-                height: "32px",
-                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: backHovered ? "#ff8c00" : "#555",
-                cursor: "pointer",
-                transition: "border-color 0.1s, color 0.1s",
-                flexShrink: 0,
-              }}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft style={{ width: "14px", height: "14px" }} />
-            </div>
+        <header className="mb-8 flex items-center gap-4">
+          <Link
+            href="/"
+            title="Back to Dashboard"
+            aria-label="Back to Dashboard"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
+          >
+            <ArrowLeft className="size-[14px]" />
           </Link>
           <div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em", color: "#ff8c00", textTransform: "uppercase" }}>
-              // SETTINGS
-            </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.12em", textTransform: "uppercase", marginTop: "3px" }}>
-              CONFIGURE JOB SEARCH FILTERS
-            </div>
+            <Kicker>Settings</Kicker>
+            <h1 className="mt-1 font-serif text-[28px] font-semibold leading-tight text-ink">
+              Job search filters
+            </h1>
           </div>
-        </div>
+        </header>
 
         {loading ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "80px 0" }}>
-            <CircleNotch style={{ width: "28px", height: "28px", color: "#ff8c00" }} className="animate-spin" />
+          <div className="flex flex-col items-center gap-4 py-20">
+            <CircleNotch className="size-7 animate-spin text-brick" />
+            <Kicker>Loading configuration</Kicker>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="flex flex-col gap-4">
             <ResumeManager />
             <JobrightCredentialsManager />
 
             {CONFIG_SECTIONS.map((section) => (
-              <div key={section.key} style={{ position: "relative" }}>
+              <div key={section.key} className="relative">
                 {hasUnsavedChanges(section.key) && (
-                  <div
+                  <span
                     title="Unsaved changes"
-                    style={{
-                      width: "4px",
-                      height: "4px",
-                      background: "#ffd700",
-                      position: "absolute",
-                      left: "-8px",
-                      top: "14px",
-                    }}
+                    className="absolute -left-3 top-4 size-1.5 rounded-full bg-brick"
                   />
                 )}
                 <ConfigEditor
@@ -442,7 +327,8 @@ export default function SettingsPage() {
       <Toaster
         position="bottom-right"
         toastOptions={{
-          className: "rounded-none font-mono text-xs bg-[#080808] border border-[#333] text-[#f0f0f0]",
+          className:
+            "rounded-[4px] font-mono text-[13px] bg-paper-card border border-hairline-strong text-ink",
         }}
       />
     </div>

@@ -133,7 +133,7 @@ export default function SkillDemandBar({ skills }: Props) {
                   style={{
                     position: "relative",
                     height: "5px",
-                    background: "var(--bg-secondary, #111)",
+                    background: "var(--paper-sunk)",
                     borderRadius: "1px",
                     overflow: "hidden",
                   }}
@@ -145,7 +145,7 @@ export default function SkillDemandBar({ skills }: Props) {
                       left: 0,
                       bottom: 0,
                       width: `${mustPct}%`,
-                      background: "rgba(255, 140, 0, 0.75)",
+                      background: "var(--teal)",
                     }}
                   />
                 </div>
@@ -154,7 +154,7 @@ export default function SkillDemandBar({ skills }: Props) {
                   style={{
                     position: "relative",
                     height: "3px",
-                    background: "var(--bg-secondary, #111)",
+                    background: "var(--paper-sunk)",
                     borderRadius: "1px",
                     overflow: "hidden",
                   }}
@@ -166,8 +166,7 @@ export default function SkillDemandBar({ skills }: Props) {
                       left: 0,
                       bottom: 0,
                       width: `${gthPct}%`,
-                      background: "var(--border-bright)",
-                      opacity: 0.7,
+                      background: "var(--ink-faint)",
                     }}
                   />
                 </div>
@@ -225,7 +224,7 @@ export default function SkillDemandBar({ skills }: Props) {
             style={{
               width: "12px",
               height: "5px",
-              background: "rgba(255, 140, 0, 0.75)",
+              background: "var(--teal)",
               flexShrink: 0,
             }}
           />
@@ -246,8 +245,7 @@ export default function SkillDemandBar({ skills }: Props) {
             style={{
               width: "12px",
               height: "3px",
-              background: "var(--border-bright)",
-              opacity: 0.7,
+              background: "var(--ink-faint)",
               flexShrink: 0,
             }}
           />

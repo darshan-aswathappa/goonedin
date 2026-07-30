@@ -5,7 +5,13 @@ import { resolveJobDate } from "@/lib/analytics";
 
 export const revalidate = 60; // Cache for 60 seconds; revalidates in background
 
-const COMPANY_COLORS = ["#00bfff", "#ff6b6b", "#4ade80", "#ffd700", "#f97316"];
+const COMPANY_COLORS = [
+  "var(--series-1)",
+  "var(--series-2)",
+  "var(--series-3)",
+  "var(--series-4)",
+  "var(--series-5)",
+];
 
 export async function GET() {
   try {
@@ -81,7 +87,7 @@ export async function GET() {
 
     const companies = top5.map((name, i) => ({
       name,
-      color: COMPANY_COLORS[i] ?? "#64748b",
+      color: COMPANY_COLORS[i] ?? "var(--muted)",
     }));
 
     return NextResponse.json({ companies, data });

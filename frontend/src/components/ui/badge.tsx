@@ -5,19 +5,17 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 max-w-full [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  "inline-flex items-center justify-center rounded-[4px] border border-transparent px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.09em] w-fit whitespace-nowrap shrink-0 max-w-full [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:ring-brick/40 focus-visible:ring-2 aria-invalid:border-brick transition-colors overflow-hidden",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+        default: "bg-brick-tint text-brick [a&]:hover:bg-brick-tint/70",
+        secondary: "bg-paper-sunk text-ink-muted [a&]:hover:bg-hairline",
+        destructive: "bg-brick text-paper-card [a&]:hover:bg-brick-hover",
         outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
+          "border-hairline-strong text-ink-2 [a&]:hover:bg-paper-sunk [a&]:hover:text-ink",
+        ghost: "text-ink-muted [a&]:hover:bg-paper-sunk [a&]:hover:text-ink",
+        link: "text-brick underline-offset-4 [a&]:hover:underline",
       },
     },
     defaultVariants: {

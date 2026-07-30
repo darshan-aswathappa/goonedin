@@ -73,11 +73,13 @@ export default function TerminalHeader({ lastUpdated, onRefresh }: Props) {
       >
         {/* Left: Identity */}
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* Masthead — the one place the serif display voice speaks. */}
           <span
             style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.2em",
+              fontFamily: "var(--font-serif)",
+              fontSize: "16px",
+              fontWeight: 600,
+              letterSpacing: "0.1em",
               color: "var(--teal)",
             }}
           >

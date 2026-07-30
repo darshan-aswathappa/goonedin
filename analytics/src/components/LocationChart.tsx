@@ -68,14 +68,25 @@ function clusterBayArea(
 }
 
 /**
- * Orange-to-red gradient using CSS variable palette.
- * Interpolates between --teal (#ff8c00) and --red (#ff3333).
+ * Posting-volume intensity ramp: stone → brick.
+ *
+ * `count` is raw posting volume — magnitude, not sentiment — so this is a
+ * single-hue intensity ramp on the one brand accent, NOT a good/bad diverging
+ * scale. Low-volume cities recede to stone; the market's centres of gravity
+ * saturate to brick.
+ *
+ * Interpolates --series-6 stone (#8b8277) → --teal brick (#c0362c).
+ * The endpoints are concrete hex because the ramp is computed numerically per
+ * bubble; a var() reference cannot be interpolated in JS.
  */
+const RAMP_LOW = { r: 139, g: 130, b: 119 }; // #8b8277 stone
+const RAMP_HIGH = { r: 192, g: 54, b: 44 }; // #c0362c brick
+
 function bubbleColor(count: number, maxCount: number): string {
   const t = Math.min(count / maxCount, 1);
-  const r = 255;
-  const g = Math.round(140 * (1 - t) + 51 * t);
-  const b = Math.round(0 * (1 - t) + 51 * t);
+  const r = Math.round(RAMP_LOW.r + (RAMP_HIGH.r - RAMP_LOW.r) * t);
+  const g = Math.round(RAMP_LOW.g + (RAMP_HIGH.g - RAMP_LOW.g) * t);
+  const b = Math.round(RAMP_LOW.b + (RAMP_HIGH.b - RAMP_LOW.b) * t);
   return `rgb(${r},${g},${b})`;
 }
 

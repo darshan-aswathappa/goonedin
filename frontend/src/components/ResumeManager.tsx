@@ -7,23 +7,24 @@ import {
   Trash,
   CircleNotch,
   Warning,
-  CheckCircle,
-  Brain,
   GraduationCap,
   Medal,
   Code,
   Sparkle,
-  X,
 } from "@phosphor-icons/react";
 import { useDropzone } from "react-dropzone";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { formatDistanceToNow } from "date-fns";
+import {
+  Chip,
+  DsButton,
+  DsCard,
+  DsModal,
+  Kicker,
+  StatusBadge,
+  type StatusTone,
+} from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -43,6 +44,22 @@ interface ResumeAnalysis {
   summary: string;
 }
 
+/** Mono uppercase label above each analysis block. */
+function SectionLabel({
+  icon,
+  children,
+}: {
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <Kicker className="mb-3 flex items-center gap-2">
+      {icon}
+      {children}
+    </Kicker>
+  );
+}
+
 export function ResumeManager() {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [stagedFiles, setStagedFiles] = useState<{ id: string; file: File; name: string }[]>([]);
@@ -58,15 +75,6 @@ export function ResumeManager() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resumeToDelete, setResumeToDelete] = useState<Resume | null>(null);
   const [isDeletingResume, setIsDeletingResume] = useState(false);
-
-  // Hover states
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [hoveredDeleteId, setHoveredDeleteId] = useState<string | null>(null);
-  const [hoveredRemoveId, setHoveredRemoveId] = useState<string | null>(null);
-  const [uploadBtnHovered, setUploadBtnHovered] = useState(false);
-  const [cancelBtnHovered, setCancelBtnHovered] = useState(false);
-  const [deleteBtnHovered, setDeleteBtnHovered] = useState(false);
-  const [closeDialogHovered, setCloseDialogHovered] = useState(false);
 
   const fetchResumes = useCallback(async () => {
     try {
@@ -246,258 +254,192 @@ export function ResumeManager() {
     }
   };
 
-  const getStatusBadge = (status?: string) => {
+  /** Top stripe on a resume card is the data status, not a decoration. */
+  const getCardStatus = (status?: string): "success" | "brand" | "neutral" => {
     switch (status) {
-      case "processing":
-        return (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,215,0,0.3)", background: "rgba(255,215,0,0.05)", color: "#ffd700", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            <CircleNotch style={{ width: "10px", height: "10px" }} className="animate-spin" />
-            <span>ANALYZING</span>
-          </div>
-        );
       case "completed":
-        return (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,140,0,0.3)", background: "rgba(255,140,0,0.05)", color: "#ff8c00", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            <Brain style={{ width: "10px", height: "10px" }} />
-            <span>AI READY</span>
-          </div>
-        );
+        return "success";
+      case "processing":
       case "failed":
-        return (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,51,51,0.3)", background: "rgba(255,51,51,0.05)", color: "#ff3333", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            <Warning style={{ width: "10px", height: "10px" }} />
-            <span>FAILED</span>
-          </div>
-        );
+        return "brand";
       default:
-        return (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "4px", border: "1px solid rgba(255,140,0,0.3)", background: "rgba(255,140,0,0.05)", color: "#ff8c00", fontFamily: "var(--font-mono)", fontSize: "9px", padding: "2px 8px", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            <CheckCircle style={{ width: "10px", height: "10px" }} />
-            <span>READY</span>
-          </div>
-        );
+        return "neutral";
     }
+  };
+
+  const getStatusBadge = (status?: string) => {
+    const map: Record<string, { label: string; tone: StatusTone; live?: boolean }> = {
+      processing: { label: "ANALYZING", tone: "active", live: true },
+      completed: { label: "AI READY", tone: "complete" },
+      failed: { label: "FAILED", tone: "failed" },
+    };
+    const entry = map[status ?? ""] ?? { label: "READY", tone: "pending" as StatusTone };
+    return <StatusBadge label={entry.label} tone={entry.tone} live={entry.live} />;
   };
 
   return (
     <>
-      {/* Main card */}
-      <div style={{ background: "#080808", border: "1px solid #1c1c1c", borderRadius: "2px" }}>
+      {/* Main panel */}
+      <div className="rounded-[4px] border border-hairline bg-paper-card">
         {/* Panel header */}
-        <div style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{ width: "22px", height: "22px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <FileText style={{ width: "12px", height: "12px", color: "#000" }} />
-          </div>
+        <div className="flex items-start gap-3 border-b border-hairline px-5 py-4">
+          <FileText className="mt-1 size-4 shrink-0 text-ink-muted" />
           <div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>// RESUME MANAGEMENT</div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "2px" }}>Upload PDF resumes for AI skill extraction</div>
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+              Resume Management
+            </h2>
+            <p className="mt-1 font-sans text-[13px] text-ink-muted">
+              Upload PDF resumes for AI skill extraction
+            </p>
           </div>
         </div>
 
-        <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "20px" }}>
+        <div className="flex flex-col gap-8 p-5">
           {/* Dropzone */}
           <div
             {...getRootProps()}
-            style={{
-              border: isDragActive ? "1px solid #ff8c00" : "1px dashed #1c1c1c",
-              background: isDragActive ? "rgba(255,140,0,0.05)" : "#000",
-              padding: "32px 16px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-              cursor: isUploading ? "not-allowed" : "pointer",
-              opacity: isUploading ? 0.6 : 1,
-              transition: "border-color 0.15s",
-              position: "relative",
-            }}
+            className={`relative flex flex-col items-center justify-center rounded-[4px] border border-dashed px-4 py-10 text-center transition-colors duration-[120ms] ${
+              isDragActive
+                ? "border-brick bg-brick-tint"
+                : "border-hairline-strong bg-paper-sunk hover:border-ink-faint"
+            } ${isUploading ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
           >
             <input {...getInputProps()} />
-            <div style={{ width: "36px", height: "36px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" }}>
-              <CloudArrowUp style={{ width: "18px", height: "18px", color: "#000" }} />
-            </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 600, color: "#f0f0f0", letterSpacing: "0.08em", marginBottom: "6px" }}>
+            <CloudArrowUp className="mb-3 size-6 text-ink-muted" />
+            <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.09em] text-ink">
               {isDragActive ? "DROP RESUME HERE" : "DRAG & DROP RESUME"}
             </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.1em", border: "1px solid #1c1c1c", padding: "2px 8px" }}>
+            <Kicker className="rounded-[4px] border border-hairline-strong bg-paper-card px-2 py-1">
               PDF ONLY · 10MB MAX
-            </div>
+            </Kicker>
             {isUploading && (
-              <div style={{ position: "absolute", bottom: "8px", left: "16px", right: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                <div style={{ height: "2px", background: "#1c1c1c", width: "100%" }}>
-                  <div style={{ height: "100%", background: "#ff8c00", width: `${uploadProgress}%`, transition: "width 0.3s" }} />
+              <div className="absolute inset-x-4 bottom-3 flex flex-col gap-1.5">
+                <div className="h-1 w-full rounded-full bg-hairline-strong">
+                  <div
+                    className="h-full rounded-full bg-brick transition-[width] duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
                 </div>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#ff8c00", textAlign: "center", letterSpacing: "0.1em" }}>{Math.round(uploadProgress)}%</span>
+                <span className="text-center font-mono text-[11px] tracking-[0.09em] text-brick">
+                  {Math.round(uploadProgress)}%
+                </span>
               </div>
             )}
           </div>
 
           {/* Staged files */}
           {stagedFiles.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
-                // STAGED FOR UPLOAD
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div className="flex flex-col gap-3">
+              <Kicker count={stagedFiles.length}>STAGED FOR UPLOAD</Kicker>
+              <div className="flex flex-col gap-2">
                 {stagedFiles.map((staged, index) => (
-                  <div key={staged.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ background: "#0a0a0a", border: "1px solid #1c1c1c", padding: "8px 12px", display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-                      <FileText style={{ width: "12px", height: "12px", color: "#555", flexShrink: 0 }} />
+                  <div key={staged.id} className="flex items-center gap-2">
+                    <div className="flex flex-1 items-center gap-2.5 rounded-[4px] border border-hairline bg-paper-sunk px-3 py-2">
+                      <FileText className="size-4 shrink-0 text-ink-muted" />
                       <input
                         type="text"
+                        aria-label="Resume filename"
                         value={staged.name}
                         onChange={(e) => {
                           const newStaged = [...stagedFiles];
                           newStaged[index].name = e.target.value;
                           setStagedFiles(newStaged);
                         }}
-                        style={{ background: "transparent", border: "none", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "11px", flex: 1, outline: "none" }}
+                        className="min-w-0 flex-1 border-none bg-transparent font-mono text-[13px] text-ink outline-none"
                         disabled={isUploading}
                       />
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", border: "1px solid #1c1c1c", padding: "1px 6px" }}>.pdf</span>
+                      <span className="shrink-0 rounded-[4px] border border-hairline-strong bg-paper-card px-1.5 py-0.5 font-mono text-[11px] text-ink-muted">
+                        .pdf
+                      </span>
                     </div>
-                    <button
+                    <DsButton
+                      variant="secondary"
+                      size="icon-sm"
                       onClick={() => setStagedFiles(prev => prev.filter(s => s.id !== staged.id))}
-                      onMouseEnter={() => setHoveredRemoveId(staged.id)}
-                      onMouseLeave={() => setHoveredRemoveId(null)}
                       disabled={isUploading}
-                      style={{
-                        border: hoveredRemoveId === staged.id ? "1px solid #ff3333" : "1px solid #1c1c1c",
-                        background: "transparent",
-                        color: hoveredRemoveId === staged.id ? "#ff3333" : "#555",
-                        padding: "6px",
-                        cursor: isUploading ? "not-allowed" : "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "border-color 0.1s, color 0.1s",
-                      }}
+                      aria-label="Remove staged file"
+                      className="text-ink-muted hover:border-brick hover:bg-brick-tint hover:text-brick"
                     >
-                      <Trash style={{ width: "14px", height: "14px" }} />
-                    </button>
+                      <Trash className="size-4" />
+                    </DsButton>
                   </div>
                 ))}
               </div>
 
-              <button
+              <DsButton
+                variant="primary"
                 onClick={handleUpload}
                 disabled={isUploading}
-                onMouseEnter={() => setUploadBtnHovered(true)}
-                onMouseLeave={() => setUploadBtnHovered(false)}
-                style={{
-                  border: "1px solid #ff8c00",
-                  background: uploadBtnHovered ? "rgba(255,140,0,0.2)" : "rgba(255,140,0,0.1)",
-                  color: "#ff8c00",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  padding: "10px 20px",
-                  cursor: isUploading ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  width: "100%",
-                  opacity: isUploading ? 0.6 : 1,
-                  transition: "background 0.1s",
-                }}
+                className="w-full"
               >
                 {isUploading ? (
-                  <CircleNotch style={{ width: "14px", height: "14px" }} className="animate-spin" />
+                  <CircleNotch className="size-4 animate-spin" />
                 ) : (
-                  <CloudArrowUp style={{ width: "14px", height: "14px" }} />
+                  <CloudArrowUp className="size-4" />
                 )}
-                UPLOAD AND ANALYZE ({stagedFiles.length} RESUME{stagedFiles.length !== 1 ? "S" : ""})
-              </button>
+                Upload and analyze ({stagedFiles.length} resume{stagedFiles.length !== 1 ? "s" : ""})
+              </DsButton>
             </div>
           )}
 
           {/* Resume list */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
-              // UPLOADED RESUMES ({resumes.length})
-            </div>
+          <div className="flex flex-col gap-3">
+            <Kicker count={resumes.length}>UPLOADED RESUMES</Kicker>
 
             {isLoading ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 0" }}>
-                <CircleNotch style={{ width: "20px", height: "20px", color: "#ff8c00" }} className="animate-spin" />
+              <div className="flex items-center justify-center py-10">
+                <CircleNotch className="size-5 animate-spin text-ink-muted" />
               </div>
             ) : resumes.length === 0 ? (
-              <div style={{ background: "#000", border: "1px dashed #1c1c1c", padding: "32px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.1em", textTransform: "uppercase" }}>NO RESUMES YET — UPLOAD YOUR PDF TO GET STARTED</span>
+              <div className="flex flex-col items-center gap-2 rounded-[4px] border border-dashed border-hairline-strong bg-paper-sunk p-8">
+                <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+                  NO RESUMES YET — UPLOAD YOUR PDF TO GET STARTED
+                </span>
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "8px" }}>
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
                 {resumes.map((resume) => (
-                  <div
+                  <DsCard
                     key={resume.id}
+                    status={getCardStatus(resume.analysis_status)}
                     onClick={() => handleViewAnalysis(resume)}
-                    onMouseEnter={() => setHoveredId(resume.id)}
-                    onMouseLeave={() => setHoveredId(null)}
-                    style={{
-                      background: "#000",
-                      border: hoveredId === resume.id ? "1px solid #333" : "1px solid #1c1c1c",
-                      padding: "12px 14px",
-                      cursor: "pointer",
-                      transition: "border-color 0.1s",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                    }}
+                    className="flex cursor-pointer flex-col gap-3 p-4"
                   >
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "8px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden", minWidth: 0 }}>
-                        <div style={{ width: "28px", height: "28px", background: "#080808", border: "1px solid #1c1c1c", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                          <FileText style={{ width: "14px", height: "14px", color: "#ff8c00" }} />
-                        </div>
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px", color: "#f0f0f0", textTransform: "uppercase", letterSpacing: "0.05em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {resume.filename}
-                        </span>
-                      </div>
+                    <div className="flex items-start justify-between gap-2">
+                      {getStatusBadge(resume.analysis_status)}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           openDeleteDialog(resume);
                         }}
-                        onMouseEnter={() => setHoveredDeleteId(resume.id)}
-                        onMouseLeave={() => setHoveredDeleteId(null)}
-                        style={{
-                          background: "transparent",
-                          border: hoveredDeleteId === resume.id ? "1px solid #ff3333" : "1px solid #1c1c1c",
-                          color: hoveredDeleteId === resume.id ? "#ff3333" : "#555",
-                          padding: "4px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                          transition: "border-color 0.1s, color 0.1s",
-                        }}
+                        className="-mr-1 -mt-1 shrink-0 rounded-[4px] p-1 text-ink-faint transition-colors duration-[120ms] hover:bg-brick-tint hover:text-brick"
                         title="Delete resume"
+                        aria-label="Delete resume"
                       >
-                        <Trash style={{ width: "12px", height: "12px" }} />
+                        <Trash className="size-4" />
                       </button>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span
-                        suppressHydrationWarning
-                        style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", border: "1px solid #1c1c1c", padding: "1px 6px", letterSpacing: "0.05em" }}
-                      >
-                        {(() => {
-                          try {
-                            return formatDistanceToNow(new Date(resume.created_at), { addSuffix: true });
-                          } catch {
-                            return "recently";
-                          }
-                        })()}
-                      </span>
-                      {getStatusBadge(resume.analysis_status)}
-                    </div>
-                  </div>
+                    <h3
+                      className="truncate font-serif text-[17px] font-semibold leading-tight text-ink"
+                      title={resume.filename}
+                    >
+                      {resume.filename}
+                    </h3>
+
+                    <span
+                      suppressHydrationWarning
+                      className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted"
+                    >
+                      {(() => {
+                        try {
+                          return formatDistanceToNow(new Date(resume.created_at), { addSuffix: true });
+                        } catch {
+                          return "recently";
+                        }
+                      })()}
+                    </span>
+                  </DsCard>
                 ))}
               </div>
             )}
@@ -506,166 +448,124 @@ export function ResumeManager() {
       </div>
 
       {/* Analysis Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="max-w-2xl rounded-none max-h-[85vh] overflow-y-auto p-0 gap-0"
-          style={{ background: "#060606", border: "1px solid #333", boxShadow: "none", borderRadius: "2px" }}
-        >
-          <DialogTitle className="sr-only">AI Resume Analysis</DialogTitle>
-          {/* Header bar */}
-          <div style={{ background: "#080808", borderBottom: "1px solid #1c1c1c", padding: "12px 16px", position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
-                // AI RESUME ANALYSIS
-              </div>
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "3px" }}>
-                {selectedResume?.filename}
-              </div>
-            </div>
-            <button
-              onClick={() => setDialogOpen(false)}
-              onMouseEnter={() => setCloseDialogHovered(true)}
-              onMouseLeave={() => setCloseDialogHovered(false)}
-              style={{
-                background: "transparent",
-                border: closeDialogHovered ? "1px solid #ff3333" : "1px solid #1c1c1c",
-                color: closeDialogHovered ? "#ff3333" : "#555",
-                padding: "4px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "border-color 0.1s, color 0.1s",
-              }}
-            >
-              <X style={{ width: "14px", height: "14px" }} />
-            </button>
+      <DsModal
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        kicker="AI RESUME ANALYSIS"
+        title={selectedResume?.filename || "Resume analysis"}
+      >
+        {isLoadingAnalysis ? (
+          <div className="flex flex-col items-center justify-center gap-4 py-14">
+            <CircleNotch className="size-7 animate-spin text-ink-muted" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+              ANALYZING RESUME_
+            </span>
           </div>
-
-          {/* Content area */}
-          <div style={{ background: "#000", padding: "16px" }}>
-            {isLoadingAnalysis ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: "16px" }}>
-                <CircleNotch style={{ width: "28px", height: "28px", color: "#ff8c00" }} className="animate-spin" />
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#ff8c00", letterSpacing: "0.18em", textTransform: "uppercase" }}>ANALYZING RESUME_</span>
-              </div>
-            ) : analysisStatus === "processing" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", textAlign: "center", gap: "12px" }}>
-                <CircleNotch style={{ width: "28px", height: "28px", color: "#ff8c00" }} className="animate-spin" />
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#aaa", letterSpacing: "0.05em", maxWidth: "320px", lineHeight: 1.6 }}>
-                  RESUME ANALYSIS IN PROGRESS. THIS USUALLY TAKES 15–30 SECONDS. YOU CAN CLOSE THIS AND CHECK BACK SHORTLY.
+        ) : analysisStatus === "processing" ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+            <CircleNotch className="size-7 animate-spin text-ink-muted" />
+            <p className="max-w-[380px] font-sans text-[15px] leading-relaxed text-ink-2">
+              Resume analysis in progress. This usually takes 15&ndash;30 seconds. You can close
+              this and check back shortly.
+            </p>
+          </div>
+        ) : analysisStatus === "failed" ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+            <Warning className="size-7 text-brick" />
+            <p className="font-sans text-[15px] text-brick">
+              Analysis failed. Try uploading again.
+            </p>
+            <Kicker>MAKE SURE YOUR PDF IS READABLE AND NOT SCANNED</Kicker>
+          </div>
+        ) : analysis ? (
+          <div className="flex flex-col gap-8">
+            {analysis.summary && (
+              <div>
+                <SectionLabel>PROFESSIONAL SUMMARY</SectionLabel>
+                <div className="rounded-[4px] border border-hairline bg-paper-sunk px-4 py-3 font-sans text-[15px] leading-relaxed text-ink-2">
+                  {analysis.summary}
                 </div>
               </div>
-            ) : analysisStatus === "failed" ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", textAlign: "center", gap: "12px" }}>
-                <Warning style={{ width: "28px", height: "28px", color: "#ff3333" }} />
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#ff3333", letterSpacing: "0.05em" }}>
-                  ANALYSIS FAILED. TRY UPLOADING AGAIN.
-                </div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.08em" }}>
-                  MAKE SURE YOUR PDF IS READABLE AND NOT SCANNED.
+            )}
+
+            {analysis.education && analysis.education.length > 0 && (
+              <div>
+                <SectionLabel icon={<GraduationCap className="size-3.5 text-ink-muted" />}>
+                  EDUCATION
+                </SectionLabel>
+                <div className="flex flex-col gap-1.5">
+                  {analysis.education.map((item, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[4px] border border-hairline bg-paper-sunk px-3 py-2 font-sans text-[13px] text-ink-2"
+                    >
+                      {item}
+                    </div>
+                  ))}
                 </div>
               </div>
-            ) : analysis ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                {analysis.summary && (
-                  <div style={{ marginBottom: "0" }}>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px" }}>
-                      // PROFESSIONAL SUMMARY
-                    </div>
-                    <div style={{ background: "#080808", border: "1px solid #1c1c1c", padding: "12px 16px", fontFamily: "var(--font-mono)", fontSize: "11px", color: "#aaa", lineHeight: 1.6 }}>
-                      {analysis.summary}
-                    </div>
-                  </div>
-                )}
+            )}
 
-                {analysis.education && analysis.education.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <GraduationCap style={{ width: "10px", height: "10px" }} />
-                      // EDUCATION
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      {analysis.education.map((item, i) => (
-                        <div key={i} style={{ background: "#080808", border: "1px solid #1c1c1c", padding: "8px 12px", fontFamily: "var(--font-mono)", fontSize: "10px", color: "#aaa" }}>
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {analysis.certifications && analysis.certifications.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Medal style={{ width: "10px", height: "10px" }} />
-                      // CERTIFICATIONS
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {analysis.certifications.map((cert, i) => (
-                        <div key={i} style={{ border: "1px solid #333", background: "#080808", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px" }}>
-                          {cert}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {analysis.skills && analysis.skills.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Code style={{ width: "10px", height: "10px" }} />
-                      // SKILLS
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {analysis.skills.map((skill, i) => (
-                        <div
-                          key={i}
-                          style={{ border: "1px solid #333", background: "#080808", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "default" }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#ff8c00"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#333"; }}
-                        >
-                          {skill}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {analysis.project_keywords && analysis.project_keywords.length > 0 && (
-                  <div>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Sparkle style={{ width: "10px", height: "10px" }} />
-                      // EXPERIENCE KEYWORDS
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                      {analysis.project_keywords.map((kw, i) => (
-                        <div
-                          key={i}
-                          style={{ border: "1px solid #333", background: "#080808", color: "#f0f0f0", fontFamily: "var(--font-mono)", fontSize: "10px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", padding: "3px 8px", cursor: "default" }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#ffd700"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "#333"; }}
-                        >
-                          {kw}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {analysis.certifications && analysis.certifications.length > 0 && (
+              <div>
+                <SectionLabel icon={<Medal className="size-3.5 text-ink-muted" />}>
+                  CERTIFICATIONS
+                </SectionLabel>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.certifications.map((cert, i) => (
+                    <Chip key={i} tone="success" className="text-[11px]">
+                      {cert}
+                    </Chip>
+                  ))}
+                </div>
               </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 0", gap: "8px" }}>
-                <Warning style={{ width: "20px", height: "20px", color: "#555" }} />
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.1em", textTransform: "uppercase" }}>ANALYSIS NOT READY YET. PLEASE CHECK BACK IN A MOMENT.</span>
+            )}
+
+            {analysis.skills && analysis.skills.length > 0 && (
+              <div>
+                <SectionLabel icon={<Code className="size-3.5 text-ink-muted" />}>
+                  SKILLS
+                </SectionLabel>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.skills.map((skill, i) => (
+                    <Chip
+                      key={i}
+                      className="text-[11px] transition-colors duration-[120ms] hover:border-brick hover:text-brick"
+                    >
+                      {skill}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {analysis.project_keywords && analysis.project_keywords.length > 0 && (
+              <div>
+                <SectionLabel icon={<Sparkle className="size-3.5 text-ink-muted" />}>
+                  EXPERIENCE KEYWORDS
+                </SectionLabel>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.project_keywords.map((kw, i) => (
+                    <Chip key={i} tone="sunk" className="text-[11px]">
+                      {kw}
+                    </Chip>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-2 py-14 text-center">
+            <Warning className="size-5 text-ink-muted" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+              ANALYSIS NOT READY YET. PLEASE CHECK BACK IN A MOMENT.
+            </span>
+          </div>
+        )}
+      </DsModal>
 
       {/* Delete confirmation Dialog */}
-      <Dialog
+      <DsModal
         open={deleteDialogOpen}
         onOpenChange={(open) => {
           if (!isDeletingResume) {
@@ -673,89 +573,46 @@ export function ResumeManager() {
             if (!open) setResumeToDelete(null);
           }
         }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="max-w-md rounded-none p-0 gap-0"
-          style={{ background: "#060606", border: "1px solid #333", boxShadow: "none", borderRadius: "2px" }}
-        >
-          <DialogTitle className="sr-only">Delete Resume</DialogTitle>
-          {/* Header */}
-          <div style={{ background: "#080808", borderBottom: "1px solid rgba(255,51,51,0.3)", padding: "12px 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-              <Warning style={{ width: "12px", height: "12px", color: "#ff3333" }} />
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff3333", textTransform: "uppercase" }}>
-                // DELETE RESUME
-              </div>
-            </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#aaa", lineHeight: 1.5 }}>
-              This will permanently remove <span style={{ color: "#f0f0f0", fontWeight: 700 }}>{resumeToDelete?.filename}</span> and its AI analysis.
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "8px", padding: "12px 16px" }}>
-            <button
-              type="button"
+        kicker="DELETE RESUME"
+        title="Delete Resume"
+        className="max-w-[460px]"
+        footer={
+          <>
+            <DsButton
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setDeleteDialogOpen(false);
                 setResumeToDelete(null);
               }}
               disabled={isDeletingResume}
-              onMouseEnter={() => setCancelBtnHovered(true)}
-              onMouseLeave={() => setCancelBtnHovered(false)}
-              style={{
-                border: cancelBtnHovered ? "1px solid #333" : "1px solid #1c1c1c",
-                background: "transparent",
-                color: cancelBtnHovered ? "#aaa" : "#555",
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                padding: "7px 16px",
-                cursor: isDeletingResume ? "not-allowed" : "pointer",
-                transition: "border-color 0.1s, color 0.1s",
-              }}
             >
-              CANCEL
-            </button>
-            <button
-              type="button"
+              Cancel
+            </DsButton>
+            <DsButton
+              variant="danger"
+              size="sm"
               onClick={handleDeleteConfirm}
               disabled={!resumeToDelete || isDeletingResume}
-              onMouseEnter={() => setDeleteBtnHovered(true)}
-              onMouseLeave={() => setDeleteBtnHovered(false)}
-              style={{
-                border: "1px solid #ff3333",
-                background: deleteBtnHovered ? "rgba(255,51,51,0.2)" : "rgba(255,51,51,0.1)",
-                color: "#ff3333",
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                padding: "7px 16px",
-                cursor: (!resumeToDelete || isDeletingResume) ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                opacity: (!resumeToDelete || isDeletingResume) ? 0.6 : 1,
-                transition: "background 0.1s",
-              }}
             >
               {isDeletingResume ? (
                 <>
-                  <CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />
-                  DELETING...
+                  <CircleNotch className="size-3.5 animate-spin" />
+                  Deleting…
                 </>
               ) : (
-                "DELETE"
+                "Delete"
               )}
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </DsButton>
+          </>
+        }
+      >
+        <p className="font-sans text-[15px] leading-relaxed text-ink-2">
+          This will permanently remove{" "}
+          <span className="font-mono text-[13px] text-ink">{resumeToDelete?.filename}</span> and its
+          AI analysis.
+        </p>
+      </DsModal>
     </>
   );
 }

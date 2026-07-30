@@ -37,7 +37,7 @@ export default function AIPanel() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.5)",
+            background: "var(--scrim)",
             zIndex: 150,
             transition: "opacity 0.2s",
           }}

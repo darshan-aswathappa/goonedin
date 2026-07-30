@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "@phosphor-icons/react";
 import { useJobsStore } from "@/store/jobs";
@@ -8,6 +8,7 @@ import { useShallow } from "zustand/react/shallow";
 import { AnalyticsPanel } from "@/components/AnalyticsPanel";
 import { AICompanion } from "@/components/AICompanion";
 import { Job } from "@/store/jobs";
+import { Kicker } from "@/components/ds";
 
 // ── Stat card wrapper ─────────────────────────────────────────────────────────
 function StatCard({
@@ -18,31 +19,18 @@ function StatCard({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        background: "#080808",
-        border: "1px solid #1c1c1c",
-        padding: "14px 16px",
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "9px",
-          fontWeight: 600,
-          letterSpacing: "0.2em",
-          color: "#555555",
-          textTransform: "uppercase",
-          marginBottom: "12px",
-          borderBottom: "1px solid #1c1c1c",
-          paddingBottom: "8px",
-        }}
-      >
-        // {title}
-      </div>
+    <section className="rounded-[4px] border border-hairline bg-paper-card px-4 py-3.5">
+      <Kicker as="h2" className="mb-3 border-b border-hairline pb-2">
+        {title}
+      </Kicker>
       {children}
-    </div>
+    </section>
   );
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
+function NoData() {
+  return <Kicker>No data yet</Kicker>;
 }
 
 // ── Top Companies ─────────────────────────────────────────────────────────────
@@ -61,72 +49,26 @@ function TopCompanies({ jobs }: { jobs: Job[] }) {
 
   const max = counts[0]?.[1] ?? 1;
 
-  if (counts.length === 0) {
-    return (
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "10px",
-          color: "#555555",
-          letterSpacing: "0.08em",
-        }}
-      >
-        NO DATA YET
-      </span>
-    );
-  }
+  if (counts.length === 0) return <NoData />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      {counts.map(([company, count]) => (
+    <div className="flex flex-col gap-2">
+      {counts.map(([company, count], index) => (
         <div key={company}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "3px",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                color: "#aaaaaa",
-                letterSpacing: "0.04em",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                maxWidth: "70%",
-              }}
-            >
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <span className="max-w-[70%] truncate font-sans text-[13px] text-ink-2">
               {company}
             </span>
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                color: "#ff8c00",
-                letterSpacing: "0.06em",
-                flexShrink: 0,
-              }}
-            >
+            <span className="shrink-0 font-serif text-[15px] font-semibold tabular-nums text-ink">
               {count}
             </span>
           </div>
-          <div
-            style={{
-              height: "2px",
-              background: "#1c1c1c",
-              width: "100%",
-            }}
-          >
+          <div className="h-[3px] w-full bg-hairline">
             <div
-              style={{
-                height: "100%",
-                background: "#ff8c00",
-                width: `${(count / max) * 100}%`,
-                transition: "width 0.4s ease",
-              }}
+              className={`h-full transition-[width] duration-[400ms] ${
+                index === 0 ? "bg-brick" : "bg-ink-faint"
+              }`}
+              style={{ width: `${(count / max) * 100}%` }}
             />
           </div>
         </div>
@@ -148,82 +90,26 @@ function SourceBreakdown({ jobs }: { jobs: Job[] }) {
 
   const total = jobs.length || 1;
 
-  // Source colour mapping
-  const SOURCE_COLORS: Record<string, string> = {
-    LinkedIn: "#0077B5",
-    GitHub: "#f0f0f0",
-    MathWorks: "#FF6B35",
-    Jobright: "#00B050",
-  };
-
-  if (counts.length === 0) {
-    return (
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "10px",
-          color: "#555555",
-          letterSpacing: "0.08em",
-        }}
-      >
-        NO DATA YET
-      </span>
-    );
-  }
+  if (counts.length === 0) return <NoData />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      {counts.map(([source, count]) => {
+    <div className="flex flex-col gap-2">
+      {counts.map(([source, count], index) => {
         const pct = Math.round((count / total) * 100);
-        const color = SOURCE_COLORS[source] ?? "#aaaaaa";
         return (
-          <div
-            key={source}
-            style={{ display: "flex", alignItems: "center", gap: "10px" }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                color: "#aaaaaa",
-                width: "80px",
-                flexShrink: 0,
-                letterSpacing: "0.04em",
-              }}
-            >
+          <div key={source} className="flex items-center gap-3">
+            <span className="w-20 shrink-0 truncate font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
               {source}
             </span>
-            <div
-              style={{
-                flex: 1,
-                height: "4px",
-                background: "#1c1c1c",
-                position: "relative",
-              }}
-            >
+            <div className="relative h-1 flex-1 bg-hairline">
               <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  height: "100%",
-                  background: color,
-                  width: `${pct}%`,
-                  transition: "width 0.4s ease",
-                }}
+                className={`absolute left-0 top-0 h-full transition-[width] duration-[400ms] ${
+                  index === 0 ? "bg-brick" : "bg-ink-faint"
+                }`}
+                style={{ width: `${pct}%` }}
               />
             </div>
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                color: "#555555",
-                width: "36px",
-                textAlign: "right",
-                flexShrink: 0,
-                letterSpacing: "0.05em",
-              }}
-            >
+            <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-ink-muted">
               {pct}%
             </span>
           </div>
@@ -262,64 +148,23 @@ function WorkModelBreakdown({ jobs }: { jobs: Job[] }) {
     return result;
   }, [jobs]);
 
-  const MODEL_COLORS: Record<string, string> = {
-    REMOTE: "#00B050",
-    HYBRID: "#ffd700",
-    "ON-SITE": "#ff8c00",
-    UNSPECIFIED: "#555555",
-  };
-
-  if (counts.length === 0) {
-    return (
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "10px",
-          color: "#555555",
-          letterSpacing: "0.08em",
-        }}
-      >
-        NO DATA YET
-      </span>
-    );
-  }
+  if (counts.length === 0) return <NoData />;
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+    <div className="flex flex-wrap gap-2">
       {counts.map(([model, count]) => (
         <div
           key={model}
-          style={{
-            background: "#0d0d0d",
-            border: `1px solid ${MODEL_COLORS[model] ?? "#2a2a2a"}30`,
-            padding: "6px 12px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "2px",
-            minWidth: "72px",
-          }}
+          className="flex min-w-[76px] flex-col items-center gap-0.5 rounded-[4px] border border-hairline bg-paper-sunk px-3 py-2"
         >
           <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "18px",
-              fontWeight: 700,
-              color: MODEL_COLORS[model] ?? "#aaaaaa",
-              letterSpacing: "-0.02em",
-            }}
+            className={`font-serif text-[22px] font-semibold leading-none tabular-nums ${
+              model === "REMOTE" ? "text-forest" : "text-ink"
+            }`}
           >
             {count}
           </span>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "8px",
-              color: "#555555",
-              letterSpacing: "0.14em",
-              textTransform: "uppercase",
-            }}
-          >
+          <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
             {model}
           </span>
         </div>
@@ -329,45 +174,28 @@ function WorkModelBreakdown({ jobs }: { jobs: Job[] }) {
 }
 
 // ── Summary stat strip ────────────────────────────────────────────────────────
+type StatTone = "ink" | "brick" | "forest";
+
+const statToneClass: Record<StatTone, string> = {
+  ink: "text-ink",
+  brick: "text-brick",
+  forest: "text-forest",
+};
+
 function SummaryStat({
   label,
   value,
-  color = "#f0f0f0",
+  tone = "ink",
 }: {
   label: string;
   value: string | number;
-  color?: string;
+  tone?: StatTone;
 }) {
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "3px",
-        padding: "12px 20px",
-        borderRight: "1px solid #1c1c1c",
-      }}
-    >
+    <div className="flex flex-col gap-1 border-r border-hairline px-5 py-3">
+      <Kicker>{label}</Kicker>
       <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "9px",
-          color: "#555555",
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "22px",
-          fontWeight: 700,
-          color,
-          letterSpacing: "-0.02em",
-          lineHeight: 1,
-        }}
+        className={`font-serif text-[28px] font-semibold leading-none tabular-nums ${statToneClass[tone]}`}
       >
         {value}
       </span>
@@ -378,7 +206,6 @@ function SummaryStat({
 // ── Analytics Page ────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
   const jobs = useJobsStore(useShallow((state) => state.jobs));
-  const [backHovered, setBackHovered] = useState(false);
 
   const stats = useMemo(() => {
     const withSalary = jobs.filter((j) => j.salary).length;
@@ -390,193 +217,68 @@ export default function AnalyticsPage() {
   }, [jobs]);
 
   return (
-    <div
-      style={{ minHeight: "100vh", background: "#000000", display: "flex", flexDirection: "column" }}
-    >
+    <div className="flex min-h-screen flex-col bg-paper">
       {/* Header */}
-      <header
-        style={{
-          height: "44px",
-          background: "#060606",
-          borderBottom: "1px solid #1c1c1c",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/">
-            <div
-              onMouseEnter={() => setBackHovered(true)}
-              onMouseLeave={() => setBackHovered(false)}
-              style={{
-                width: "28px",
-                height: "28px",
-                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: backHovered ? "#ff8c00" : "#555555",
-                cursor: "pointer",
-                transition: "border-color 0.1s, color 0.1s",
-              }}
-            >
-              <ArrowLeft style={{ width: "14px", height: "14px" }} />
-            </div>
+      <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper px-4 py-3">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            title="Back to Dashboard"
+            aria-label="Back to Dashboard"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
+          >
+            <ArrowLeft className="size-[14px]" />
           </Link>
           <div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.2em",
-                color: "#ff8c00",
-                textTransform: "uppercase",
-              }}
-            >
-              ANALYTICS // JOB MARKET INTELLIGENCE
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                letterSpacing: "0.12em",
-                color: "#555555",
-                marginTop: "1px",
-              }}
-            >
-              REAL-TIME MARKET ANALYSIS · AI-POWERED INSIGHTS
-            </div>
+            <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
+              Analytics
+            </h1>
+            <Kicker className="mt-1">Job market intelligence</Kicker>
           </div>
         </div>
 
         {/* Jobs count badge */}
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "9px",
-            color: "#ff8c00",
-            border: "1px solid rgba(255,140,0,0.3)",
-            padding: "3px 10px",
-            letterSpacing: "0.1em",
-          }}
-        >
-          {jobs.length} JOBS LOADED
-        </div>
+        <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+          {jobs.length} jobs loaded
+        </span>
       </header>
 
       {/* Summary stat strip */}
-      <div
-        style={{
-          background: "#060606",
-          borderBottom: "1px solid #1c1c1c",
-          display: "flex",
-          flexShrink: 0,
-        }}
-      >
-        <SummaryStat label="TOTAL JOBS" value={jobs.length} color="#f0f0f0" />
-        <SummaryStat
-          label="COMPANIES"
-          value={stats.uniqueCompanies}
-          color="#ff8c00"
-        />
-        <SummaryStat
-          label="REMOTE ROLES"
-          value={stats.remote}
-          color="#00B050"
-        />
-        <SummaryStat
-          label="WITH SALARY"
-          value={stats.withSalary}
-          color="#ffd700"
-        />
+      <div className="flex shrink-0 overflow-x-auto border-b border-hairline bg-paper-card scrollbar-hide">
+        <SummaryStat label="Total jobs" value={jobs.length} />
+        <SummaryStat label="Companies" value={stats.uniqueCompanies} tone="brick" />
+        <SummaryStat label="Remote roles" value={stats.remote} tone="forest" />
+        <SummaryStat label="With salary" value={stats.withSalary} />
       </div>
 
       {/* Main content: charts left, AI right */}
-      <main
-        className="analytics-main"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "row",
-          minHeight: 0,
-        }}
-      >
+      <main className="flex min-h-0 flex-1 flex-col md:flex-row">
         {/* Left: Charts panel (60%) */}
-        <div
-          className="analytics-charts"
-          style={{
-            flex: "0 0 60%",
-            overflowY: "auto",
-            padding: "16px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-            borderRight: "1px solid #1c1c1c",
-          }}
-        >
+        <div className="flex flex-col gap-4 overflow-y-auto border-b border-hairline p-4 md:flex-[0_0_60%] md:border-b-0 md:border-r">
           {/* Drop-in charts from AnalyticsPanel */}
           <AnalyticsPanel jobs={jobs} />
 
           {/* Additional stat cards */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "12px",
-            }}
-          >
-            <StatCard title="TOP COMPANIES">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+            <StatCard title="Top companies">
               <TopCompanies jobs={jobs} />
             </StatCard>
 
-            <StatCard title="SOURCE BREAKDOWN">
+            <StatCard title="Source breakdown">
               <SourceBreakdown jobs={jobs} />
             </StatCard>
 
-            <StatCard title="WORK MODEL">
+            <StatCard title="Work model">
               <WorkModelBreakdown jobs={jobs} />
             </StatCard>
           </div>
         </div>
 
         {/* Right: AI Companion (40%) */}
-        <div
-          className="analytics-ai"
-          style={{
-            flex: "0 0 40%",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
+        <div className="flex min-h-[400px] flex-col md:min-h-0 md:flex-[0_0_40%]">
           <AICompanion />
         </div>
       </main>
-
-      {/* Mobile layout override via inline media query workaround */}
-      <style>{`
-        @media (max-width: 768px) {
-          .analytics-main {
-            flex-direction: column !important;
-          }
-          .analytics-charts {
-            flex: none !important;
-            border-right: none !important;
-            border-bottom: 1px solid #1c1c1c;
-          }
-          .analytics-ai {
-            flex: none !important;
-            min-height: 400px;
-          }
-        }
-      `}</style>
     </div>
   );
 }

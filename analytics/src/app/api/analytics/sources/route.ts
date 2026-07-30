@@ -9,18 +9,20 @@ export async function GET() {
     const { data, error } = await sb.rpc("analytics_sources");
     if (error) throw error;
 
+    // Brand colors are deliberately dropped: the paper DS admits no outside
+    // hues, so each source takes a slot on the earthy categorical series.
     const COLORS: Record<string, string> = {
-      LinkedIn: "#0077b5",
-      GitHub: "#6e40c9",
-      MathWorks: "#e6621a",
-      Jobright: "#00d4aa",
-      Custom: "#64748b",
+      LinkedIn: "var(--series-1)", // brick
+      GitHub: "var(--series-2)", // forest
+      MathWorks: "var(--series-3)", // slate
+      Jobright: "var(--series-4)", // mauve
+      Custom: "var(--muted)", // stone — catch-all
     };
 
     const sources = (data as { source: string; count: number }[]).map((r) => ({
       source: r.source,
       count: Number(r.count),
-      color: COLORS[r.source] ?? "#64748b",
+      color: COLORS[r.source] ?? "var(--muted)",
     }));
 
     return NextResponse.json({ sources });

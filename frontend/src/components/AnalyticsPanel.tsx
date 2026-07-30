@@ -16,39 +16,40 @@ interface AnalyticsPanelProps {
   jobs: Job[];
 }
 
-// ── Shared dark tooltip style ────────────────────────────────────────────────
+// ── Shared paper tooltip style ───────────────────────────────────────────────
 const TOOLTIP_CONTENT_STYLE: React.CSSProperties = {
-  backgroundColor: "#0d0d0d",
-  border: "1px solid #2a2a2a",
-  borderRadius: "2px",
-  color: "#e8e8e8",
-  fontFamily: "var(--font-mono, 'Courier New', monospace)",
+  backgroundColor: "var(--paper-card)",
+  border: "1px solid var(--border-strong)",
+  borderRadius: "4px",
+  color: "var(--ink)",
+  fontFamily: "var(--font-mono)",
   fontSize: "11px",
-  fontWeight: 700,
   padding: "6px 10px",
   boxShadow: "none",
 };
 
-const TOOLTIP_CURSOR_FILL = { fill: "rgba(255, 90, 91, 0.08)" };
+const TOOLTIP_CURSOR_FILL = { fill: "var(--accent-tint)" };
 
 const TOOLTIP_ITEM_STYLE: React.CSSProperties = {
-  color: "#e8e8e8",
+  color: "var(--ink)",
 };
 
 const TOOLTIP_LABEL_STYLE: React.CSSProperties = {
-  color: "#888888",
+  color: "var(--ink-muted)",
   marginBottom: "2px",
 };
 
 const AXIS_TICK_STYLE = {
-  fill: "#888888",
+  fill: "var(--ink-muted)",
   fontSize: 10,
-  fontFamily: "var(--font-mono, 'Courier New', monospace)",
-  fontWeight: 700,
+  fontFamily: "var(--font-mono)",
 };
 
-const BAR_COLOR_PRIMARY = "#FF5A5B";
-const BAR_COLOR_ACCENT = "#FFB30F";
+const AXIS_LINE_STYLE = { stroke: "var(--border-hairline)" };
+
+/** One accent, used with discipline: the peak bar is brick, the rest hairline. */
+const BAR_COLOR_PEAK = "var(--accent)";
+const BAR_COLOR_REST = "var(--border-strong)";
 
 // ── Busiest Posting Days ─────────────────────────────────────────────────────
 function BusiestPostingDays({ jobs }: { jobs: Job[] }) {
@@ -87,7 +88,7 @@ function BusiestPostingDays({ jobs }: { jobs: Job[] }) {
         <XAxis
           dataKey="day"
           tick={AXIS_TICK_STYLE}
-          axisLine={{ stroke: "#2a2a2a" }}
+          axisLine={AXIS_LINE_STYLE}
           tickLine={false}
         />
         <YAxis
@@ -107,7 +108,7 @@ function BusiestPostingDays({ jobs }: { jobs: Job[] }) {
           {data.map((entry, idx) => (
             <Cell
               key={idx}
-              fill={entry.count === maxCount ? BAR_COLOR_PRIMARY : "#2a2a2a"}
+              fill={entry.count === maxCount ? BAR_COLOR_PEAK : BAR_COLOR_REST}
             />
           ))}
         </Bar>
@@ -159,7 +160,7 @@ function PostingTimesByDay({ jobs }: { jobs: Job[] }) {
         <XAxis
           dataKey="label"
           tick={{ ...AXIS_TICK_STYLE, fontSize: 9 }}
-          axisLine={{ stroke: "#2a2a2a" }}
+          axisLine={AXIS_LINE_STYLE}
           tickLine={false}
         />
         <YAxis
@@ -179,7 +180,7 @@ function PostingTimesByDay({ jobs }: { jobs: Job[] }) {
           {data.map((entry, idx) => (
             <Cell
               key={idx}
-              fill={entry.count === maxCount ? BAR_COLOR_ACCENT : "#2a2a2a"}
+              fill={entry.count === maxCount ? BAR_COLOR_PEAK : BAR_COLOR_REST}
             />
           ))}
         </Bar>
@@ -257,7 +258,7 @@ function SalaryDistribution({ jobs }: { jobs: Job[] }) {
         <XAxis
           dataKey="label"
           tick={{ ...AXIS_TICK_STYLE, fontSize: 8 }}
-          axisLine={{ stroke: "#2a2a2a" }}
+          axisLine={AXIS_LINE_STYLE}
           tickLine={false}
         />
         <YAxis
@@ -277,7 +278,7 @@ function SalaryDistribution({ jobs }: { jobs: Job[] }) {
           {data.map((entry, idx) => (
             <Cell
               key={idx}
-              fill={entry.count === maxCount ? "#009063" : "#2a2a2a"}
+              fill={entry.count === maxCount ? BAR_COLOR_PEAK : BAR_COLOR_REST}
             />
           ))}
         </Bar>
@@ -289,8 +290,10 @@ function SalaryDistribution({ jobs }: { jobs: Job[] }) {
 // ── Shared empty state ───────────────────────────────────────────────────────
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="h-[160px] flex items-center justify-center">
-      <span className="terminal-label text-muted-foreground">{message}</span>
+    <div className="flex h-[160px] items-center justify-center rounded-[4px] bg-paper-sunk">
+      <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+        {message}
+      </span>
     </div>
   );
 }
@@ -304,8 +307,10 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="brutal-border bg-card p-3 flex flex-col gap-2 brutal-shadow-responsive">
-      <span className="terminal-label text-muted-foreground">{title}</span>
+    <div className="flex flex-col gap-3 rounded-[4px] border border-hairline bg-paper-card p-4">
+      <h3 className="font-serif text-[15px] font-semibold leading-tight text-ink">
+        {title}
+      </h3>
       {children}
     </div>
   );
@@ -314,7 +319,7 @@ function ChartCard({
 // ── Public component ─────────────────────────────────────────────────────────
 export function AnalyticsPanel({ jobs }: AnalyticsPanelProps) {
   return (
-    <div className="grid grid-cols-1 gap-2 sm:gap-3 sm:grid-cols-3 mb-3">
+    <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
       <ChartCard title="Busiest Posting Days">
         <BusiestPostingDays jobs={jobs} />
       </ChartCard>

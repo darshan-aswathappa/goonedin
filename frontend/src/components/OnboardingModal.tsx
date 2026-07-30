@@ -13,6 +13,7 @@ import {
   Terminal,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { Kicker, DsButton } from "@/components/ds";
 
 const ONBOARDING_KEY = "hirefeed-onboarding-v1";
 
@@ -48,43 +49,42 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
   const steps = ["INIT", "PROCESS", "READY"];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
-      <div
-        className="w-full max-w-lg bg-[#000] border border-[#1E1E1E] relative"
-        style={{ fontFamily: "var(--font-ibm-mono), 'Courier New', monospace" }}
-      >
-        {/* Terminal title bar */}
-        <div className="border-b border-[#1E1E1E] px-4 py-2.5 flex items-center justify-between bg-[#080808]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(28,27,25,0.35)] p-4">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[10px] border border-hairline bg-paper shadow-[0_24px_64px_rgba(28,27,25,0.22)]">
+        {/* Masthead */}
+        <div className="flex items-center justify-between border-b border-hairline bg-paper-card px-5 py-3">
           <div className="flex items-center gap-2.5">
-            <Terminal weight="bold" className="h-3.5 w-3.5 text-[#FF6E00]" />
-            <span className="text-[#FF6E00] text-[10px] font-bold tracking-[0.22em] uppercase">HIREFEED</span>
-            <span className="text-[#222] text-xs mx-0.5">│</span>
-            <span className="text-[#444] text-[9px] tracking-[0.18em] uppercase">System Initialization</span>
+            <Terminal weight="regular" className="size-4 text-ink-muted" />
+            <span className="font-serif text-[17px] font-semibold leading-none text-ink">
+              HireFeed
+            </span>
+            <span aria-hidden className="h-3 w-px bg-hairline-strong" />
+            <Kicker>System Initialization</Kicker>
           </div>
           <button
             onClick={dismiss}
-            className="text-[#444] hover:text-[#FF6E00] transition-colors p-0.5"
+            className="rounded-[4px] p-1 text-ink-muted transition-colors hover:bg-paper-sunk hover:text-ink"
             aria-label="Skip onboarding"
           >
-            <X weight="bold" className="h-3.5 w-3.5" />
+            <X weight="regular" className="size-4" />
           </button>
         </div>
 
         {/* Step tabs */}
-        <div className="flex border-b border-[#1A1A1A]">
+        <div className="flex border-b border-hairline">
           {steps.map((label, i) => (
             <div
               key={i}
-              className={`flex-1 px-3 py-2 text-center border-r border-[#1A1A1A] last:border-r-0 transition-colors ${
+              className={`flex-1 border-r border-hairline px-3 py-2.5 text-center transition-colors last:border-r-0 ${
                 i < step
-                  ? "bg-[#080808] text-[#FF6E00]"
+                  ? "bg-paper-card text-ink-2"
                   : i === step
-                  ? "bg-[#0C0800] text-[#FF6E00] border-b-2 border-b-[#FF6E00]"
-                  : "bg-[#030303] text-[#2A2A2A]"
+                  ? "-mb-px border-b-2 border-b-brick bg-paper-card text-ink"
+                  : "bg-paper-sunk text-ink-faint"
               }`}
             >
-              <span className="text-[9px] tracking-[0.18em] uppercase font-bold">
-                {i < step ? "✓ " : i === step ? "► " : "  "}
+              <span className="font-mono text-[11px] uppercase tracking-[0.09em]">
+                {i < step ? "✓ " : ""}
                 {label}
               </span>
             </div>
@@ -92,7 +92,7 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
         </div>
 
         {/* Content */}
-        <div className="p-6 min-h-[300px] flex flex-col">
+        <div className="flex min-h-[300px] flex-col p-6">
           {step === 0 && <StepWelcome userEmail={userEmail} />}
           {step === 1 && <StepHowItWorks />}
           {step === 2 && <StepGetStarted onDone={dismiss} />}
@@ -100,20 +100,14 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
 
         {/* Navigation */}
         {step < 2 && (
-          <div className="border-t border-[#141414] px-5 py-3 flex items-center justify-between bg-[#040404]">
-            <button
-              onClick={dismiss}
-              className="text-[#333] text-[9px] tracking-[0.2em] uppercase hover:text-[#FF6E00] transition-colors"
-            >
-              SKIP SETUP
-            </button>
-            <button
-              onClick={() => setStep((s) => s + 1)}
-              className="bg-[#FF6E00] text-black px-5 py-2 text-[10px] font-bold tracking-[0.2em] uppercase hover:bg-[#FF8A00] active:bg-[#E05E00] transition-colors flex items-center gap-2"
-            >
-              CONTINUE
-              <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-            </button>
+          <div className="flex items-center justify-between gap-3 border-t border-hairline bg-paper-card px-5 py-4">
+            <DsButton variant="ghost" size="sm" onClick={dismiss}>
+              Skip setup
+            </DsButton>
+            <DsButton variant="primary" size="sm" onClick={() => setStep((s) => s + 1)}>
+              Continue
+              <ArrowRight weight="regular" className="size-4" />
+            </DsButton>
           </div>
         )}
       </div>
@@ -121,44 +115,53 @@ export function OnboardingModal({ userEmail }: OnboardingModalProps) {
   );
 }
 
+const DATA_SOURCES = [
+  { icon: LinkedinLogo, label: "LinkedIn" },
+  { icon: GithubLogo, label: "GitHub" },
+  { icon: Buildings, label: "MathWorks" },
+  { icon: Briefcase, label: "Jobright" },
+];
+
 function StepWelcome({ userEmail }: { userEmail?: string }) {
   return (
-    <div className="flex flex-col gap-5 flex-1">
+    <div className="flex flex-1 flex-col gap-6">
       <div>
-        <p className="text-[#FF6E00] text-[9px] tracking-[0.25em] uppercase mb-1.5">SYSTEM BOOT</p>
-        <h2 className="text-lg font-bold uppercase tracking-tight text-white leading-tight mb-2">
+        <Kicker className="mb-2">System boot</Kicker>
+        <h2 className="font-serif text-[28px] font-semibold leading-tight text-ink">
           Welcome to HireFeed
         </h2>
         {userEmail && (
-          <p className="text-[9px] text-[#3A3A3A] tracking-[0.2em] uppercase mb-3">
-            USER: {userEmail}
+          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-faint">
+            User: {userEmail}
           </p>
         )}
-        <p className="text-[#666] text-sm leading-relaxed">
+        <p className="mt-3 font-sans text-[15px] leading-relaxed text-ink-2">
           Your personal job extraction engine. We scan job boards 24/7 and surface relevant openings in real-time — no manual searching required.
         </p>
       </div>
 
-      <div className="border border-[#1A1A1A] bg-[#040404]">
-        <div className="border-b border-[#1A1A1A] px-3 py-1.5 bg-[#080808]">
-          <span className="text-[#FF6E00] text-[9px] tracking-[0.22em] uppercase">DATA SOURCES</span>
+      <div className="overflow-hidden rounded-[4px] border border-hairline bg-paper-card">
+        <div className="border-b border-hairline bg-paper-sunk px-3 py-2">
+          <Kicker>Data sources</Kicker>
         </div>
-        <div className="p-3 grid grid-cols-2 gap-1.5">
-          {[
-            { icon: LinkedinLogo, label: "LinkedIn", dot: "#0A66C2" },
-            { icon: GithubLogo, label: "GitHub", dot: "#666" },
-            { icon: Buildings, label: "MathWorks", dot: "#ED1C24" },
-            { icon: Briefcase, label: "Jobright", dot: "#5465FF" },
-          ].map(({ label, dot }) => (
-            <div key={label} className="flex items-center gap-2 px-2.5 py-2 border border-[#161616]">
-              <div className="w-1.5 h-1.5 shrink-0" style={{ backgroundColor: dot }} />
-              <span className="text-[#666] text-[9px] uppercase tracking-[0.18em]">{label}</span>
+        <div className="grid grid-cols-2 gap-1.5 p-3">
+          {DATA_SOURCES.map(({ icon: Icon, label }) => (
+            <div
+              key={label}
+              className="flex items-center gap-2 rounded-[4px] border border-hairline px-2.5 py-2"
+            >
+              <Icon weight="regular" className="size-4 shrink-0 text-ink-muted" />
+              <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+                {label}
+              </span>
             </div>
           ))}
-          <div className="flex items-center gap-2 px-2.5 py-2 border border-[#161616] col-span-2">
-            <Sparkle weight="fill" className="h-2.5 w-2.5 text-[#FF6E00] shrink-0" />
-            <span className="text-[#666] text-[9px] uppercase tracking-[0.18em]">Custom Sources</span>
-            <span className="ml-auto text-[#FF6E00] text-[8px] tracking-wider uppercase">Configurable</span>
+          <div className="col-span-2 flex items-center gap-2 rounded-[4px] border border-hairline px-2.5 py-2">
+            <Sparkle weight="regular" className="size-4 shrink-0 text-ink-muted" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+              Custom Sources
+            </span>
+            <Kicker className="ml-auto text-ink-faint">Configurable</Kicker>
           </div>
         </div>
       </div>
@@ -166,42 +169,48 @@ function StepWelcome({ userEmail }: { userEmail?: string }) {
   );
 }
 
+const PROCESS_STEPS = [
+  {
+    num: "01",
+    title: "SCAN SOURCES",
+    desc: "LinkedIn, GitHub, MathWorks, Jobright & custom boards scanned continuously.",
+  },
+  {
+    num: "02",
+    title: "REAL-TIME PUSH",
+    desc: "New jobs arrive on your dashboard instantly — no refresh needed.",
+  },
+  {
+    num: "03",
+    title: "FILTER & ACT",
+    desc: "Dismiss, save, block companies, or apply directly from each card.",
+  },
+];
+
 function StepHowItWorks() {
   return (
-    <div className="flex flex-col gap-5 flex-1">
+    <div className="flex flex-1 flex-col gap-6">
       <div>
-        <p className="text-[#FF6E00] text-[9px] tracking-[0.25em] uppercase mb-1.5">PROCESS FLOW</p>
-        <h2 className="text-lg font-bold uppercase tracking-tight text-white leading-tight mb-2">
+        <Kicker className="mb-2">Process flow</Kicker>
+        <h2 className="font-serif text-[28px] font-semibold leading-tight text-ink">
           How It Works
         </h2>
-        <p className="text-[#666] text-sm leading-relaxed">
+        <p className="mt-3 font-sans text-[15px] leading-relaxed text-ink-2">
           The backend runs continuously and pushes jobs to your dashboard the moment they&apos;re discovered.
         </p>
       </div>
 
-      <div className="border border-[#1A1A1A] divide-y divide-[#1A1A1A]">
-        {[
-          {
-            num: "01",
-            title: "SCAN SOURCES",
-            desc: "LinkedIn, GitHub, MathWorks, Jobright & custom boards scanned continuously.",
-          },
-          {
-            num: "02",
-            title: "REAL-TIME PUSH",
-            desc: "New jobs arrive on your dashboard instantly — no refresh needed.",
-          },
-          {
-            num: "03",
-            title: "FILTER & ACT",
-            desc: "Dismiss, save, block companies, or apply directly from each card.",
-          },
-        ].map(({ num, title, desc }) => (
-          <div key={num} className="px-4 py-3 flex gap-4 items-start">
-            <span className="text-[#FF6E00] text-[11px] font-bold shrink-0 pt-0.5 tabular-nums">{num}</span>
+      <div className="divide-y divide-hairline rounded-[4px] border border-hairline bg-paper-card">
+        {PROCESS_STEPS.map(({ num, title, desc }) => (
+          <div key={num} className="flex items-start gap-4 px-4 py-3.5">
+            <span className="shrink-0 font-serif text-[17px] font-semibold tabular-nums leading-snug text-ink-faint">
+              {num}
+            </span>
             <div>
-              <p className="text-white text-[10px] font-bold uppercase tracking-[0.15em] mb-0.5">{title}</p>
-              <p className="text-[#555] text-[11px] leading-relaxed">{desc}</p>
+              <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.09em] text-ink">
+                {title}
+              </p>
+              <p className="font-sans text-[13px] leading-relaxed text-ink-muted">{desc}</p>
             </div>
           </div>
         ))}
@@ -212,44 +221,45 @@ function StepHowItWorks() {
 
 function StepGetStarted({ onDone }: { onDone: () => void }) {
   return (
-    <div className="flex flex-col gap-5 flex-1">
+    <div className="flex flex-1 flex-col gap-6">
       <div>
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <div className="w-1.5 h-1.5 bg-[#00B050] animate-pulse" />
-          <p className="text-[#00B050] text-[9px] tracking-[0.25em] uppercase">SYSTEM READY</p>
+        <div className="mb-2 flex items-center gap-2">
+          <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-forest animate-live-pulse" />
+          <Kicker className="text-forest">System ready</Kicker>
         </div>
-        <h2 className="text-lg font-bold uppercase tracking-tight text-white leading-tight mb-2">
+        <h2 className="font-serif text-[28px] font-semibold leading-tight text-ink">
           You&apos;re Live
         </h2>
-        <p className="text-[#666] text-sm leading-relaxed">
+        <p className="mt-3 font-sans text-[15px] leading-relaxed text-ink-2">
           Jobs are already being discovered. For best results, configure your targets — it only takes 30 seconds.
         </p>
       </div>
 
-      <div className="border border-[#1A1A1A] divide-y divide-[#1A1A1A]">
-        <div className="px-4 py-3 flex gap-3 items-start">
-          <Gear weight="bold" className="h-3.5 w-3.5 text-[#FF6E00] shrink-0 mt-0.5" />
+      <div className="divide-y divide-hairline rounded-[4px] border border-hairline bg-paper-card">
+        <div className="flex items-start gap-3 px-4 py-3.5">
+          <Gear weight="regular" className="mt-0.5 size-4 shrink-0 text-ink-muted" />
           <div>
-            <p className="text-white text-[10px] font-bold uppercase tracking-[0.15em] mb-0.5">Set Location</p>
-            <p className="text-[#444] text-[11px]">Filter jobs to your target city or region</p>
+            <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.09em] text-ink">
+              Set Location
+            </p>
+            <p className="font-sans text-[13px] leading-relaxed text-ink-muted">
+              Filter jobs to your target city or region
+            </p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 mt-auto">
+      <div className="mt-auto flex flex-col gap-2">
         <Link href="/settings" onClick={onDone} className="w-full">
-          <button className="w-full bg-[#FF6E00] text-black px-4 py-3 text-[10px] font-bold tracking-[0.2em] uppercase hover:bg-[#FF8A00] active:bg-[#E05E00] transition-colors flex items-center justify-center gap-2">
-            <Gear weight="bold" className="h-3.5 w-3.5" />
-            CONFIGURE SETTINGS
-            <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-          </button>
+          <DsButton variant="primary" className="w-full">
+            <Gear weight="regular" className="size-4" />
+            Configure settings
+            <ArrowRight weight="regular" className="size-4" />
+          </DsButton>
         </Link>
-        <button
-          onClick={onDone}
-          className="w-full border border-[#1A1A1A] text-[#444] px-4 py-2.5 text-[9px] tracking-[0.18em] uppercase hover:border-[#333] hover:text-[#666] transition-colors"
-        >
-          EXPLORE ON MY OWN
-        </button>
+        <DsButton variant="secondary" size="sm" onClick={onDone} className="w-full">
+          Explore on my own
+        </DsButton>
       </div>
     </div>
   );

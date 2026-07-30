@@ -1,11 +1,8 @@
 "use client";
 
 import { useJobsStore } from "@/store/jobs";
-import {
-  Broadcast,
-  Prohibit,
-  CircleNotch,
-} from "@phosphor-icons/react";
+import { StatusBadge } from "@/components/ds";
+import { cn } from "@/lib/utils";
 
 export function ConnectionStatus() {
   const connectionStatus = useJobsStore((state) => state.connectionStatus);
@@ -17,42 +14,37 @@ export function ConnectionStatus() {
     <div
       role="status"
       aria-label={isConnected ? "Connected" : isConnecting ? "Reconnecting" : "Disconnected"}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        border: `1px solid ${isConnected ? "#ff8c00" : isConnecting ? "#1c1c1c" : "rgba(255,51,51,0.4)"}`,
-        background: isConnected ? "rgba(255,140,0,0.08)" : isConnecting ? "transparent" : "rgba(255,51,51,0.05)",
-        padding: "0 10px",
-        height: "32px",
-        fontFamily: "var(--font-mono)",
-        fontSize: "9px",
-        fontWeight: 600,
-        letterSpacing: "0.15em",
-        textTransform: "uppercase",
-        color: isConnected ? "#ff8c00" : isConnecting ? "#555" : "#ff3333",
-        flexShrink: 0,
-        transition: "border-color 0.2s, color 0.2s",
-      }}
+      className={cn(
+        "inline-flex h-8 shrink-0 items-center rounded-[4px] border px-2.5 transition-colors duration-[180ms]",
+        isConnected && "border-hairline bg-forest-tint",
+        isConnecting && "border-hairline bg-paper-card",
+        connectionStatus === "disconnected" && "border-brick bg-brick-tint"
+      )}
     >
       {isConnected && (
-        <>
-          <Broadcast weight="bold" style={{ width: "12px", height: "12px", flexShrink: 0 }} className="animate-live-pulse" />
-          <span>Live</span>
-        </>
+        <StatusBadge label="Live" tone="complete" live className="text-forest" aria-hidden />
       )}
       {isConnecting && (
         <>
-          <CircleNotch weight="bold" style={{ width: "12px", height: "12px", flexShrink: 0 }} className="animate-spin" />
-          <span className="hidden sm:inline">Reconnecting</span>
-          <span className="sm:hidden">Sync</span>
+          <StatusBadge
+            label="Reconnecting"
+            tone="pending"
+            live
+            className="hidden sm:inline-flex"
+            aria-hidden
+          />
+          <StatusBadge label="Sync" tone="pending" live className="sm:hidden" aria-hidden />
         </>
       )}
       {connectionStatus === "disconnected" && (
         <>
-          <Prohibit weight="bold" style={{ width: "12px", height: "12px", flexShrink: 0 }} />
-          <span className="hidden sm:inline">Disconnected</span>
-          <span className="sm:hidden">Off</span>
+          <StatusBadge
+            label="Disconnected"
+            tone="failed"
+            className="hidden text-brick sm:inline-flex"
+            aria-hidden
+          />
+          <StatusBadge label="Off" tone="failed" className="text-brick sm:hidden" aria-hidden />
         </>
       )}
     </div>

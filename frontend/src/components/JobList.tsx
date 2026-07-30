@@ -5,7 +5,8 @@ import { JobCard } from "./JobCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Briefcase, Lock, Gear, ArrowRight, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useState } from "react";
+import { DsButton, DsCard, Kicker, dsButtonVariants } from "@/components/ds";
+import { cn } from "@/lib/utils";
 
 interface JobListProps {
   jobs: Job[];
@@ -54,145 +55,52 @@ const DUMMY_JOBS: Job[] = [
   },
 ];
 
-function JobCardSkeleton() {
+function SkeletonBar({ className }: { className?: string }) {
   return (
-    <div
-      className="h-full flex flex-col"
-      style={{
-        background: "#080808",
-        border: "1px solid #1c1c1c",
-        padding: "16px",
-        borderRadius: "2px",
-      }}
-    >
-      <div
-        className="animate-pulse"
-        style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "75%", marginBottom: "10px" }}
-      />
-      <div
-        className="animate-pulse"
-        style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "50%", opacity: 0.5, marginBottom: "16px" }}
-      />
-      <div style={{ borderTop: "1px solid #1c1c1c", paddingTop: "12px", marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
-        <div
-          className="animate-pulse"
-          style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "66%" }}
-        />
-        <div
-          className="animate-pulse"
-          style={{ background: "#1c1c1c", height: "12px", borderRadius: "2px", width: "33%" }}
-        />
-      </div>
-    </div>
+    <div className={cn("h-3 animate-pulse rounded-[4px] bg-paper-sunk", className)} />
   );
 }
 
-function RetryButton({ onClick }: { onClick: () => void }) {
-  const [hovered, setHovered] = useState(false);
+function JobCardSkeleton() {
   return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        border: "1px solid #ff3333",
-        background: hovered ? "rgba(255,51,51,0.18)" : "rgba(255,51,51,0.1)",
-        color: "#ff3333",
-        fontFamily: "var(--font-mono)",
-        fontSize: "10px",
-        fontWeight: 700,
-        letterSpacing: "0.15em",
-        textTransform: "uppercase" as const,
-        padding: "7px 16px",
-        cursor: "pointer",
-        width: "100%",
-        transition: "background 0.1s",
-        borderRadius: "2px",
-      }}
-    >
-      Retry
-    </button>
+    <DsCard interactive={false} className="flex h-full flex-col p-4">
+      <SkeletonBar className="mb-2.5 w-3/4" />
+      <SkeletonBar className="mb-4 w-1/2 opacity-60" />
+      <div className="mt-auto flex flex-col gap-2 border-t border-hairline pt-3">
+        <SkeletonBar className="w-2/3" />
+        <SkeletonBar className="w-1/3" />
+      </div>
+    </DsCard>
   );
 }
 
 function ConfigureLink() {
-  const [hovered, setHovered] = useState(false);
   return (
-    <Link href="/settings">
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          border: hovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-          background: "#080808",
-          padding: "8px 14px",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          transition: "border-color 0.1s",
-          borderRadius: "2px",
-        }}
-      >
-        <Gear
-          weight="bold"
-          className="h-4 w-4"
-          style={{ color: hovered ? "#ff8c00" : "#555" }}
-        />
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "11px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase" as const,
-            color: hovered ? "#ff8c00" : "#555",
-            transition: "color 0.1s",
-          }}
-        >
-          Configure keywords &amp; location
-        </span>
-        <ArrowRight
-          weight="bold"
-          className="h-4 w-4"
-          style={{ color: hovered ? "#ff8c00" : "#555" }}
-        />
-      </div>
-    </Link>
-  );
-}
-
-function CtaButton() {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <Link href="/login" className="w-full">
-      <button
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          border: "1px solid #ff8c00",
-          background: hovered ? "rgba(255,140,0,0.18)" : "rgba(255,140,0,0.1)",
-          color: "#ff8c00",
-          fontFamily: "var(--font-mono)",
-          fontSize: "11px",
-          fontWeight: 700,
-          letterSpacing: "0.2em",
-          textTransform: "uppercase" as const,
-          padding: "10px",
-          width: "100%",
-          cursor: "pointer",
-          transition: "background 0.1s",
-          borderRadius: "2px",
-        }}
-      >
-        Get Started Free
-      </button>
+    <Link
+      href="/settings"
+      className={cn(
+        dsButtonVariants({ variant: "secondary", size: "sm" }),
+        "group gap-2 no-underline"
+      )}
+    >
+      <Gear
+        weight="regular"
+        className="size-4 shrink-0 text-ink-muted transition-colors group-hover:text-ink"
+      />
+      <span className="font-mono text-[11px] uppercase tracking-[0.09em]">
+        Configure keywords &amp; location
+      </span>
+      <ArrowRight
+        weight="regular"
+        className="size-4 shrink-0 text-ink-muted transition-colors group-hover:text-ink"
+      />
     </Link>
   );
 }
 
 export function JobList({
   jobs,
-  emptyMessage = "No jobs yet. We're actively searching—check back in a few minutes!",
+  emptyMessage = "No jobs yet. We're actively searching — check back in a few minutes.",
   isLocked = false,
   error,
   onRetry,
@@ -212,101 +120,47 @@ export function JobList({
 
   if (error && !isLocked) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 sm:py-24 px-3 text-center">
-        <div
-          style={{
-            background: "#080808",
-            border: "1px solid rgba(255,51,51,0.4)",
-            padding: "20px",
-            maxWidth: "400px",
-            borderRadius: "2px",
-            width: "100%",
-          }}
+      <div className="flex flex-col items-center justify-center px-3 py-8 text-center sm:py-24">
+        <DsCard
+          interactive={false}
+          className="w-full max-w-[400px] border-brick p-5 text-left"
         >
-          <WarningCircle weight="bold" className="h-8 w-8 sm:h-10 sm:w-10 mb-2 sm:mb-4" style={{ color: "#ff3333" }} />
-          <h3
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "13px",
-              color: "#ff3333",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              marginBottom: "8px",
-            }}
-          >
-            Couldn&apos;t Load Jobs
+          <WarningCircle
+            weight="regular"
+            className="mb-3 size-8 text-ink-muted sm:size-10"
+          />
+          <h3 className="mb-2 font-mono text-[13px] uppercase tracking-[0.09em] text-brick">
+            Couldn&apos;t load jobs
           </h3>
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              color: "#555",
-              marginBottom: "8px",
-              wordBreak: "break-word",
-            }}
-          >
+          <p className="mb-2 break-words font-sans text-[13px] leading-relaxed text-ink-2">
             {error}
           </p>
-          <p
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "10px",
-              color: "#555",
-              marginBottom: "16px",
-            }}
-          >
+          <p className="mb-4 font-sans text-[13px] leading-relaxed text-ink-muted">
             Try refreshing or check your connection.
           </p>
-          {onRetry && <RetryButton onClick={onRetry} />}
-        </div>
+          {onRetry && (
+            <DsButton variant="danger" size="sm" onClick={onRetry} className="w-full">
+              Retry
+            </DsButton>
+          )}
+        </DsCard>
       </div>
     );
   }
 
   if (displayJobs.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 sm:py-16 px-3 text-center">
+      <div className="flex flex-col items-center justify-center px-3 py-8 text-center sm:py-16">
         <div className="relative mb-4 sm:mb-6">
-          <div
-            style={{
-              background: "#080808",
-              border: "1px solid #1c1c1c",
-              padding: "12px 24px",
-              position: "relative",
-              zIndex: 10,
-              borderRadius: "2px",
-            }}
-          >
-            <Briefcase weight="bold" className="h-8 w-8 sm:h-12 sm:w-12" style={{ color: "#333" }} />
+          <div className="ds-well relative z-10 px-6 py-3">
+            <Briefcase weight="regular" className="size-8 text-ink-faint sm:size-12" />
           </div>
-          <div
-            className="absolute inset-[-6px] animate-scan-ring pointer-events-none"
-            style={{ border: "1px solid rgba(255,140,0,0.4)" }}
-          />
+          <div className="pointer-events-none absolute inset-[-6px] animate-scan-ring border border-hairline-strong" />
         </div>
-        <h3
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "11px",
-            letterSpacing: "0.08em",
-            color: "#aaa",
-            marginBottom: "6px",
-            maxWidth: "280px",
-          }}
-        >
+        <h3 className="mb-2 max-w-[320px] font-sans text-[15px] leading-snug text-ink-2">
           {emptyMessage}
         </h3>
-        <p
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "9px",
-            color: "#555",
-            marginBottom: "24px",
-            letterSpacing: "0.05em",
-          }}
-        >
-          Streaming live — new extractions appear automatically.
-        </p>
+        <Kicker className="mb-6">Streaming live — new extractions appear automatically</Kicker>
         <ConfigureLink />
       </div>
     );
@@ -331,52 +185,28 @@ export function JobList({
       </div>
 
       {isLocked && (
-        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-background/20 backdrop-blur-[2px] p-3 sm:p-0">
-          <div
-            style={{
-              background: "#080808",
-              border: "1px solid #1c1c1c",
-              padding: "24px 32px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "16px",
-              maxWidth: "360px",
-              textAlign: "center",
-              width: "100%",
-              borderRadius: "2px",
-            }}
+        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-paper/60 p-3 backdrop-blur-[2px] sm:p-0">
+          <DsCard
+            interactive={false}
+            className="flex w-full max-w-[360px] flex-col items-center gap-4 px-8 py-6 text-center"
           >
-            <div style={{ background: "#ff8c00", padding: "10px", borderRadius: "2px" }}>
-              <Lock weight="fill" className="h-7 w-7 sm:h-10 sm:w-10" style={{ color: "#000" }} />
+            <div className="rounded-[4px] bg-brick p-2.5">
+              <Lock weight="fill" className="size-7 text-paper-card sm:size-10" />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <h3
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  color: "#ff8c00",
-                  fontSize: "14px",
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  fontWeight: 700,
-                }}
-              >
-                Create an Account
+            <div className="flex flex-col gap-1.5">
+              <h3 className="font-serif text-[22px] font-semibold leading-tight text-ink">
+                Create an account
               </h3>
-              <p
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  color: "#555",
-                  letterSpacing: "0.04em",
-                  lineHeight: 1.6,
-                }}
-              >
+              <p className="font-sans text-[13px] leading-relaxed text-ink-muted">
                 Sign up free to see all jobs and get real-time alerts.
               </p>
             </div>
-            <CtaButton />
-          </div>
+            <Link href="/login" className="w-full">
+              <DsButton variant="primary" size="md" className="w-full" tabIndex={-1}>
+                Get started free
+              </DsButton>
+            </Link>
+          </DsCard>
         </div>
       )}
     </div>

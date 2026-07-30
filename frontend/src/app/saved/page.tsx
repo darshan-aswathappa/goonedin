@@ -6,13 +6,13 @@ import { BookmarkSimple, CircleNotch, ArrowLeft } from "@phosphor-icons/react";
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobList } from "@/components/JobList";
 import { getAuthHeaders } from "@/hooks/useAuth";
+import { Kicker } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function SavedJobsPage() {
   const [savedJobs, setSavedJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
-  const [backHovered, setBackHovered] = useState(false);
   const storeSavedJobIds = useJobsStore((state) => state.savedJobIds);
   const setSavedJobIds = useJobsStore((state) => state.setSavedJobIds);
 
@@ -43,113 +43,42 @@ export default function SavedJobsPage() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "#000000" }}>
-      <header
-        style={{
-          height: "44px",
-          background: "#060606",
-          borderBottom: "1px solid #1c1c1c",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/">
-            <div
-              onMouseEnter={() => setBackHovered(true)}
-              onMouseLeave={() => setBackHovered(false)}
-              style={{
-                width: "28px",
-                height: "28px",
-                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: backHovered ? "#ff8c00" : "#555555",
-                cursor: "pointer",
-                transition: "border-color 0.1s, color 0.1s",
-              }}
-            >
-              <ArrowLeft style={{ width: "14px", height: "14px" }} />
-            </div>
+    <div className="min-h-screen bg-paper">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-hairline bg-paper px-4 py-3">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            aria-label="Back to feed"
+            className="flex size-7 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
+          >
+            <ArrowLeft className="size-[14px]" />
           </Link>
           <div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.2em",
-                color: "#ff8c00",
-                textTransform: "uppercase",
-              }}
-            >
-              SAVED JOBS
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                letterSpacing: "0.12em",
-                color: "#555555",
-                marginTop: "1px",
-              }}
-            >
-              YOUR PERSONAL CAREER SHORTLIST
-            </div>
+            <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
+              Saved
+            </h1>
+            <Kicker className="mt-1">Your shortlist</Kicker>
           </div>
         </div>
 
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "9px",
-            color: "#ffd700",
-            border: "1px solid rgba(255,215,0,0.3)",
-            padding: "3px 10px",
-            letterSpacing: "0.1em",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-          }}
-        >
-          <BookmarkSimple
-            weight="fill"
-            style={{ width: "12px", height: "12px" }}
-          />
-          <span>{displayJobs.length} SAVED</span>
+        <div className="flex shrink-0 items-center gap-2 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5">
+          <BookmarkSimple weight="fill" className="size-3 text-ink-muted" />
+          <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+            {displayJobs.length} saved
+          </span>
         </div>
       </header>
 
-      <main style={{ padding: "16px" }}>
+      <main className="p-4">
         {loading ? (
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "60px 0",
-            }}
-          >
-            <CircleNotch
-              weight="bold"
-              style={{
-                width: "32px",
-                height: "32px",
-                color: "#ff8c00",
-                animation: "spin 1s linear infinite",
-              }}
-              className="animate-spin"
-            />
+          <div className="flex flex-col items-center gap-4 py-16">
+            <CircleNotch className="size-7 animate-spin text-brick" />
+            <Kicker>Loading saved jobs</Kicker>
           </div>
         ) : (
           <JobList
             jobs={displayJobs}
-            emptyMessage="Zero saves. Go bookmark some jobs!"
+            emptyMessage="No saved jobs yet. Bookmark a posting to keep it here."
           />
         )}
       </main>

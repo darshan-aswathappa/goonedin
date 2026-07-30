@@ -426,7 +426,13 @@ export async function fetchSalaryByLocation() {
 
 export async function fetchHiringVelocity() {
   try {
-    const COMPANY_COLORS = ["#00bfff", "#ff6b6b", "#4ade80", "#ffd700", "#f97316"];
+    const COMPANY_COLORS = [
+      "var(--series-1)",
+      "var(--series-2)",
+      "var(--series-3)",
+      "var(--series-4)",
+      "var(--series-5)",
+    ];
     const sb = createServerClient();
     const [topRes, blocked] = await Promise.all([
       sb.rpc("analytics_top_companies"),
@@ -480,7 +486,7 @@ export async function fetchHiringVelocity() {
     });
     const companies = top5.map((name, i) => ({
       name,
-      color: COMPANY_COLORS[i] ?? "#64748b",
+      color: COMPANY_COLORS[i] ?? "var(--muted)",
     }));
     return { companies, data };
   } catch {

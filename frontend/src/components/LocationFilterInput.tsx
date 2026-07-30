@@ -69,35 +69,27 @@ export function LocationFilterInput() {
 
   return (
     <form onSubmit={handleSubmit} className="relative w-full sm:w-64">
-      <MagnifyingGlass weight="bold" className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 pointer-events-none" style={{ color: "#555" }} />
+      <MagnifyingGlass
+        weight="regular"
+        className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-ink-muted sm:left-3"
+      />
       <input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder={locationFilterLocation || "Location"}
         title="Search location (e.g., CA, Massachusetts, NYC, 10001)"
-        className="location-input w-full pl-7 sm:pl-9 pr-7 sm:pr-9 py-1.5 sm:py-2.5 text-xs sm:text-sm font-mono font-bold focus:outline-none transition-colors h-9 sm:h-auto"
-        style={{
-          background: "#080808",
-          border: "1px solid #1c1c1c",
-          color: "#f0f0f0",
-          borderRadius: "2px",
-        }}
-        onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#ff8c00"; }}
-        onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = "#1c1c1c"; }}
+        className="location-input h-9 w-full rounded-[4px] border border-hairline bg-paper-card pl-8 pr-8 font-mono text-[13px] text-ink outline-none transition-colors duration-[120ms] placeholder:text-ink-faint focus:border-brick disabled:opacity-50 sm:h-10 sm:pl-9 sm:pr-9 sm:text-[15px]"
         disabled={loading}
       />
       {locationFilterLocation && (
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-1.5 sm:right-2.5 top-1/2 -translate-y-1/2 font-bold p-0.5 transition-colors"
-          style={{ color: "#555", background: "transparent", border: "none", cursor: "pointer" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ff8c00"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#555"; }}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-[4px] p-0.5 text-ink-muted transition-colors duration-[120ms] hover:text-brick sm:right-2.5"
           title="Clear location"
         >
-          <X weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <X weight="regular" className="size-4" />
         </button>
       )}
     </form>

@@ -281,7 +281,7 @@ export function CommandPalette() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0, 0, 0, 0.75)",
+            background: "var(--scrim)",
             zIndex: 200,
           }}
         />
@@ -300,7 +300,7 @@ export function CommandPalette() {
             background: "var(--bg-panel)",
             border: "1px solid var(--border-bright)",
             borderRadius: 0,
-            boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
+            boxShadow: "var(--shadow-modal)",
             zIndex: 200,
             outline: "none",
             overflow: "hidden",
