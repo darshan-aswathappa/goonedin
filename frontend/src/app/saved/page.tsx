@@ -43,33 +43,35 @@ export default function SavedJobsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-paper">
-      <header className="sticky top-0 z-40 flex items-center justify-between gap-4 border-b border-hairline bg-paper px-4 py-3">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            aria-label="Back to feed"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
-          >
-            <ArrowLeft className="size-[14px]" />
-          </Link>
-          <div>
-            <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
-              Saved
-            </h1>
-            <Kicker className="mt-1">Your shortlist</Kicker>
+    <div className="min-h-dvh bg-paper">
+      <header className="shell-header bg-paper-card">
+        <div className="shell-header-inner">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/"
+              aria-label="Back to feed"
+              className="shell-back"
+            >
+              <ArrowLeft className="size-[14px]" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
+                Saved
+              </h1>
+              <Kicker className="mt-1">Your shortlist</Kicker>
+            </div>
           </div>
-        </div>
 
-        <div className="flex shrink-0 items-center gap-2 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5">
-          <BookmarkSimple weight="fill" className="size-3 text-ink-muted" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
-            {displayJobs.length} saved
-          </span>
+          <div className="flex shrink-0 items-center gap-2 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5">
+            <BookmarkSimple weight="fill" className="size-3 text-ink-muted" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+              {displayJobs.length} saved
+            </span>
+          </div>
         </div>
       </header>
 
-      <main className="p-4">
+      <main className="shell-main mx-auto w-full max-w-[1400px]">
         {loading ? (
           <div className="flex flex-col items-center gap-4 py-16">
             <CircleNotch className="size-7 animate-spin text-brick" />

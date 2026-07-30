@@ -2,7 +2,6 @@
 
 import { Job, useJobsStore } from "@/store/jobs";
 import { JobCard } from "./JobCard";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Briefcase, Lock, Gear, ArrowRight, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { DsButton, DsCard, Kicker, dsButtonVariants } from "@/components/ds";
@@ -166,26 +165,31 @@ export function JobList({
     );
   }
 
-  return (
-    <div className="relative">
-      <div className={isLocked ? "pointer-events-none" : ""}>
-        <ScrollArea className={`${isLocked ? "h-[500px] sm:h-[600px] overflow-hidden" : "h-[calc(100dvh-200px)] sm:h-[calc(100dvh-220px)]"} pr-3 sm:pr-4 pb-6 sm:pb-8`}>
-          <div className="job-card-grid">
-            {displayJobs.map((job, index) => (
-              <div
-                key={job.external_id}
-                className={`h-full animate-job-enter ${isLocked && index >= 3 ? "blur-[2px] opacity-40" : ""}`}
-                style={{ animationDelay: `${Math.min(index * 40, 200)}ms` }}
-              >
-                <JobCard job={job} isLocked={isLocked} />
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
+  const grid = (
+    <div className="job-card-grid pb-8">
+      {displayJobs.map((job, index) => (
+        <div
+          key={job.external_id}
+          className={cn(
+            "h-full animate-job-enter",
+            isLocked && index >= 3 && "opacity-40 blur-[2px]"
+          )}
+          style={{ animationDelay: `${Math.min(index * 40, 200)}ms` }}
+        >
+          <JobCard job={job} isLocked={isLocked} />
+        </div>
+      ))}
+    </div>
+  );
 
-      {isLocked && (
-        <div className="absolute inset-x-0 bottom-0 top-0 flex flex-col items-center justify-center bg-paper/60 p-3 backdrop-blur-[2px] sm:p-0">
+  /* Locked teaser keeps a fixed preview height; authenticated feed uses document scroll. */
+  if (isLocked) {
+    return (
+      <div className="relative">
+        <div className="pointer-events-none max-h-[520px] overflow-hidden sm:max-h-[600px]">
+          {grid}
+        </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-paper/60 p-4 backdrop-blur-[2px]">
           <DsCard
             interactive={false}
             className="flex w-full max-w-[360px] flex-col items-center gap-4 px-8 py-6 text-center"
@@ -208,7 +212,9 @@ export function JobList({
             </Link>
           </DsCard>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
+
+  return grid;
 }

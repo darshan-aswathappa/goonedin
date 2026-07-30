@@ -212,12 +212,62 @@ function LiveFeedPanel() {
   );
 }
 
+/** Compact proof strip for viewports that hide the full live-feed panel. */
+function CompactFeedProof() {
+  return (
+    <div className="border-t border-hairline bg-paper-card lg:hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-3">
+        <StatusBadge label="Live feed" tone="complete" live />
+        <Kicker className="text-ink-faint">5 sources online</Kicker>
+      </div>
+      <div className="divide-y divide-hairline">
+        {FEED_JOBS.slice(0, 4).map((job, i) => (
+          <div key={job.company} className="flex items-baseline justify-between gap-3 px-5 py-2.5">
+            <div className="min-w-0">
+              <span
+                className={`font-serif text-[15px] leading-tight ${
+                  i === 0 ? "font-semibold text-ink" : "text-ink-2"
+                }`}
+              >
+                {job.company}
+              </span>
+              <span className="ml-2 truncate font-sans text-[13px] text-ink-muted">
+                {job.role}
+              </span>
+            </div>
+            <span className="shrink-0 font-mono text-[11px] tabular-nums text-ink-faint">
+              {job.age}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 border-t border-hairline">
+        {[
+          { label: "Scan rate", value: "847/hr" },
+          { label: "Indexed", value: "1.2k" },
+          { label: "Uptime", value: "99.9%" },
+        ].map(({ label, value }, i) => (
+          <div
+            key={label}
+            className={`px-4 py-3 ${i < 2 ? "border-r border-hairline" : ""}`}
+          >
+            <Kicker className="mb-1">{label}</Kicker>
+            <p className="font-serif text-[18px] font-semibold leading-none tabular-nums text-ink">
+              {value}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-paper">
+      <div className="flex min-h-dvh items-center justify-center bg-paper">
         <CircleNotch className="size-6 animate-spin text-brick" />
       </div>
     );
@@ -228,9 +278,9 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper text-ink">
+    <div className="flex min-h-dvh flex-col bg-paper text-ink">
       {/* Masthead */}
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-5 py-4">
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-baseline gap-4">
           <span className="font-serif text-[19px] font-semibold leading-none text-ink">
             HireFeed<span className="text-brick">.</span>
@@ -241,7 +291,7 @@ export default function Home() {
           <StatusBadge label="Live" tone="complete" live className="hidden sm:inline-flex" />
           <Link
             href="/login"
-            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2 transition-colors duration-[120ms] hover:text-brick"
+            className="flex min-h-10 items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2 transition-colors duration-[120ms] hover:text-brick"
           >
             Sign in
             <ArrowRight className="size-3" />
@@ -249,22 +299,20 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Hero — two columns */}
-      <section className="grid grid-cols-1 border-b border-hairline lg:h-[560px] lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_500px]">
-        {/* Left: copy */}
-        <div className="flex flex-col justify-between gap-12 px-5 pb-12 pt-14 lg:border-r lg:border-hairline">
+      {/* Hero — copy leads; feed proof sits beside on lg+ and below on narrow */}
+      <section className="grid grid-cols-1 border-b border-hairline lg:min-h-[560px] lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_500px]">
+        <div className="flex flex-col justify-center gap-8 px-5 pb-10 pt-12 lg:border-r lg:border-hairline lg:py-14">
           <div>
-            <Kicker className="mb-5">Real-time job feed</Kicker>
-            <h1 className="mb-6 max-w-[16ch] font-serif text-[38px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink sm:text-[46px] lg:text-[56px]">
+            <h1 className="mb-5 max-w-[16ch] font-serif text-[38px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink sm:text-[46px] lg:text-[56px]">
               Every opening, the minute it posts.
             </h1>
-            <p className="mb-10 max-w-[52ch] font-sans text-[17px] leading-relaxed text-ink-2">
+            <p className="mb-8 max-w-[52ch] font-sans text-[17px] leading-relaxed text-ink-2">
               HireFeed watches LinkedIn, GitHub, MathWorks and your own ATS boards,
               reads each posting, and files it to your feed as it lands. You stop
               searching.
             </p>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="mb-8 flex flex-wrap gap-2">
               {SOURCES.map(({ label, icon: Icon }) => (
                 <span
                   key={label}
@@ -277,9 +325,7 @@ export default function Home() {
                 </span>
               ))}
             </div>
-          </div>
 
-          <div>
             <Link href="/login">
               <DsButton>
                 Get access
@@ -289,8 +335,8 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Right: live feed panel */}
         <LiveFeedPanel />
+        <CompactFeedProof />
       </section>
 
       {/* Capabilities table */}
@@ -332,7 +378,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-hairline px-5 py-3">
+      <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-hairline px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Kicker>Powered by DeepSeek + Supabase</Kicker>
         <Kicker>&copy; 2025 HireFeed</Kicker>
       </footer>

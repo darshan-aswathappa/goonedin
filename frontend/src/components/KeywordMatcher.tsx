@@ -173,57 +173,57 @@ export function KeywordMatcher() {
     totalCount > 0 ? Math.round((addedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-hairline bg-paper-card px-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <Link
-            href="/"
-            aria-label="Back to jobs"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[4px] border border-hairline-strong text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
-          >
-            <CaretLeft className="size-4" />
-          </Link>
+    <div className="min-h-dvh bg-paper text-ink">
+      <header className="shell-header bg-paper-card">
+        <div className="shell-header-inner">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/"
+              aria-label="Back to jobs"
+              className="shell-back"
+            >
+              <CaretLeft className="size-4" />
+            </Link>
 
-          <Tag className="size-4 shrink-0 text-ink-muted" />
-
-          <div className="min-w-0">
-            <h1 className="truncate font-serif text-[22px] font-semibold leading-tight text-ink">
-              Keyword Matcher
-            </h1>
-            <Kicker className="mt-0.5">ATS KEYWORD EXTRACTOR</Kicker>
-          </div>
-        </div>
-
-        {hasResults && (
-          <div className="flex shrink-0 items-center gap-3">
-            <div className="flex items-baseline gap-1.5">
-              <span
-                className={`font-serif text-[22px] font-semibold tabular-nums leading-none ${
-                  overallPct >= 75 ? "text-forest" : "text-brick"
-                }`}
-              >
-                {overallPct}%
-              </span>
-              <Kicker>MATCHED</Kicker>
+            <div className="min-w-0">
+              <h1 className="truncate font-serif text-[19px] font-semibold leading-none text-ink">
+                Keyword Matcher
+              </h1>
+              <Kicker className="mt-1">ATS keyword extractor</Kicker>
             </div>
-            {checked.size > 0 && (
-              <DsButton
-                variant="secondary"
-                size="icon-sm"
-                onClick={() => setChecked(new Set())}
-                title="Reset all"
-                aria-label="Reset all"
-                className="text-ink-muted hover:border-brick hover:text-brick"
-              >
-                <ArrowCounterClockwise className="size-4" />
-              </DsButton>
-            )}
           </div>
-        )}
+
+          {hasResults && (
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="flex items-baseline gap-1.5">
+                <span
+                  className={`font-serif text-[22px] font-semibold tabular-nums leading-none ${
+                    overallPct >= 75 ? "text-forest" : "text-brick"
+                  }`}
+                >
+                  {overallPct}%
+                </span>
+                <Kicker>Matched</Kicker>
+              </div>
+              {checked.size > 0 && (
+                <DsButton
+                  variant="secondary"
+                  size="icon-sm"
+                  onClick={() => setChecked(new Set())}
+                  title="Reset all"
+                  aria-label="Reset all"
+                  className="text-ink-muted hover:border-brick hover:text-brick"
+                >
+                  <ArrowCounterClockwise className="size-4" />
+                </DsButton>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
-      <div className="min-h-[calc(100vh-56px)] bg-paper">
-        <main className="mx-auto grid max-w-[1100px] grid-cols-1 gap-6 p-4 md:grid-cols-2 md:p-6">
+      <div className="bg-paper">
+        <main className="shell-main mx-auto grid max-w-[1100px] grid-cols-1 gap-6 md:grid-cols-2">
           {/* Left column — Job Description */}
           <div className="flex flex-col">
             <TextField

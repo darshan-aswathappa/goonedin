@@ -30,7 +30,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 /** Hairline icon button: neutral at rest, brick on hover. */
 const ICON_BUTTON_CLASS =
-  "flex flex-1 items-center justify-center rounded-md border border-hairline bg-paper-card p-1.5 text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink-muted sm:flex-none min-h-9 min-w-9";
+  "flex flex-1 items-center justify-center rounded-md border border-hairline bg-paper-card p-1.5 text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink-muted sm:flex-none min-h-10 min-w-10";
 
 const TOOLTIP_CLASS =
   "hidden rounded-[4px] bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.09em] text-paper-card sm:block";

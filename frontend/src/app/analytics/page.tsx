@@ -217,30 +217,31 @@ export default function AnalyticsPage() {
   }, [jobs]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-paper">
+    <div className="flex min-h-dvh flex-col bg-paper">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex shrink-0 items-center justify-between gap-4 border-b border-hairline bg-paper px-4 py-3">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            title="Back to Dashboard"
-            aria-label="Back to Dashboard"
-            className="flex size-7 shrink-0 items-center justify-center rounded-[4px] border border-hairline text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
-          >
-            <ArrowLeft className="size-[14px]" />
-          </Link>
-          <div>
-            <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
-              Analytics
-            </h1>
-            <Kicker className="mt-1">Job market intelligence</Kicker>
+      <header className="shell-header bg-paper-card">
+        <div className="shell-header-inner">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/"
+              title="Back to Dashboard"
+              aria-label="Back to Dashboard"
+              className="shell-back"
+            >
+              <ArrowLeft className="size-[14px]" />
+            </Link>
+            <div className="min-w-0">
+              <h1 className="font-serif text-[19px] font-semibold leading-none text-ink">
+                Analytics
+              </h1>
+              <Kicker className="mt-1">Job market intelligence</Kicker>
+            </div>
           </div>
-        </div>
 
-        {/* Jobs count badge */}
-        <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
-          {jobs.length} jobs loaded
-        </span>
+          <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+            {jobs.length} jobs loaded
+          </span>
+        </div>
       </header>
 
       {/* Summary stat strip */}
@@ -251,14 +252,13 @@ export default function AnalyticsPage() {
         <SummaryStat label="With salary" value={stats.withSalary} />
       </div>
 
-      {/* Main content: charts left, AI right */}
-      <main className="flex min-h-0 flex-1 flex-col md:flex-row">
-        {/* Left: Charts panel (60%) */}
-        <div className="flex flex-col gap-4 overflow-y-auto border-b border-hairline p-4 md:flex-[0_0_60%] md:border-b-0 md:border-r">
-          {/* Drop-in charts from AnalyticsPanel */}
-          <AnalyticsPanel jobs={jobs} />
+      {/* Chart band leads; AI supports below on narrow, beside on wide */}
+      <main className="flex min-h-0 flex-1 flex-col xl:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto border-b border-hairline p-4 sm:p-5 xl:border-b-0 xl:border-r">
+          <div className="min-h-[280px]">
+            <AnalyticsPanel jobs={jobs} />
+          </div>
 
-          {/* Additional stat cards */}
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
             <StatCard title="Top companies">
               <TopCompanies jobs={jobs} />
@@ -274,8 +274,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Right: AI Companion (40%) */}
-        <div className="flex min-h-[400px] flex-col md:min-h-0 md:flex-[0_0_40%]">
+        <div className="flex min-h-[320px] flex-col xl:min-h-0 xl:w-[380px] xl:shrink-0">
           <AICompanion />
         </div>
       </main>

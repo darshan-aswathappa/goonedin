@@ -57,9 +57,9 @@ import Link from "next/link";
  */
 const TAB_BASE = "flex-none shrink-0 cursor-pointer";
 
-/** 32px square hairline icon button used across the masthead. */
+/** 40px hairline icon button — usable touch target across the masthead. */
 const HEADER_ICON_BUTTON =
-  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-hairline bg-paper-card text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick";
+  "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-hairline bg-paper-card text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick";
 
 const SOURCE_META_CHIP = "px-2 py-0.5 text-[11px] uppercase tracking-[0.09em]";
 
@@ -229,21 +229,18 @@ export function JobsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div className="min-h-dvh bg-paper text-ink">
       {/* Editorial masthead */}
-      <header className="sticky top-0 z-40 h-14 border-b border-hairline bg-paper-card">
-        <div className="grid h-full grid-cols-[1fr_auto_1fr] items-center px-3">
+      <header className="sticky top-0 z-40 border-b border-hairline bg-paper-card pt-[env(safe-area-inset-top)]">
+        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-5">
           {/* Left: brand */}
-          <div className="flex items-center gap-2.5">
-            <div className="flex size-6 items-center justify-center rounded-[4px] bg-brick">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex size-6 shrink-0 items-center justify-center rounded-[4px] bg-brick">
               <Briefcase weight="fill" className="size-3.5 text-paper-card" />
             </div>
-            <div className="flex flex-col gap-0.5 leading-none">
-              <span className="font-serif text-[19px] font-semibold leading-none text-ink">
-                Hirefeed
-              </span>
-              <Kicker className="text-[10px] leading-none">Job extraction engine</Kicker>
-            </div>
+            <span className="truncate font-serif text-[19px] font-semibold leading-none text-ink">
+              HireFeed<span className="text-brick">.</span>
+            </span>
           </div>
 
           {/* Center: live status + job count */}
@@ -287,7 +284,7 @@ export function JobsDashboard() {
                 </button>
 
                 {moreMenuOpen && (
-                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[150px] overflow-hidden rounded-[4px] border border-hairline bg-paper-card">
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[150px] overflow-hidden rounded-[4px] border border-hairline bg-paper-card shadow-[var(--shadow-md)]">
                     {[
                       { href: "/settings", icon: <Gear weight="regular" className="size-4" />, label: "Settings" },
                       { href: "/keyword-matcher", icon: <Tag weight="regular" className="size-4" />, label: "Keywords" },
@@ -297,7 +294,7 @@ export function JobsDashboard() {
                         key={href}
                         href={href}
                         onClick={() => setMoreMenuOpen(false)}
-                        className="flex w-full items-center gap-2 border-b border-hairline px-3 py-2 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted no-underline transition-colors duration-[120ms] last:border-b-0 hover:bg-paper-sunk hover:text-ink"
+                        className="flex w-full items-center gap-2 border-b border-hairline px-3 py-2.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted no-underline transition-colors duration-[120ms] last:border-b-0 hover:bg-paper-sunk hover:text-ink"
                       >
                         {icon}
                         <span>{label}</span>
@@ -324,7 +321,7 @@ export function JobsDashboard() {
 
       {user && <OnboardingModal userEmail={user.email} />}
 
-      <main className="container mx-auto px-2 py-4 sm:px-3 sm:py-6">
+      <main className="mx-auto w-full max-w-[1400px] px-4 py-5 sm:px-5 sm:py-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         {apiError && (
           <ErrorBanner
             error={apiError}
@@ -334,9 +331,9 @@ export function JobsDashboard() {
           />
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-2 sm:mt-3" : "w-full"}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "mt-3 w-full" : "w-full"}>
           {user && (
-            <div className="relative mb-4 flex w-full items-center gap-2 sm:mb-6">
+            <div className="mb-5 flex flex-col gap-3 sm:mb-6">
               <TabsList
                 variant="line"
                 className="w-full max-w-full flex-nowrap justify-start overflow-x-auto whitespace-nowrap scrollbar-hide"
@@ -417,7 +414,7 @@ export function JobsDashboard() {
                     >
                       <div className="flex min-w-0 items-center gap-1.5">
                         {getDynamicIcon(source.icon)}
-                        <span className="truncate max-w-[80px] sm:max-w-[160px]">
+                        <span className="max-w-[80px] truncate sm:max-w-[160px]">
                           {source.name}
                         </span>
                         <span className="shrink-0 text-ink-faint">{sourceJobs.length}</span>
@@ -427,7 +424,7 @@ export function JobsDashboard() {
                 })}
               </TabsList>
 
-              <div className="shrink-0">
+              <div className="flex justify-start sm:justify-end">
                 <AddJobSourceModal
                   onSuccess={(id: string) => setActiveTab(id)}
                   triggerNode={
@@ -442,7 +439,6 @@ export function JobsDashboard() {
                   }
                 />
               </div>
-              <div className="pointer-events-none absolute right-8 top-0 h-full w-10 bg-gradient-to-l from-paper to-transparent md:hidden" aria-hidden="true" />
             </div>
           )}
 
