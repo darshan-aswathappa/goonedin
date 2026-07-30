@@ -5,6 +5,13 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      # Consumed via {$VAR} placeholders in the Caddyfile for resumedesk's
+      # basic_auth gate - resume-bot has no auth of its own. Values live in
+      # .env with `$` escaped as `$$` (bcrypt hashes contain literal `$`,
+      # which docker compose would otherwise try to interpolate).
+      - RESUMEDESK_AUTH_USER=${RESUMEDESK_AUTH_USER}
+      - RESUMEDESK_AUTH_HASH=${RESUMEDESK_AUTH_HASH}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -12,7 +19,22 @@ services:
     # Lets the Caddyfile reach host nginx on :8080, which fronts DassTracker.
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on: [frontend, backend, analytics]
+    depends_on: [frontend, backend, analytics, resumedesk]
+
+  resumedesk:
+    # Sibling checkout of xanf-code/resume-auto-generation-bot (separate repo,
+    # separate lifecycle from goonedin) - kept outside this repo on purpose.
+    build: ../resume-bot
+    restart: unless-stopped
+    env_file: ./.env.resumedesk
+    volumes:
+      - resumedesk_vault:/data/vault
+      - resumedesk_tectonic_cache:/root/.cache/Tectonic
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   resume-service:
     build: ./resume_service
@@ -62,3 +84,5 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  resumedesk_vault:
+  resumedesk_tectonic_cache:

@@ -13,6 +13,18 @@ analytics.goonedin.xyz {
       reverse_proxy analytics:3001
 }
 
+# Résumé Desk - a separate single-user tool (xanf-code/resume-auto-generation-bot)
+# with no auth of its own, so it's gated with HTTP basic auth here. Credentials
+# come from RESUMEDESK_AUTH_USER/HASH (set on the caddy service in
+# docker-compose.yml, sourced from .env).
+resumedesk.goonedin.xyz {
+      encode zstd gzip
+      basic_auth {
+            {$RESUMEDESK_AUTH_USER} {$RESUMEDESK_AUTH_HASH}
+      }
+      reverse_proxy resumedesk:8000
+}
+
 # DassTracker — a separate app that predates this stack, running as the
 # dasstracker.service systemd unit (node on 127.0.0.1:3000).
 #
