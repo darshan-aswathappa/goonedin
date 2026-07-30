@@ -266,6 +266,63 @@
 }
 
 @layer utilities {
+  /* Shell rhythm: sticky chrome + content gutters shared across Operate pages */
+  .shell-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    border-bottom: var(--border-w) solid var(--border-default);
+    background: var(--paper);
+    padding-top: env(safe-area-inset-top);
+    padding-inline: max(var(--space-4), env(safe-area-inset-left))
+      max(var(--space-4), env(safe-area-inset-right));
+    padding-bottom: 0;
+    min-height: calc(3.5rem + env(safe-area-inset-top));
+  }
+  .shell-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    width: 100%;
+    min-height: 3.5rem;
+  }
+  .shell-main {
+    padding-inline: max(var(--space-4), env(safe-area-inset-left))
+      max(var(--space-4), env(safe-area-inset-right));
+    padding-block: var(--space-5);
+    padding-bottom: max(var(--space-5), env(safe-area-inset-bottom));
+  }
+  @media (min-width: 640px) {
+    .shell-main {
+      padding-inline: max(var(--space-5), env(safe-area-inset-left))
+        max(var(--space-5), env(safe-area-inset-right));
+      padding-block: var(--space-6);
+      padding-bottom: max(var(--space-6), env(safe-area-inset-bottom));
+    }
+  }
+  .shell-back {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    border: var(--border-w) solid var(--border-default);
+    color: var(--text-muted);
+    transition: border-color var(--duration-fast) var(--ease-standard),
+      color var(--duration-fast) var(--ease-standard);
+  }
+  .shell-back:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   .job-card-grid {
     display: grid;
     grid-template-columns: 1fr;
