@@ -60,7 +60,7 @@ export default function PanelHint({ id, hint }: Props) {
           alignItems: "center",
           justifyContent: "center",
           background: showTooltip ? "var(--teal)" : "var(--teal-dim)",
-          color: showTooltip ? "#000" : "var(--teal)",
+          color: showTooltip ? "var(--paper-card)" : "var(--teal)",
           border: `1px solid ${showTooltip ? "var(--teal)" : "var(--border-bright)"}`,
           borderRadius: "var(--radius)",
           cursor: "pointer",
@@ -102,7 +102,7 @@ export default function PanelHint({ id, hint }: Props) {
             lineHeight: 1.6,
             color: "var(--text-dim)",
             letterSpacing: "0.02em",
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.6)",
+            boxShadow: "var(--shadow-popover)",
           }}
         >
           <div style={{ marginBottom: "8px" }}>{hint}</div>

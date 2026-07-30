@@ -23,8 +23,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Chip, DsCard, dsButtonVariants } from "@/components/ds";
+import { cn } from "@/lib/utils";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+/** Hairline icon button: neutral at rest, brick on hover. */
+const ICON_BUTTON_CLASS =
+  "flex flex-1 items-center justify-center rounded-md border border-hairline bg-paper-card p-1.5 text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick disabled:opacity-50 disabled:hover:border-hairline disabled:hover:text-ink-muted sm:flex-none min-h-9 min-w-9";
+
+const TOOLTIP_CLASS =
+  "hidden rounded-[4px] bg-ink px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.09em] text-paper-card sm:block";
+
+const META_CLASS = "font-mono text-[11px] tracking-[0.09em] text-ink-muted";
 
 interface JobCardProps {
   job: Job;
@@ -39,11 +50,6 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [animateSave, setAnimateSave] = useState(false);
   const [analysisOpen, setAnalysisOpen] = useState(false);
-  const [cardHovered, setCardHovered] = useState(false);
-  const [saveHovered, setSaveHovered] = useState(false);
-  const [dismissHovered, setDismissHovered] = useState(false);
-  const [blockHovered, setBlockHovered] = useState(false);
-  const [applyHovered, setApplyHovered] = useState(false);
 
   const removeJob = useJobsStore((state) => state.removeJob);
   const savedJobIds = useJobsStore((state) => state.savedJobIds);
@@ -194,179 +200,85 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
     }
   };
 
+  const isAnalyzable = job.source === "LinkedIn" || job.source === "Jobright";
+  const hasEnrichedFields =
+    job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed";
+
   return (
     <>
-      <div
-        onClick={!isLocked && (job.source === "LinkedIn" || job.source === "Jobright") ? () => setAnalysisOpen(true) : undefined}
-        onMouseEnter={() => setCardHovered(true)}
-        onMouseLeave={() => setCardHovered(false)}
-        className={`group relative h-full flex flex-col ${
-          isLocked ? "pointer-events-none opacity-80" : (job.source === "LinkedIn" || job.source === "Jobright") ? "cursor-pointer" : ""
-        } ${isExiting ? "animate-card-exit" : ""}`}
-        style={{
-          background: "#080808",
-          border: cardHovered ? "1px solid #333" : "1px solid #1c1c1c",
-          borderRadius: "2px",
-          padding: "14px",
-          transition: "border-color 0.1s",
-        }}
+      <DsCard
+        onClick={!isLocked && isAnalyzable ? () => setAnalysisOpen(true) : undefined}
+        className={cn(
+          "group flex h-full flex-col p-4",
+          isLocked && "pointer-events-none opacity-80",
+          !isLocked && isAnalyzable && "cursor-pointer",
+          isExiting && "animate-card-exit"
+        )}
       >
         {isBlockFlash && (
-          <div
-            className="absolute inset-0 animate-block-flash pointer-events-none z-20"
-            style={{ background: "rgba(255,51,51,0.15)" }}
-          />
+          <div className="pointer-events-none absolute inset-0 z-20 animate-block-flash bg-brick/15" />
         )}
 
-        {/* Source badge */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            fontFamily: "var(--font-mono)",
-            fontSize: "8px",
-            fontWeight: 600,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            color: "#ff8c00",
-            background: "#080808",
-            border: "1px solid #1c1c1c",
-            borderTop: "none",
-            borderRight: "none",
-            padding: "3px 8px",
-          }}
-        >
+        {/* Source badge — mono corner tab */}
+        <div className="absolute right-0 top-0 rounded-bl-[4px] rounded-tr-[3px] border-b border-l border-hairline bg-paper-sunk px-2 py-[3px] font-mono text-[10px] uppercase tracking-[0.09em] text-ink-muted">
           {job.source}
         </div>
 
-        <div className="flex flex-col h-full space-y-3">
-          <div className="space-y-1.5 pr-10 sm:pr-12 min-w-0">
-            <h3
-              className="font-mono font-semibold leading-tight line-clamp-3 sm:line-clamp-2 break-words"
-              style={{ fontSize: "13px", color: "#f0f0f0", letterSpacing: "0.01em" }}
-            >
+        <div className="flex h-full flex-col gap-3">
+          <div className="min-w-0 space-y-1.5 pr-10 sm:pr-12">
+            <h3 className="line-clamp-3 break-words font-serif text-[18px] font-semibold leading-tight text-ink sm:line-clamp-2">
               {job.title}
             </h3>
-            <div className="flex items-center gap-2 min-w-0">
-              <Buildings
-                weight="bold"
-                className="h-4 w-4 shrink-0"
-                style={{ color: "#555" }}
-              />
-              <span
-                className="truncate"
-                style={{
-                  fontSize: "11px",
-                  fontFamily: "var(--font-mono)",
-                  color: "#aaaaaa",
-                  letterSpacing: "0.05em",
-                }}
-              >
+            <div className="flex min-w-0 items-center gap-2">
+              <Buildings weight="regular" className="size-4 shrink-0 text-ink-muted" />
+              <span className="truncate font-mono text-[11px] tracking-[0.09em] text-ink-2">
                 {job.company}
               </span>
             </div>
           </div>
 
-          <div
-            className="grid grid-cols-1 gap-2 pt-2"
-            style={{ borderTop: "1px solid #1c1c1c" }}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <MapPin
-                weight="bold"
-                className="h-3.5 w-3.5 shrink-0"
-                style={{ color: "#555" }}
-              />
-              <span
-                className="truncate"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  color: "#555",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                {job.location}
-              </span>
+          <div className="grid grid-cols-1 gap-2 border-t border-hairline pt-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <MapPin weight="regular" className="size-4 shrink-0 text-ink-muted" />
+              <span className={cn("truncate", META_CLASS)}>{job.location}</span>
             </div>
 
             {postedAt && (
-              <div className="flex items-center gap-2 min-w-0">
-                <Clock
-                  weight="bold"
-                  className="h-3.5 w-3.5 shrink-0"
-                  style={{ color: "#555" }}
-                />
-                <span
-                  className="whitespace-nowrap"
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "10px",
-                    color: "#555",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  {postedAt}
-                </span>
+              <div className="flex min-w-0 items-center gap-2">
+                <Clock weight="regular" className="size-4 shrink-0 text-ink-muted" />
+                <span className={cn("whitespace-nowrap", META_CLASS)}>{postedAt}</span>
               </div>
             )}
 
-            {(job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") && job.salary && (
-              <div
-                style={{
-                  border: "1px solid #1c1c1c",
-                  background: "rgba(255, 215, 0, 0.05)",
-                  color: "#ffd700",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  padding: "2px 8px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  width: "fit-content",
-                  maxWidth: "100%",
-                  overflow: "hidden",
-                }}
+            {hasEnrichedFields && job.salary && (
+              <Chip
+                tone="success"
+                className="w-fit max-w-full gap-1.5 overflow-hidden px-2 py-1 text-[11px] tracking-[0.04em]"
               >
-                <CurrencyDollar weight="bold" className="h-3.5 w-3.5 shrink-0" />
+                <CurrencyDollar weight="regular" className="size-3.5 shrink-0" />
                 <span className="truncate">{formatSalary(job.salary)}</span>
-              </div>
+              </Chip>
             )}
 
-            {(job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed") && job.visa && (() => {
+            {hasEnrichedFields && job.visa && (() => {
               const formatted = formatVisa(job.visa);
               const isPositive = formatted.toLowerCase().includes("sponsor") && !formatted.toLowerCase().includes("not eligible");
               if (isPositive) return null;
               return (
-                <div
-                  style={{
-                    border: "1px solid rgba(255,51,51,0.3)",
-                    background: "rgba(255,51,51,0.05)",
-                    color: "#ff3333",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "10px",
-                    fontWeight: 600,
-                    padding: "2px 8px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    width: "fit-content",
-                    maxWidth: "100%",
-                    overflow: "hidden",
-                  }}
+                <Chip
+                  tone="accent"
+                  className="w-fit max-w-full gap-1.5 overflow-hidden px-2 py-1 text-[11px] tracking-[0.04em]"
                 >
-                  <Globe weight="bold" className="h-3.5 w-3.5 shrink-0" />
+                  <Globe weight="regular" className="size-3.5 shrink-0" />
                   <span className="truncate">{formatted}</span>
-                </div>
+                </Chip>
               );
             })()}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 mt-auto">
+          <div className="mt-auto flex flex-col items-center justify-between gap-2 border-t border-hairline pt-3 sm:flex-row">
             <TooltipProvider>
-              <div className="flex gap-1 sm:gap-2 w-full sm:w-auto">
+              <div className="flex w-full gap-1 sm:w-auto sm:gap-2">
                 {/* Save button */}
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -375,42 +287,22 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                       disabled={isAnyActionInFlight}
                       aria-label={isSaved ? "Unsave job" : "Save job"}
                       title={isSaved ? "Unsave" : "Save"}
-                      onMouseEnter={() => setSaveHovered(true)}
-                      onMouseLeave={() => setSaveHovered(false)}
-                      className="flex-1 sm:flex-none disabled:opacity-50"
-                      style={{
-                        border: isSaved
-                          ? "1px solid #ffd700"
-                          : saveHovered
-                          ? "1px solid #ffd700"
-                          : "1px solid #1c1c1c",
-                        background: isSaved ? "rgba(255,215,0,0.08)" : "transparent",
-                        color: isSaved ? "#ffd700" : saveHovered ? "#ffd700" : "#555",
-                        padding: "6px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minHeight: "36px",
-                        minWidth: "36px",
-                        transition: "border-color 0.1s, color 0.1s",
-                        borderRadius: "2px",
-                      }}
+                      className={cn(
+                        ICON_BUTTON_CLASS,
+                        isSaved && "border-brick bg-brick-tint text-brick"
+                      )}
                     >
                       {isSaving ? (
-                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                        <CircleNotch weight="regular" className="size-4 animate-spin" />
                       ) : (
                         <BookmarkSimple
-                          weight={isSaved ? "fill" : "bold"}
-                          className={`h-4 w-4 sm:h-5 sm:w-5 ${animateSave ? "animate-save-pop" : ""}`}
+                          weight={isSaved ? "fill" : "regular"}
+                          className={cn("size-4", animateSave && "animate-save-pop")}
                         />
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent
-                    className="rounded-none font-mono text-[10px] hidden sm:block"
-                    style={{ background: "#080808", border: "1px solid #333", color: "#aaa" }}
-                  >
+                  <TooltipContent className={TOOLTIP_CLASS}>
                     <p>{isSaved ? "Unsave" : "Save"}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -423,35 +315,16 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                       disabled={isAnyActionInFlight}
                       aria-label="Dismiss job"
                       title="Dismiss"
-                      onMouseEnter={() => setDismissHovered(true)}
-                      onMouseLeave={() => setDismissHovered(false)}
-                      className="flex-1 sm:flex-none disabled:opacity-50"
-                      style={{
-                        border: dismissHovered ? "1px solid #ff3333" : "1px solid #1c1c1c",
-                        background: "transparent",
-                        color: dismissHovered ? "#ff3333" : "#555",
-                        padding: "6px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minHeight: "36px",
-                        minWidth: "36px",
-                        transition: "border-color 0.1s, color 0.1s",
-                        borderRadius: "2px",
-                      }}
+                      className={ICON_BUTTON_CLASS}
                     >
                       {isDismissing ? (
-                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                        <CircleNotch weight="regular" className="size-4 animate-spin" />
                       ) : (
-                        <X weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <X weight="regular" className="size-4" />
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent
-                    className="rounded-none font-mono text-[10px] hidden sm:block"
-                    style={{ background: "#080808", border: "1px solid #333", color: "#aaa" }}
-                  >
+                  <TooltipContent className={TOOLTIP_CLASS}>
                     <p>Dismiss</p>
                   </TooltipContent>
                 </Tooltip>
@@ -464,36 +337,17 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                       disabled={isAnyActionInFlight}
                       aria-label="Block company"
                       title="Block"
-                      onMouseEnter={() => setBlockHovered(true)}
-                      onMouseLeave={() => setBlockHovered(false)}
-                      className="flex-1 sm:flex-none disabled:opacity-50"
-                      style={{
-                        border: blockHovered ? "1px solid #ff3333" : "1px solid #1c1c1c",
-                        background: "transparent",
-                        color: blockHovered ? "#ff3333" : "#555",
-                        padding: "6px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minHeight: "36px",
-                        minWidth: "36px",
-                        transition: "border-color 0.1s, color 0.1s",
-                        borderRadius: "2px",
-                      }}
+                      className={ICON_BUTTON_CLASS}
                     >
                       {isBlocking ? (
-                        <CircleNotch weight="bold" className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
+                        <CircleNotch weight="regular" className="size-4 animate-spin" />
                       ) : (
-                        <ThumbsDown weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <ThumbsDown weight="regular" className="size-4" />
                       )}
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent
-                    className="rounded-none font-mono text-[10px] hidden sm:block"
-                    style={{ background: "#080808", border: "1px solid #333", color: "#aaa" }}
-                  >
-                    <p>Block Company</p>
+                  <TooltipContent className={TOOLTIP_CLASS}>
+                    <p>Block company</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
@@ -505,38 +359,19 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              onMouseEnter={() => setApplyHovered(true)}
-              onMouseLeave={() => setApplyHovered(false)}
-              className="w-full sm:w-auto"
-              style={{
-                border: "1px solid #ff8c00",
-                background: applyHovered ? "rgba(255,140,0,0.18)" : "rgba(255,140,0,0.1)",
-                color: "#ff8c00",
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                padding: "6px 14px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "6px",
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-                transition: "background 0.1s, border-color 0.1s",
-                borderRadius: "2px",
-              }}
+              className={cn(
+                dsButtonVariants({ variant: "primary", size: "sm" }),
+                "w-full no-underline sm:w-auto"
+              )}
             >
               Apply
-              <ArrowSquareOut weight="bold" className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <ArrowSquareOut weight="regular" className="size-4" />
             </a>
           </div>
         </div>
-      </div>
+      </DsCard>
 
-      {(job.source === "LinkedIn" || job.source === "Jobright") && (
+      {isAnalyzable && (
         <JobAnalysisModal
           job={job}
           open={analysisOpen}

@@ -56,7 +56,7 @@ const fullProps = {
   timeline: { timeline: [{ day: "2026-03-01", count: 30 }] },
   locations: { locations: [{ city: "San Francisco", count: 200 }] },
   visa: {
-    visa: [{ label: "H-1B", count: 100, color: "#ff8c00" }],
+    visa: [{ label: "H-1B", count: 100, color: "var(--teal)" }],
     total: 200,
     sponsorshipRate: 50,
   },
@@ -67,9 +67,9 @@ const fullProps = {
     medianEstimate: 125000,
   },
   seniority: {
-    seniority: [{ level: "Senior", count: 200, color: "#ff8c00" }],
+    seniority: [{ level: "Senior", count: 200, color: "var(--teal)" }],
     titleKeywords: [{ word: "Engineer", count: 500 }],
-    jobFunctions: [{ function: "Engineering", count: 400, color: "#ff8c00" }],
+    jobFunctions: [{ function: "Engineering", count: 400, color: "var(--teal)" }],
   },
   weekday: { weekday: [{ day: "Monday", count: 100 }], peakDay: "Monday" },
   queue: {
@@ -95,11 +95,11 @@ const fullProps = {
   },
   salaryByLocation: { cities: [{ city: "San Francisco", median: 150000, count: 50 }] },
   hiringVelocity: {
-    companies: [{ name: "Acme Corp", color: "#ff8c00" }],
+    companies: [{ name: "Acme Corp", color: "var(--teal)" }],
     data: [{ day: "2026-03-01", "Acme Corp": 5 }],
   },
   salaryByFunction: {
-    functions: [{ function: "Full Stack", median: 140000, count: 50, color: "#ff8c00" }],
+    functions: [{ function: "Full Stack", median: 140000, count: 50, color: "var(--teal)" }],
   },
   skillGap: {
     skills: [

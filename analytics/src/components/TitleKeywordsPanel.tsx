@@ -18,14 +18,34 @@ interface PlacedWord {
   height: number;
 }
 
-/** Map count percentile to CSS variable color values */
+/**
+ * Map count percentile to a palette color.
+ *
+ * CANVAS EXCEPTION: these must stay concrete hex literals. This word cloud is
+ * painted with the Canvas 2D API, which cannot resolve `var(--token)` — an
+ * unresolvable fillStyle is silently ignored and the text renders black. The
+ * values below mirror the paper token layer; keep them in sync with globals.css.
+ *
+ * Ordered so the loudest tier is the one brand accent and quieter tiers recede,
+ * matching the TIER_COLORS ramp in src/lib/tokens.ts.
+ */
 function getColor(pct: number): string {
-  if (pct > 0.8) return "#cc33cc";   // var(--purple)
-  if (pct > 0.6) return "#ff8c00";   // var(--teal)
-  if (pct > 0.4) return "#00bfff";   // var(--blue)
-  if (pct > 0.2) return "#aaaaaa";   // var(--text-dim)
-  return "#555555";                    // var(--muted)
+  if (pct > 0.8) return "#c0362c";   // var(--teal)   brick  — the accent
+  if (pct > 0.6) return "#3a5f4a";   // var(--green)  forest
+  if (pct > 0.4) return "#5f6f7a";   // var(--blue)   slate
+  if (pct > 0.2) return "#6b5f74";   // var(--purple) mauve
+  return "#8b8277";                  // var(--muted)  stone
 }
+
+/** Paper card (#fdfbf7) — for text sitting on a saturated badge fill. */
+const ON_ACCENT = "#fdfbf7";
+
+/**
+ * Canvas mono stack. Same CANVAS EXCEPTION as above: `ctx.font` needs literal
+ * family names, so it cannot read var(--font-mono). Mirrors the tail of that
+ * token's fallback chain rather than naming the retired terminal typefaces.
+ */
+const CANVAS_MONO = `"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace`;
 
 function layoutWords(
   words: { word: string; count: number }[],
@@ -44,7 +64,7 @@ function layoutWords(
     const fontSize = Math.round(11 + pct * 22);
     const color = getColor(pct);
 
-    ctx.font = `${pct > 0.6 ? 700 : 400} ${fontSize}px "JetBrains Mono", "Fira Code", monospace`;
+    ctx.font = `${pct > 0.6 ? 700 : 400} ${fontSize}px ${CANVAS_MONO}`;
     const metrics = ctx.measureText(item.word.toUpperCase());
     const w = metrics.width + 12;
     const h = fontSize + 8;
@@ -154,28 +174,21 @@ export default function TitleKeywordsPanel({ data }: Props) {
 
     for (const p of placed) {
       const isHovered = hovered === p;
-      ctx.font = `${p.fontSize > 22 ? 700 : 400} ${p.fontSize}px "JetBrains Mono", "Fira Code", monospace`;
+      ctx.font = `${p.fontSize > 22 ? 700 : 400} ${p.fontSize}px ${CANVAS_MONO}`;
       ctx.textBaseline = "top";
 
-      if (isHovered) {
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = 1;
-      } else {
-        ctx.shadowColor = "transparent";
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = 0.85;
-      }
+      // No glow on hover — the paper system forbids it. Hover reads through
+      // full ink weight plus the badge fill going solid.
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = isHovered ? 1 : 0.85;
 
       ctx.fillText(p.word.toUpperCase(), p.x + 6, p.y + 4);
 
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
       const badgeText = String(p.count);
-      const badgeFont = `600 ${Math.max(7, Math.round(p.fontSize * 0.38))}px "JetBrains Mono", monospace`;
+      const badgeFont = `600 ${Math.max(7, Math.round(p.fontSize * 0.38))}px ${CANVAS_MONO}`;
       ctx.font = badgeFont;
       const badgeW = ctx.measureText(badgeText).width + 6;
       const badgeH = Math.max(10, Math.round(p.fontSize * 0.42));
@@ -195,7 +208,8 @@ export default function TitleKeywordsPanel({ data }: Props) {
       ctx.fill();
 
       ctx.globalAlpha = 1;
-      ctx.fillStyle = isHovered ? "#000000" : p.color;
+      // On hover the badge fill goes near-solid, so its label must be paper.
+      ctx.fillStyle = isHovered ? ON_ACCENT : p.color;
       ctx.textBaseline = "middle";
       ctx.fillText(badgeText, bx + 3, by + badgeH / 2);
     }

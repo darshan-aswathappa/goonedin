@@ -11,6 +11,7 @@ import {
   Users,
 } from "@phosphor-icons/react";
 import { getAuthHeaders } from "@/hooks/useAuth";
+import { DsButton, Kicker, TextField } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -39,7 +40,6 @@ interface BadgeSectionProps {
   checked: Set<string>;
   onToggle: (kw: string) => void;
   emptyLabel: string;
-  accentColor: string;
 }
 
 function BadgeSection({
@@ -49,151 +49,59 @@ function BadgeSection({
   checked,
   onToggle,
   emptyLabel,
-  accentColor,
 }: BadgeSectionProps) {
-  const [hoveredKw, setHoveredKw] = useState<string | null>(null);
   const addedCount = group.keywords.filter((kw) => checked.has(kw)).length;
   const totalCount = group.keywords.length;
   const pct = totalCount > 0 ? Math.round((addedCount / totalCount) * 100) : 0;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "10px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "20px",
-              height: "20px",
-              background: accentColor,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {icon}
-          </div>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "9px",
-              fontWeight: 600,
-              letterSpacing: "0.18em",
-              color: accentColor,
-              textTransform: "uppercase",
-            }}
-          >
-            {"// "}{title.toUpperCase()}
-          </span>
-        </div>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <Kicker className="flex items-center gap-2">
+          {icon}
+          {title.toUpperCase()}
+        </Kicker>
         {totalCount > 0 && (
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "9px",
-              border: "1px solid #1c1c1c",
-              padding: "2px 8px",
-              color: pct >= 75 ? "#ffd700" : "#555555",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {pct}% matched
+          <div className="flex items-baseline gap-1.5">
+            <span
+              className={`font-serif text-[17px] font-semibold tabular-nums leading-none ${
+                pct >= 75 ? "text-forest" : "text-ink-2"
+              }`}
+            >
+              {pct}%
+            </span>
+            <Kicker>matched</Kicker>
           </div>
         )}
       </div>
 
       {group.keywords.length === 0 ? (
-        <div
-          style={{
-            background: "#080808",
-            border: "1px solid #1c1c1c",
-            padding: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "9px",
-              color: "#555555",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-            }}
-          >
+        <div className="flex items-center justify-center rounded-[4px] border border-hairline bg-paper-sunk p-6">
+          <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
             {emptyLabel}
           </span>
         </div>
       ) : (
-        <div
-          style={{
-            background: "#080808",
-            border: "1px solid #1c1c1c",
-            padding: "12px",
-            overflowY: "auto",
-            maxHeight: "220px",
-          }}
-        >
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+        <div className="max-h-[220px] overflow-y-auto rounded-[4px] border border-hairline bg-paper-sunk p-3">
+          <div className="flex flex-wrap gap-2">
             {group.keywords.map((kw) => {
               const isDone = checked.has(kw);
               const count = group.counts[kw.toLowerCase()] ?? 1;
               return (
-                <div key={kw} style={{ position: "relative" }}>
+                <div key={kw} className="relative">
                   {count > 1 && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: "-6px",
-                        right: "-6px",
-                        zIndex: 10,
-                        background: "#ff8c00",
-                        color: "#000",
-                        fontFamily: "var(--font-mono)",
-                        fontSize: "8px",
-                        fontWeight: 700,
-                        padding: "1px 4px",
-                        minWidth: "16px",
-                        textAlign: "center",
-                      }}
-                    >
+                    <span className="absolute -right-1.5 -top-1.5 z-10 min-w-4 rounded-[4px] bg-brick px-1 py-px text-center font-mono text-[10px] leading-tight text-paper-card">
                       {count}
                     </span>
                   )}
                   <button
                     onClick={() => onToggle(kw)}
-                    onMouseEnter={() => setHoveredKw(kw)}
-                    onMouseLeave={() => setHoveredKw(null)}
-                    style={{
-                      border: isDone
-                        ? "1px solid #1c1c1c"
-                        : hoveredKw === kw
-                        ? `1px solid ${accentColor}`
-                        : "1px solid #333333",
-                      background: isDone ? "#000000" : "#080808",
-                      color: isDone
-                        ? "#333333"
-                        : hoveredKw === kw
-                        ? accentColor
-                        : "#f0f0f0",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "10px",
-                      fontWeight: 600,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      padding: "4px 10px",
-                      cursor: "pointer",
-                      textDecoration: isDone ? "line-through" : "none",
-                      opacity: isDone ? 0.45 : 1,
-                      transition: "border-color 0.1s, color 0.1s",
-                    }}
+                    aria-pressed={isDone}
+                    className={`rounded-[4px] border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.09em] transition-colors duration-[120ms] ${
+                      isDone
+                        ? "border-hairline bg-paper-sunk text-ink-faint line-through"
+                        : "border-hairline-strong bg-paper-card text-ink-2 hover:border-brick hover:text-brick"
+                    }`}
                   >
                     {kw}
                   </button>
@@ -220,9 +128,6 @@ export function KeywordMatcher() {
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [backHovered, setBackHovered] = useState(false);
-  const [resetHovered, setResetHovered] = useState(false);
-  const [textareaFocused, setTextareaFocused] = useState(false);
 
   const hasResults =
     hardGroup.keywords.length > 0 || softGroup.keywords.length > 0;
@@ -268,267 +173,101 @@ export function KeywordMatcher() {
     totalCount > 0 ? Math.round((addedCount / totalCount) * 100) : 0;
 
   return (
-    <div style={{ minHeight: "100vh", background: "#000000", color: "#f0f0f0" }}>
-      <header
-        style={{
-          height: "44px",
-          background: "#060606",
-          borderBottom: "1px solid #1c1c1c",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 16px",
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <Link href="/">
-            <div
-              onMouseEnter={() => setBackHovered(true)}
-              onMouseLeave={() => setBackHovered(false)}
-              style={{
-                width: "28px",
-                height: "28px",
-                border: backHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: backHovered ? "#ff8c00" : "#555555",
-                cursor: "pointer",
-                transition: "border-color 0.1s, color 0.1s",
-              }}
-            >
-              <CaretLeft style={{ width: "14px", height: "14px" }} />
-            </div>
+    <div className="min-h-screen bg-paper text-ink">
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-hairline bg-paper-card px-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Link
+            href="/"
+            aria-label="Back to jobs"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[4px] border border-hairline-strong text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
+          >
+            <CaretLeft className="size-4" />
           </Link>
 
-          <div
-            style={{
-              width: "22px",
-              height: "22px",
-              background: "#ff8c00",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Tag
-              weight="fill"
-              style={{ width: "12px", height: "12px", color: "#000" }}
-            />
-          </div>
+          <Tag className="size-4 shrink-0 text-ink-muted" />
 
-          <div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.2em",
-                color: "#ff8c00",
-                textTransform: "uppercase",
-              }}
-            >
-              KEYWORD MATCHER
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                letterSpacing: "0.12em",
-                color: "#555555",
-                marginTop: "1px",
-              }}
-            >
-              ATS KEYWORD EXTRACTOR
-            </div>
+          <div className="min-w-0">
+            <h1 className="truncate font-serif text-[22px] font-semibold leading-tight text-ink">
+              Keyword Matcher
+            </h1>
+            <Kicker className="mt-0.5">ATS KEYWORD EXTRACTOR</Kicker>
           </div>
         </div>
 
         {hasResults && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                letterSpacing: "0.1em",
-                border: "1px solid #1c1c1c",
-                padding: "3px 10px",
-                color: overallPct >= 75 ? "#ffd700" : "#ff8c00",
-              }}
-            >
-              <span style={{ fontWeight: 700 }}>{overallPct}%</span>
-              <span style={{ color: "#555555" }}> MATCHED</span>
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className={`font-serif text-[22px] font-semibold tabular-nums leading-none ${
+                  overallPct >= 75 ? "text-forest" : "text-brick"
+                }`}
+              >
+                {overallPct}%
+              </span>
+              <Kicker>MATCHED</Kicker>
             </div>
             {checked.size > 0 && (
-              <button
+              <DsButton
+                variant="secondary"
+                size="icon-sm"
                 onClick={() => setChecked(new Set())}
                 title="Reset all"
-                onMouseEnter={() => setResetHovered(true)}
-                onMouseLeave={() => setResetHovered(false)}
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  border: resetHovered
-                    ? "1px solid #ff8c00"
-                    : "1px solid #1c1c1c",
-                  background: "transparent",
-                  color: resetHovered ? "#ff8c00" : "#555555",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  transition: "border-color 0.1s, color 0.1s",
-                }}
+                aria-label="Reset all"
+                className="text-ink-muted hover:border-brick hover:text-brick"
               >
-                <ArrowCounterClockwise style={{ width: "14px", height: "14px" }} />
-              </button>
+                <ArrowCounterClockwise className="size-4" />
+              </DsButton>
             )}
           </div>
         )}
       </header>
 
-      <div style={{ minHeight: "calc(100vh - 44px)", background: "#000000" }}>
-        <main
-          className="grid grid-cols-1 md:grid-cols-2"
-          style={{
-            maxWidth: "1100px",
-            margin: "0 auto",
-            padding: "16px",
-            gap: "16px",
-          }}
-        >
+      <div className="min-h-[calc(100vh-56px)] bg-paper">
+        <main className="mx-auto grid max-w-[1100px] grid-cols-1 gap-6 p-4 md:grid-cols-2 md:p-6">
           {/* Left column — Job Description */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                fontWeight: 600,
-                letterSpacing: "0.18em",
-                color: "#ff8c00",
-                textTransform: "uppercase",
-                marginBottom: "10px",
-              }}
-            >
-              {"// JOB DESCRIPTION"}
-            </div>
-
-            <textarea
-              style={{
-                background: "#080808",
-                border: textareaFocused
-                  ? "1px solid #ff8c00"
-                  : "1px solid #1c1c1c",
-                color: "#f0f0f0",
-                fontFamily: "var(--font-mono)",
-                fontSize: "11px",
-                padding: "12px",
-                width: "100%",
-                resize: "none",
-                outline: "none",
-                minHeight: "360px",
-                lineHeight: 1.6,
-                transition: "border-color 0.1s",
-              }}
+          <div className="flex flex-col">
+            <TextField
+              multiline
+              label="JOB DESCRIPTION"
               placeholder="Paste job description here..."
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
-              onFocus={() => setTextareaFocused(true)}
-              onBlur={() => setTextareaFocused(false)}
               rows={20}
+              className="min-h-[360px] resize-none bg-paper-sunk text-[13px] leading-relaxed"
             />
 
             {error && (
-              <div
-                style={{
-                  border: "1px solid rgba(255,51,51,0.4)",
-                  background: "rgba(255,51,51,0.05)",
-                  color: "#ff3333",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  padding: "8px 12px",
-                  marginTop: "8px",
-                }}
-              >
+              <div className="mt-2 rounded-[4px] border border-brick bg-brick-tint px-3 py-2 font-sans text-[13px] text-brick">
                 {error}
               </div>
             )}
 
-            <button
+            <DsButton
+              variant="primary"
               onClick={handleAnalyze}
               disabled={loading || !jobDescription.trim()}
-              style={{
-                border: "1px solid #ff8c00",
-                background: "rgba(255,140,0,0.1)",
-                color: "#ff8c00",
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                padding: "10px",
-                width: "100%",
-                cursor:
-                  loading || !jobDescription.trim() ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                marginTop: "12px",
-                opacity: loading || !jobDescription.trim() ? 0.4 : 1,
-              }}
+              className="mt-3 w-full"
             >
               {loading ? (
                 <>
-                  <CircleNotch
-                    weight="bold"
-                    style={{ width: "14px", height: "14px" }}
-                    className="animate-spin"
-                  />
-                  ANALYZING...
+                  <CircleNotch className="size-4 animate-spin" />
+                  Analyzing…
                 </>
               ) : (
                 <>
-                  <Tag weight="bold" style={{ width: "14px", height: "14px" }} />
-                  ANALYZE
+                  <Tag className="size-4" />
+                  Analyze
                 </>
               )}
-            </button>
+            </DsButton>
           </div>
 
           {/* Right column — Results */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="flex flex-col gap-8">
             {!hasResults ? (
-              <div
-                style={{
-                  background: "#080808",
-                  border: "1px solid #1c1c1c",
-                  padding: "48px 16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "8px",
-                  marginTop: "28px",
-                }}
-              >
-                <Tag
-                  weight="duotone"
-                  style={{ width: "32px", height: "32px", color: "#333333" }}
-                />
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "9px",
-                    color: "#555555",
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    textAlign: "center",
-                    maxWidth: "280px",
-                  }}
-                >
+              <div className="mt-7 flex flex-col items-center gap-3 rounded-[4px] border border-hairline bg-paper-sunk px-4 py-12">
+                <Tag className="size-8 text-ink-faint" />
+                <span className="max-w-[280px] text-center font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
                   {loading
                     ? "ANALYZING JOB DESCRIPTION..."
                     : "PASTE A JOB DESCRIPTION TO EXTRACT REQUIRED SKILLS"}
@@ -538,31 +277,19 @@ export function KeywordMatcher() {
               <>
                 <BadgeSection
                   title="Technical Skills"
-                  icon={
-                    <Wrench
-                      weight="bold"
-                      style={{ width: "11px", height: "11px", color: "#000" }}
-                    />
-                  }
+                  icon={<Wrench className="size-3.5 text-ink-muted" />}
                   group={hardGroup}
                   checked={checked}
                   onToggle={toggleKeyword}
                   emptyLabel="No technical skills found in this description"
-                  accentColor="#ff8c00"
                 />
                 <BadgeSection
                   title="Professional Skills"
-                  icon={
-                    <Users
-                      weight="bold"
-                      style={{ width: "11px", height: "11px", color: "#000" }}
-                    />
-                  }
+                  icon={<Users className="size-3.5 text-ink-muted" />}
                   group={softGroup}
                   checked={checked}
                   onToggle={toggleKeyword}
                   emptyLabel="No professional skills found in this description"
-                  accentColor="#00bfff"
                 />
               </>
             )}

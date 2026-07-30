@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
 import { Command, CommandGroup } from "@/types/knowledge-base";
+import { cn } from "@/lib/utils";
+import { Kicker } from "@/components/ds";
 
 // ── Palette open/close event (cross-component) ───────────────────────────────
 const OPEN_EVENT = "commandpalette:open";
@@ -72,20 +74,9 @@ function buildCommands(
 // ── Group label rendering ─────────────────────────────────────────────────────
 function GroupLabel({ label }: { label: string }) {
   return (
-    <div
-      style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: "9px",
-        letterSpacing: "0.18em",
-        color: "#555555",
-        textTransform: "uppercase",
-        padding: "8px 12px 4px",
-        borderBottom: "1px solid #1c1c1c",
-        marginBottom: "2px",
-      }}
-    >
+    <Kicker className="mb-0.5 border-b border-hairline px-3 pb-1 pt-2">
       {label}
-    </div>
+    </Kicker>
   );
 }
 
@@ -108,54 +99,30 @@ function CommandRow({
         e.preventDefault();
         onSelect();
       }}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "8px 12px",
-        cursor: "pointer",
-        background: isSelected ? "#111111" : "transparent",
-        borderLeft: isSelected ? "2px solid #ff8c00" : "2px solid transparent",
-        transition: "background 0.08s",
-      }}
+      className={cn(
+        "flex cursor-pointer items-center justify-between gap-4 border-l-[3px] px-3 py-2 transition-colors duration-[120ms] hover:bg-paper-sunk",
+        isSelected
+          ? "border-l-brick bg-paper-sunk"
+          : "border-l-transparent bg-transparent"
+      )}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+      <div className="flex min-w-0 flex-col gap-0.5">
         <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            color: isSelected ? "#f0f0f0" : "#aaaaaa",
-            fontWeight: isSelected ? 600 : 400,
-            letterSpacing: "0.04em",
-          }}
+          className={cn(
+            "truncate font-mono text-[13px] tracking-[0.02em]",
+            isSelected ? "font-medium text-ink" : "text-ink-2"
+          )}
         >
           {command.label}
         </span>
         {command.description && (
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "9px",
-              color: "#555555",
-              letterSpacing: "0.06em",
-            }}
-          >
+          <span className="truncate font-mono text-[11px] text-ink-muted">
             {command.description}
           </span>
         )}
       </div>
       {command.shortcut && (
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "9px",
-            color: "#555555",
-            border: "1px solid #2a2a2a",
-            padding: "2px 6px",
-            letterSpacing: "0.1em",
-            flexShrink: 0,
-          }}
-        >
+        <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-card px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
           {command.shortcut}
         </span>
       )}
@@ -258,116 +225,41 @@ export function CommandPalette() {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Portal>
         {/* Backdrop */}
-        <Dialog.Overlay
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0, 0, 0, 0.75)",
-            backdropFilter: "blur(2px)",
-            zIndex: 200,
-          }}
-        />
+        <Dialog.Overlay className="fixed inset-0 z-[200] bg-[rgba(28,27,25,0.35)]" />
 
         {/* Panel */}
         <Dialog.Content
           aria-label="Command Palette"
           onOpenAutoFocus={(e) => e.preventDefault()}
-          style={{
-            position: "fixed",
-            top: "20%",
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "100%",
-            maxWidth: "560px",
-            background: "#0a0a0a",
-            border: "1px solid #2a2a2a",
-            borderRadius: 0,
-            boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
-            zIndex: 200,
-            outline: "none",
-            overflow: "hidden",
-          }}
+          className="fixed left-1/2 top-[20%] z-[200] w-full max-w-[560px] -translate-x-1/2 overflow-hidden rounded-[10px] border border-hairline bg-paper-card shadow-[0_8px_24px_rgba(28,27,25,0.10)] outline-none"
         >
           {/* Search input row */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              borderBottom: "1px solid #1c1c1c",
-              padding: "0 12px",
-            }}
-          >
+          <div className="flex items-center border-b border-hairline px-3">
             <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "14px",
-                color: "#ff8c00",
-                marginRight: "10px",
-                userSelect: "none",
-                flexShrink: 0,
-              }}
+              aria-hidden
+              className="mr-2.5 shrink-0 select-none font-mono text-[14px] text-ink-faint"
             >
               &gt;_
             </span>
-            <Dialog.Title style={{ display: "none" }}>
-              Command Palette
-            </Dialog.Title>
+            <Dialog.Title className="sr-only">Command Palette</Dialog.Title>
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type a command or navigate..."
-              style={{
-                flex: 1,
-                background: "transparent",
-                border: "none",
-                outline: "none",
-                color: "#f0f0f0",
-                fontFamily: "var(--font-mono)",
-                fontSize: "13px",
-                letterSpacing: "0.02em",
-                padding: "14px 0",
-              }}
+              className="flex-1 border-none bg-transparent py-3.5 font-mono text-[13px] tracking-[0.02em] text-ink outline-none placeholder:text-ink-faint"
             />
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                color: "#555555",
-                border: "1px solid #2a2a2a",
-                padding: "2px 6px",
-                flexShrink: 0,
-                letterSpacing: "0.08em",
-              }}
-            >
+            <span className="shrink-0 rounded-[4px] border border-hairline bg-paper-sunk px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
               ESC
             </span>
           </div>
 
           {/* Command list */}
-          <div
-            ref={listRef}
-            role="listbox"
-            style={{
-              maxHeight: "360px",
-              overflowY: "auto",
-              padding: "4px 0",
-            }}
-          >
+          <div ref={listRef} role="listbox" className="max-h-[360px] overflow-y-auto py-1">
             {flatItems.length === 0 ? (
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "11px",
-                  color: "#555555",
-                  textAlign: "center",
-                  padding: "24px",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                }}
-              >
-                NO COMMANDS FOUND
+              <div className="px-6 py-8 text-center font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+                No commands found
               </div>
             ) : (
               groups.map((group) => {
@@ -394,22 +286,8 @@ export function CommandPalette() {
           </div>
 
           {/* Footer hint */}
-          <div
-            style={{
-              borderTop: "1px solid #1c1c1c",
-              padding: "6px 12px",
-              display: "flex",
-              justifyContent: "flex-end",
-            }}
-          >
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                color: "#555555",
-                letterSpacing: "0.1em",
-              }}
-            >
+          <div className="flex justify-end border-t border-hairline bg-paper-sunk px-3 py-1.5">
+            <span className="font-mono text-[11px] tracking-[0.09em] text-ink-faint">
               ESC · ↑↓ · ↵
             </span>
           </div>

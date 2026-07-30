@@ -16,17 +16,14 @@ import {
   FileText,
   Bell,
 } from "@phosphor-icons/react";
-
-const MONO: React.CSSProperties = {
-  fontFamily: "var(--font-ibm-mono), 'Courier New', monospace",
-};
+import { Kicker, DsButton, StatusBadge } from "@/components/ds";
 
 const SOURCES = [
-  { icon: LinkedinLogo, label: "LinkedIn", dot: "#0A66C2" },
-  { icon: GithubLogo, label: "GitHub", dot: "#888" },
-  { icon: Buildings, label: "MathWorks", dot: "#ED1C24" },
-  { icon: Briefcase, label: "Jobright", dot: "#5465FF" },
-  { icon: Sparkle, label: "Custom ATS", dot: "#FF6E00" },
+  { icon: LinkedinLogo, label: "LinkedIn" },
+  { icon: GithubLogo, label: "GitHub" },
+  { icon: Buildings, label: "MathWorks" },
+  { icon: Briefcase, label: "Jobright" },
+  { icon: Sparkle, label: "Custom ATS" },
 ];
 
 const CAPABILITIES = [
@@ -48,21 +45,26 @@ const CAPABILITIES = [
 ];
 
 const FEED_JOBS = [
-  { company: "Google",     role: "Software Engineer III",      src: "LI",  srcColor: "#0A66C2", age: "0:12" },
-  { company: "Meta",       role: "ML Engineer, Core AI",       src: "GH",  srcColor: "#888",    age: "0:34" },
-  { company: "Stripe",     role: "Frontend Engineer",          src: "JR",  srcColor: "#5465FF", age: "1:05" },
-  { company: "Apple",      role: "iOS Platform Engineer",      src: "LI",  srcColor: "#0A66C2", age: "1:22" },
-  { company: "OpenAI",     role: "Research Engineer",          src: "CS",  srcColor: "#FF6E00", age: "2:41" },
-  { company: "Microsoft",  role: "Senior SWE, Azure",          src: "LI",  srcColor: "#0A66C2", age: "3:18" },
-  { company: "Palantir",   role: "SWE, Forward Deployed",      src: "CS",  srcColor: "#FF6E00", age: "4:02" },
-  { company: "Anthropic",  role: "Infrastructure Engineer",    src: "GH",  srcColor: "#888",    age: "5:11" },
-  { company: "Figma",      role: "Backend Engineer",           src: "JR",  srcColor: "#5465FF", age: "6:33" },
-  { company: "MathWorks",  role: "Software Dev Engineer",      src: "MW",  srcColor: "#ED1C24", age: "7:45" },
+  { company: "Google",     role: "Software Engineer III",   src: "LI", age: "0:12" },
+  { company: "Meta",       role: "ML Engineer, Core AI",    src: "GH", age: "0:34" },
+  { company: "Stripe",     role: "Frontend Engineer",       src: "JR", age: "1:05" },
+  { company: "Apple",      role: "iOS Platform Engineer",   src: "LI", age: "1:22" },
+  { company: "OpenAI",     role: "Research Engineer",       src: "CS", age: "2:41" },
+  { company: "Microsoft",  role: "Senior SWE, Azure",       src: "LI", age: "3:18" },
+  { company: "Palantir",   role: "SWE, Forward Deployed",   src: "CS", age: "4:02" },
+  { company: "Anthropic",  role: "Infrastructure Engineer", src: "GH", age: "5:11" },
+  { company: "Figma",      role: "Backend Engineer",        src: "JR", age: "6:33" },
+  { company: "MathWorks",  role: "Software Dev Engineer",   src: "MW", age: "7:45" },
 ];
 
 const ACTIVITY = [8, 14, 10, 22, 18, 28, 24, 19, 32, 27, 15, 36, 40, 33, 28, 43, 37, 50, 46, 40, 52, 44, 38, 55];
 
-function TerminalPanel() {
+const SOURCE_CODES = ["LI", "GH", "MW", "JR", "CS"];
+
+const FEED_GRID = "grid-cols-[1fr_1.5fr_36px_46px]";
+
+/** The live wire: an editorial data table that fills as postings land. */
+function LiveFeedPanel() {
   const [visible, setVisible] = useState(3);
   const [countdown, setCountdown] = useState(154);
   const [totalIndexed, setTotalIndexed] = useState(1247);
@@ -85,164 +87,125 @@ function TerminalPanel() {
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+  const metrics = [
+    { label: "Scan rate", value: "847", unit: "/hr", tone: "text-ink" },
+    { label: "Next scan", value: fmt(countdown), unit: "", tone: "text-brick" },
+    { label: "Uptime", value: "99.9", unit: "%", tone: "text-forest" },
+  ];
+
   return (
-    <div
-      className="hidden lg:flex flex-col h-full overflow-hidden"
-      style={{ borderLeft: "1px solid #1A1A1A", background: "#020202" }}
-    >
+    <div className="hidden h-full flex-col overflow-hidden border-l border-hairline bg-paper-card lg:flex">
       {/* Panel header */}
-      <div
-        className="px-4 py-2.5 flex items-center justify-between"
-        style={{ borderBottom: "1px solid #1A1A1A", background: "#060606" }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-[#00B050] animate-pulse" />
-          <span className="text-[#00B050] text-[9px] tracking-[0.22em] uppercase font-bold">LIVE FEED</span>
-        </div>
-        <div className="flex items-center gap-3 text-[#333] text-[9px] tracking-[0.15em] uppercase">
-          <span>{totalIndexed.toLocaleString()} INDEXED</span>
-          <span className="text-[#1A1A1A]">│</span>
-          <span>5 SOURCES</span>
+      <div className="flex items-center justify-between gap-3 border-b border-hairline px-4 py-3">
+        <StatusBadge label="Live feed" tone="complete" live />
+        <div className="flex items-center gap-3">
+          <Kicker className="text-ink-faint">{totalIndexed.toLocaleString()} indexed</Kicker>
+          <span aria-hidden className="h-3 w-px bg-hairline-strong" />
+          <Kicker className="text-ink-faint">5 sources</Kicker>
         </div>
       </div>
 
       {/* Column headers */}
-      <div
-        className="px-4 py-1.5 grid gap-2"
-        style={{
-          gridTemplateColumns: "1fr 1.5fr 36px 42px",
-          borderBottom: "1px solid #141414",
-          background: "#040404",
-        }}
-      >
-        {["COMPANY", "ROLE", "SRC", "AGO"].map((h, i) => (
-          <span
-            key={h}
-            className="text-[#FF6E00] uppercase font-bold"
-            style={{ fontSize: "8px", letterSpacing: "0.2em", textAlign: i === 3 ? "right" : "left" }}
-          >
-            {h}
-          </span>
-        ))}
+      <div className={`grid gap-2 border-b border-hairline bg-paper-sunk px-4 py-2 ${FEED_GRID}`}>
+        <Kicker>Company</Kicker>
+        <Kicker>Role</Kicker>
+        <Kicker>Src</Kicker>
+        <Kicker className="text-right">Ago</Kicker>
       </div>
 
       {/* Job rows */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {FEED_JOBS.slice(0, visible).map((job, i) => (
           <div
-            key={i}
-            className="px-4 py-2.5 grid gap-2 transition-colors"
-            style={{
-              gridTemplateColumns: "1fr 1.5fr 36px 42px",
-              borderBottom: "1px solid #0A0A0A",
-              animation: "job-enter 0.35s cubic-bezier(0.25,1,0.5,1) both",
-              animationDelay: "0ms",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#080808"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = "transparent"; }}
+            key={job.company}
+            className={`animate-job-enter grid items-center gap-2 border-b border-hairline px-4 py-2.5 transition-colors duration-[120ms] hover:bg-paper-sunk ${FEED_GRID}`}
           >
-            <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex min-w-0 items-center gap-1.5">
               {i === 0 && (
-                <span className="text-[#FF6E00] shrink-0" style={{ fontSize: "8px" }}>►</span>
+                <span aria-hidden className="size-1 shrink-0 bg-brick" />
               )}
               <span
-                className="truncate"
-                style={{ fontSize: "10px", color: i === 0 ? "#FFFFFF" : "#888", fontWeight: i === 0 ? 700 : 400 }}
+                className={`truncate font-serif text-[15px] leading-tight ${
+                  i === 0 ? "font-semibold text-ink" : "text-ink-2"
+                }`}
               >
                 {job.company}
               </span>
             </div>
-            <span className="truncate" style={{ fontSize: "10px", color: "#555" }}>{job.role}</span>
-            <span className="font-bold" style={{ fontSize: "9px", color: job.srcColor, letterSpacing: "0.05em" }}>
+            <span className="truncate font-sans text-[13px] text-ink-muted">{job.role}</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
               {job.src}
             </span>
-            <span className="text-right tabular-nums" style={{ fontSize: "9px", color: "#2A2A2A" }}>
+            <span className="text-right font-mono text-[11px] tabular-nums text-ink-faint">
               {job.age}
             </span>
           </div>
         ))}
 
-        {/* Blinking cursor row */}
+        {/* Blinking cursor row — terminal-authentic loading state */}
         {visible < FEED_JOBS.length && (
-          <div className="px-4 py-2.5 flex items-center gap-1" style={{ borderBottom: "1px solid #0A0A0A" }}>
-            <span className="text-[#FF6E00] animate-cursor-blink" style={{ fontSize: "10px" }}>█</span>
-            <span className="text-[#222]" style={{ fontSize: "9px", letterSpacing: "0.15em" }}>SCANNING...</span>
+          <div className="flex items-center gap-2 border-b border-hairline px-4 py-2.5">
+            <span aria-hidden className="animate-cursor-blink font-mono text-[13px] leading-none text-brick">
+              &#9608;
+            </span>
+            <Kicker>Scanning</Kicker>
           </div>
         )}
       </div>
 
       {/* Metrics footer */}
-      <div style={{ borderTop: "1px solid #1A1A1A" }}>
-        <div className="grid grid-cols-3" style={{ borderBottom: "1px solid #111" }}>
-          {[
-            { label: "SCAN RATE", value: "847", unit: "/hr", color: "#888" },
-            { label: "NEXT SCAN", value: fmt(countdown), unit: "", color: "#FF6E00" },
-            { label: "UPTIME",    value: "99.9",  unit: "%",  color: "#00B050" },
-          ].map(({ label, value, unit, color }, i) => (
+      <div className="border-t border-hairline">
+        <div className="grid grid-cols-3 border-b border-hairline">
+          {metrics.map(({ label, value, unit, tone }, i) => (
             <div
               key={label}
-              className="px-3 py-3"
-              style={{ borderRight: i < 2 ? "1px solid #111" : "none" }}
+              className={`px-4 py-3 ${i < 2 ? "border-r border-hairline" : ""}`}
             >
-              <p className="uppercase mb-1" style={{ fontSize: "8px", color: "#333", letterSpacing: "0.15em" }}>
-                {label}
-              </p>
-              <p className="font-bold tabular-nums" style={{ fontSize: "12px", color }}>
+              <Kicker className="mb-1.5">{label}</Kicker>
+              <p className={`font-serif text-[22px] font-semibold leading-none tabular-nums ${tone}`}>
                 {value}
-                {unit && <span style={{ fontSize: "8px", color: "#444", fontWeight: 400 }}>{unit}</span>}
+                {unit && (
+                  <span className="ml-0.5 font-mono text-[11px] font-normal text-ink-faint">
+                    {unit}
+                  </span>
+                )}
               </p>
             </div>
           ))}
         </div>
 
         {/* Activity sparkline */}
-        <div className="px-3 py-3">
-          <p className="uppercase mb-2" style={{ fontSize: "8px", color: "#2A2A2A", letterSpacing: "0.15em" }}>
-            ACTIVITY · 24HR
-          </p>
-          <div className="flex items-end gap-px" style={{ height: "28px" }}>
+        <div className="px-4 py-3">
+          <Kicker className="mb-2">Activity &middot; 24hr</Kicker>
+          <div className="flex h-7 items-end gap-px">
             {ACTIVITY.map((h, i) => {
               const isLast = i === ACTIVITY.length - 1;
-              const pct = (h / 55) * 100;
               return (
                 <div
                   key={i}
-                  className="flex-1 transition-all duration-700"
-                  style={{
-                    height: `${pct}%`,
-                    minHeight: "2px",
-                    background: isLast ? "#FF6E00" : i > ACTIVITY.length - 4 ? "#2A2A2A" : "#1A1A1A",
-                  }}
+                  className={`min-h-[2px] flex-1 transition-all duration-700 ${
+                    isLast ? "bg-brick" : "bg-hairline-strong"
+                  }`}
+                  style={{ height: `${(h / 55) * 100}%` }}
                 />
               );
             })}
           </div>
-          <div className="flex justify-between mt-1">
-            <span style={{ fontSize: "8px", color: "#1A1A1A" }}>-24H</span>
-            <span style={{ fontSize: "8px", color: "#1A1A1A" }}>NOW</span>
+          <div className="mt-1.5 flex justify-between">
+            <Kicker className="text-ink-faint">-24h</Kicker>
+            <Kicker className="text-ink-faint">Now</Kicker>
           </div>
         </div>
 
         {/* Source status row */}
-        <div
-          className="px-3 py-2 flex items-center gap-2 flex-wrap"
-          style={{ borderTop: "1px solid #0F0F0F" }}
-        >
-          {[
-            { name: "LI", color: "#0A66C2" },
-            { name: "GH", color: "#888" },
-            { name: "MW", color: "#ED1C24" },
-            { name: "JR", color: "#5465FF" },
-            { name: "CS", color: "#FF6E00" },
-          ].map(({ name, color }) => (
-            <div key={name} className="flex items-center gap-1">
-              <div className="w-1 h-1 rounded-full animate-pulse" style={{ background: color }} />
-              <span style={{ fontSize: "8px", color: "#333", letterSpacing: "0.1em" }}>{name}</span>
-            </div>
+        <div className="flex flex-wrap items-center gap-3 border-t border-hairline px-4 py-2.5">
+          {SOURCE_CODES.map((name) => (
+            <span key={name} className="flex items-center gap-1.5">
+              <span aria-hidden className="size-1 shrink-0 rounded-full bg-ink-faint" />
+              <Kicker>{name}</Kicker>
+            </span>
           ))}
-          <span className="ml-auto" style={{ fontSize: "8px", color: "#1E1E1E", letterSpacing: "0.12em" }}>
-            ALL ONLINE
-          </span>
+          <StatusBadge label="All online" tone="complete" className="ml-auto" />
         </div>
       </div>
     </div>
@@ -254,8 +217,8 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#000" }}>
-        <CircleNotch weight="bold" className="h-6 w-6 animate-spin" style={{ color: "#FF6E00" }} />
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <CircleNotch className="size-6 animate-spin text-brick" />
       </div>
     );
   }
@@ -265,147 +228,114 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#000] text-white flex flex-col" style={MONO}>
-
-      {/* Top bar */}
-      <div
-        className="shrink-0 px-5 py-2.5 flex items-center justify-between"
-        style={{ borderBottom: "1px solid #1E1E1E" }}
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 bg-[#FF6E00]" />
-          <span className="text-[#FF6E00] text-[11px] font-bold tracking-[0.22em] uppercase">HIREFEED</span>
-          <span className="text-[#2A2A2A] text-xs mx-1">│</span>
-          <span className="text-[#444] text-[10px] tracking-[0.15em] uppercase">Job Intelligence Platform</span>
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
+      {/* Masthead */}
+      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-hairline px-5 py-4">
+        <div className="flex items-baseline gap-4">
+          <span className="font-serif text-[19px] font-semibold leading-none text-ink">
+            HireFeed<span className="text-brick">.</span>
+          </span>
+          <Kicker className="hidden sm:block">Job Intelligence Desk</Kicker>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 bg-[#00B050] animate-pulse" />
-            <span className="text-[#00B050] text-[9px] tracking-[0.2em] uppercase">LIVE</span>
-          </div>
+        <div className="flex items-center gap-5">
+          <StatusBadge label="Live" tone="complete" live className="hidden sm:inline-flex" />
           <Link
             href="/login"
-            className="flex items-center gap-1.5 text-[#FF6E00] text-[9px] tracking-[0.18em] uppercase hover:text-[#FF8A00] transition-colors"
+            className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2 transition-colors duration-[120ms] hover:text-brick"
           >
-            SIGN IN
-            <ArrowRight weight="bold" className="h-3 w-3" />
+            Sign in
+            <ArrowRight className="size-3" />
           </Link>
         </div>
-      </div>
+      </header>
 
       {/* Hero — two columns */}
-      <div
-        className="grid grid-cols-1 lg:grid-cols-[1fr_420px] xl:grid-cols-[1fr_480px]"
-        style={{ borderBottom: "1px solid #1A1A1A", height: "520px" }}
-      >
+      <section className="grid grid-cols-1 border-b border-hairline lg:h-[560px] lg:grid-cols-[1fr_440px] xl:grid-cols-[1fr_500px]">
         {/* Left: copy */}
-        <div
-          className="px-5 pt-14 pb-10 flex flex-col justify-between"
-          style={{ borderRight: "1px solid #1A1A1A" }}
-        >
+        <div className="flex flex-col justify-between gap-12 px-5 pb-12 pt-14 lg:border-r lg:border-hairline">
           <div>
-            <p className="text-[#FF6E00] text-[9px] tracking-[0.3em] uppercase mb-4">
-              REAL-TIME JOB FEED
-            </p>
-            <h1 className="text-4xl sm:text-5xl font-bold uppercase tracking-tight text-white leading-[1.05] mb-5">
-              Job Extraction<br />
-              Engine
+            <Kicker className="mb-5">Real-time job feed</Kicker>
+            <h1 className="mb-6 max-w-[16ch] font-serif text-[38px] font-semibold leading-[1.08] tracking-[-0.01em] text-ink sm:text-[46px] lg:text-[56px]">
+              Every opening, the minute it posts.
             </h1>
-            <p className="text-[#666] text-sm leading-relaxed max-w-md mb-8">
-              Track thousands of openings across LinkedIn, GitHub, MathWorks &amp; custom sources —
-              AI-analyzed and delivered in real-time. No manual searching.
+            <p className="mb-10 max-w-[52ch] font-sans text-[17px] leading-relaxed text-ink-2">
+              HireFeed watches LinkedIn, GitHub, MathWorks and your own ATS boards,
+              reads each posting, and files it to your feed as it lands. You stop
+              searching.
             </p>
 
-            <div className="flex flex-wrap gap-1.5 mb-10">
-              {SOURCES.map(({ label, dot }) => (
-                <div
+            <div className="flex flex-wrap gap-2">
+              {SOURCES.map(({ label, icon: Icon }) => (
+                <span
                   key={label}
-                  className="flex items-center gap-2 px-2.5 py-1.5"
-                  style={{ border: "1px solid #1A1A1A", background: "#050505" }}
+                  className="inline-flex items-center gap-2 rounded-[4px] border border-hairline bg-paper-card px-3 py-1.5"
                 >
-                  <div className="w-1.5 h-1.5 shrink-0" style={{ background: dot }} />
-                  <span className="text-[#777] text-[9px] uppercase tracking-[0.18em]">{label}</span>
-                </div>
+                  <Icon className="size-[14px] shrink-0 text-ink-muted" />
+                  <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-2">
+                    {label}
+                  </span>
+                </span>
               ))}
             </div>
           </div>
 
           <div>
             <Link href="/login">
-              <button
-                className="flex items-center gap-2 px-6 py-3.5 text-black font-bold text-[10px] tracking-[0.22em] uppercase transition-colors"
-                style={{ background: "#FF6E00" }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FF8A00"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#FF6E00"; }}
-              >
-                GET ACCESS
-                <ArrowRight weight="bold" className="h-3.5 w-3.5" />
-              </button>
+              <DsButton>
+                Get access
+                <ArrowRight className="size-4" />
+              </DsButton>
             </Link>
           </div>
         </div>
 
-        {/* Right: terminal panel */}
-        <TerminalPanel />
-      </div>
+        {/* Right: live feed panel */}
+        <LiveFeedPanel />
+      </section>
 
       {/* Capabilities table */}
-      <div style={{ borderBottom: "1px solid #1A1A1A" }}>
-        <div className="px-5 py-3" style={{ borderBottom: "1px solid #1A1A1A" }}>
-          <span className="text-[#FF6E00] text-[9px] tracking-[0.25em] uppercase">CAPABILITIES</span>
+      <section className="border-b border-hairline">
+        <div className="border-b border-hairline px-5 py-3">
+          <Kicker as="h2">Capabilities</Kicker>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3">
-          {CAPABILITIES.map(({ label, rows, icon: Icon }, i) => (
-            <div
-              key={label}
-              className="px-5 py-5"
-              style={{ borderRight: i < CAPABILITIES.length - 1 ? "1px solid #1A1A1A" : "none" }}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Icon weight="bold" className="h-3 w-3 text-[#FF6E00]" />
-                <span className="text-[#FF6E00] text-[9px] tracking-[0.22em] uppercase font-bold">{label}</span>
+        <div className="grid grid-cols-1 divide-y divide-hairline sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          {CAPABILITIES.map(({ label, rows, icon: Icon }) => (
+            <div key={label} className="px-5 py-6">
+              <div className="mb-4 flex items-center gap-2">
+                <Icon className="size-4 shrink-0 text-ink-muted" />
+                <Kicker as="h3">{label}</Kicker>
               </div>
-              <div className="space-y-2">
+              <ul className="space-y-2.5">
                 {rows.map((row) => (
-                  <div key={row} className="flex items-center gap-2">
-                    <span className="text-[#1E1E1E] text-[9px]">—</span>
-                    <span className="text-[#666] text-[11px] tracking-wide">{row}</span>
-                  </div>
+                  <li key={row} className="flex items-baseline gap-2.5">
+                    <span aria-hidden className="mt-2 size-1 shrink-0 bg-ink-faint" />
+                    <span className="font-sans text-[15px] leading-snug text-ink-2">{row}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
       {/* Secondary CTA strip */}
-      <div
-        className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-        style={{ borderBottom: "1px solid #1A1A1A" }}
-      >
-        <p className="text-[#444] text-[11px] leading-relaxed max-w-sm">
-          Passwordless access. Magic link only. Your personal feed starts the moment you sign in.
+      <section className="flex flex-col items-start justify-between gap-5 border-b border-hairline px-5 py-6 sm:flex-row sm:items-center">
+        <p className="max-w-[46ch] font-sans text-[15px] leading-relaxed text-ink-2">
+          Passwordless access. Magic link only. Your feed starts the moment you sign in.
         </p>
-        <Link href="/login">
-          <button
-            className="shrink-0 px-5 py-2.5 text-[#FF6E00] text-[9px] font-bold tracking-[0.2em] uppercase transition-colors"
-            style={{ border: "1px solid #2A2A2A" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#FF6E00"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#2A2A2A"; }}
-          >
-            SIGN IN / REGISTER →
-          </button>
+        <Link href="/login" className="shrink-0">
+          <DsButton variant="secondary">
+            Sign in / Register
+            <ArrowRight className="size-4" />
+          </DsButton>
         </Link>
-      </div>
+      </section>
 
       {/* Footer */}
-      <div
-        className="shrink-0 px-5 py-1.5 flex items-center justify-between"
-        style={{ borderTop: "1px solid #111" }}
-      >
-        <span className="text-[#222] text-[9px] tracking-[0.18em] uppercase">Powered by DeepSeek + Supabase</span>
-        <span className="text-[#222] text-[9px] tracking-[0.18em] uppercase">© 2025 HireFeed</span>
-      </div>
+      <footer className="mt-auto flex shrink-0 items-center justify-between gap-4 border-t border-hairline px-5 py-3">
+        <Kicker>Powered by DeepSeek + Supabase</Kicker>
+        <Kicker>&copy; 2025 HireFeed</Kicker>
+      </footer>
     </div>
   );
 }

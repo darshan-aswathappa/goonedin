@@ -7,7 +7,6 @@ import {
   MagnifyingGlass,
   Monitor,
 } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +19,7 @@ import {
 import { useJobsStore, CustomSource } from "@/store/jobs";
 import { toast } from "sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
+import { Kicker, DsButton, TextField, Checkbox } from "@/components/ds";
 
 const ICONS = [
   { name: "Buildings", component: Buildings },
@@ -54,27 +54,9 @@ interface AddJobSourceModalProps {
   onSuccess?: (id: string) => void;
 }
 
-const inputBaseStyle = {
-  background: "#0a0a0a",
-  border: "1px solid #1c1c1c",
-  color: "#f0f0f0",
-  fontFamily: "var(--font-mono)",
-  fontSize: "11px",
-  padding: "7px 10px",
-  width: "100%",
-  outline: "none",
-  borderRadius: "2px",
-};
-
-const inputFocusStyle = {
-  ...inputBaseStyle,
-  border: "1px solid #ff8c00",
-};
-
-const inputErrorStyle = {
-  ...inputBaseStyle,
-  border: "1px solid rgba(255,51,51,0.6)",
-};
+/** Matches the DS TextField field surface — used for the native <select>. */
+const SELECT_CLASS =
+  "w-full cursor-pointer appearance-none rounded-[4px] border border-hairline bg-paper-card px-4 py-3 font-mono text-[15px] text-ink outline-none transition-colors duration-[120ms] focus:border-brick";
 
 export function AddJobSourceModal({
   editSource,
@@ -91,16 +73,6 @@ export function AddJobSourceModal({
   const [disableJavascript, setDisableJavascript] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-
-  // Focus states for inputs
-  const [nameFocused, setNameFocused] = useState(false);
-  const [urlFocused, setUrlFocused] = useState(false);
-  const [iconFocused, setIconFocused] = useState(false);
-  const [ttlFocused, setTtlFocused] = useState(false);
-  const [intervalFocused, setIntervalFocused] = useState(false);
-  const [cancelHovered, setCancelHovered] = useState(false);
-  const [submitHovered, setSubmitHovered] = useState(false);
-  const [triggerHovered, setTriggerHovered] = useState(false);
 
   const addCustomSource = useJobsStore((state) => state.addCustomSource);
 
@@ -270,26 +242,6 @@ export function AddJobSourceModal({
     setDisableJavascript(false);
   };
 
-  const labelStyle: React.CSSProperties = {
-    fontFamily: "var(--font-mono)",
-    fontSize: "9px",
-    fontWeight: 600,
-    letterSpacing: "0.15em",
-    textTransform: "uppercase",
-    color: "#555",
-    display: "block",
-    marginBottom: "4px",
-  };
-
-  const errorStyle: React.CSSProperties = {
-    fontFamily: "var(--font-mono)",
-    fontSize: "9px",
-    color: "#ff3333",
-    letterSpacing: "0.08em",
-    textTransform: "uppercase",
-    marginTop: "4px",
-  };
-
   return (
     <Dialog
       open={open}
@@ -300,153 +252,83 @@ export function AddJobSourceModal({
     >
       <DialogTrigger asChild>
         {triggerNode || (
-          <button
-            onMouseEnter={() => setTriggerHovered(true)}
-            onMouseLeave={() => setTriggerHovered(false)}
-            style={{
-              border: triggerHovered ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-              background: "transparent",
-              color: triggerHovered ? "#ff8c00" : "#555",
-              fontFamily: "var(--font-mono)",
-              fontSize: "9px",
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              padding: "6px 12px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              whiteSpace: "nowrap",
-              transition: "border-color 0.1s, color 0.1s",
-              borderRadius: "2px",
-            }}
+          <DsButton
+            variant="secondary"
+            size="sm"
+            className="whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.09em]"
           >
-            <Plus weight="bold" className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Plus weight="regular" className="size-4 text-ink-muted" />
             <span className="sr-only sm:not-sr-only sm:inline">Add Source</span>
-          </button>
+          </DsButton>
         )}
       </DialogTrigger>
 
-      <DialogContent
-        className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] md:max-w-lg rounded-none max-h-[90dvh] overflow-y-auto p-0"
-        style={{
-          background: "#060606",
-          border: "1px solid #333",
-          boxShadow: "none",
-          borderRadius: "2px",
-        }}
-      >
+      <DialogContent className="max-w-[calc(100%-1.5rem)] sm:max-w-[425px] md:max-w-lg max-h-[90dvh] overflow-y-auto p-0 gap-0 rounded-[10px] border border-hairline bg-paper shadow-[0_24px_64px_rgba(28,27,25,0.22)]">
         {/* Modal Header */}
-        <DialogHeader
-          style={{
-            background: "#080808",
-            borderBottom: "1px solid #1c1c1c",
-            padding: "12px 16px",
-          }}
-        >
+        <DialogHeader className="flex flex-col gap-1 border-b border-hairline bg-paper-card px-5 py-5 text-left sm:px-7 sm:py-6">
+          <Kicker>{editingId ? "Edit source" : "Feed the press"}</Kicker>
           <DialogTitle asChild>
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                fontWeight: 600,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: "#ff8c00",
-              }}
-            >
-              {editingId ? "// EDIT JOB BOARD" : "// CUSTOM JOB BOARD"}
-            </div>
+            <h2 className="font-serif text-[22px] font-semibold leading-tight text-ink sm:text-[28px]">
+              {editingId ? "Edit job board" : "Custom job board"}
+            </h2>
           </DialogTitle>
-          <DialogDescription
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "9px",
-              color: "#555",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-              marginTop: "4px",
-            }}
-          >
+          <DialogDescription className="mt-1 font-sans text-[13px] leading-snug text-ink-2 sm:text-[15px]">
             Automatically extract jobs from any website
           </DialogDescription>
         </DialogHeader>
 
         {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "16px" }}
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-5 py-6 sm:px-7">
           {/* Name */}
-          <div>
-            <label htmlFor="name" style={labelStyle}>
-              Name <span style={{ color: "#ff3333" }}>*</span>
-            </label>
-            <input
-              id="name"
-              value={name}
-              maxLength={CONSTRAINTS.NAME_MAX}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                setName(e.target.value.slice(0, CONSTRAINTS.NAME_MAX));
-                if (validationErrors.name) {
-                  setValidationErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.name;
-                    return next;
-                  });
-                }
-              }}
-              onFocus={() => setNameFocused(true)}
-              onBlur={() => setNameFocused(false)}
-              style={validationErrors.name ? inputErrorStyle : nameFocused ? inputFocusStyle : inputBaseStyle}
-              placeholder="e.g. Acme Corp Jobs"
-            />
-            {validationErrors.name && (
-              <p style={errorStyle}>{validationErrors.name}</p>
-            )}
-          </div>
+          <TextField
+            id="name"
+            label="Name *"
+            value={name}
+            maxLength={CONSTRAINTS.NAME_MAX}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setName(e.target.value.slice(0, CONSTRAINTS.NAME_MAX));
+              if (validationErrors.name) {
+                setValidationErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.name;
+                  return next;
+                });
+              }
+            }}
+            error={validationErrors.name}
+            placeholder="e.g. Acme Corp Jobs"
+          />
 
           {/* URL */}
-          <div>
-            <label htmlFor="url" style={labelStyle}>
-              Job Board URL <span style={{ color: "#ff3333" }}>*</span>
-            </label>
-            <input
-              id="url"
-              value={url}
-              maxLength={CONSTRAINTS.URL_MAX}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                setUrl(e.target.value.slice(0, CONSTRAINTS.URL_MAX));
-                if (validationErrors.url) {
-                  setValidationErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.url;
-                    return next;
-                  });
-                }
-              }}
-              onFocus={() => setUrlFocused(true)}
-              onBlur={() => setUrlFocused(false)}
-              style={validationErrors.url ? inputErrorStyle : urlFocused ? inputFocusStyle : inputBaseStyle}
-              placeholder="https://jobs.example.com"
-            />
-            {validationErrors.url && (
-              <p style={errorStyle}>{validationErrors.url}</p>
-            )}
-          </div>
+          <TextField
+            id="url"
+            label="Job Board URL *"
+            value={url}
+            maxLength={CONSTRAINTS.URL_MAX}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setUrl(e.target.value.slice(0, CONSTRAINTS.URL_MAX));
+              if (validationErrors.url) {
+                setValidationErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.url;
+                  return next;
+                });
+              }
+            }}
+            error={validationErrors.url}
+            placeholder="https://jobs.example.com"
+          />
 
           {/* Icon */}
-          <div>
-            <label htmlFor="icon" style={labelStyle}>
+          <div className="flex flex-col gap-2">
+            <Kicker as="label" htmlFor="icon">
               Icon
-            </label>
+            </Kicker>
             <select
               id="icon"
               value={icon}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => setIcon(e.target.value)}
-              onFocus={() => setIconFocused(true)}
-              onBlur={() => setIconFocused(false)}
-              style={iconFocused ? inputFocusStyle : inputBaseStyle}
+              className={SELECT_CLASS}
             >
               {ICONS.map((Ico) => (
                 <option key={Ico.name} value={Ico.name}>
@@ -457,159 +339,72 @@ export function AddJobSourceModal({
           </div>
 
           {/* TTL + Interval */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <div>
-              <label htmlFor="ttl" style={labelStyle}>
-                Keep jobs (hrs) <span style={{ color: "#ff3333" }}>*</span>
-              </label>
-              <input
-                id="ttl"
-                type="number"
-                min={CONSTRAINTS.TTL_MIN}
-                max={CONSTRAINTS.TTL_MAX}
-                step="1"
-                value={ttlHours}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  setTtlHours(e.target.value);
-                  if (validationErrors.ttlHours) {
-                    setValidationErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.ttlHours;
-                      return next;
-                    });
-                  }
-                }}
-                onFocus={() => setTtlFocused(true)}
-                onBlur={() => setTtlFocused(false)}
-                style={validationErrors.ttlHours ? inputErrorStyle : ttlFocused ? inputFocusStyle : inputBaseStyle}
-              />
-              {validationErrors.ttlHours && (
-                <p style={errorStyle}>{validationErrors.ttlHours}</p>
-              )}
-            </div>
-            <div>
-              <label htmlFor="interval" style={labelStyle}>
-                Check every (min) <span style={{ color: "#ff3333" }}>*</span>
-              </label>
-              <input
-                id="interval"
-                type="number"
-                min={CONSTRAINTS.INTERVAL_MIN}
-                max={CONSTRAINTS.INTERVAL_MAX}
-                step="1"
-                value={intervalMinutes}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  setIntervalMinutes(e.target.value);
-                  if (validationErrors.intervalMinutes) {
-                    setValidationErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.intervalMinutes;
-                      return next;
-                    });
-                  }
-                }}
-                onFocus={() => setIntervalFocused(true)}
-                onBlur={() => setIntervalFocused(false)}
-                style={validationErrors.intervalMinutes ? inputErrorStyle : intervalFocused ? inputFocusStyle : inputBaseStyle}
-              />
-              {validationErrors.intervalMinutes && (
-                <p style={errorStyle}>{validationErrors.intervalMinutes}</p>
-              )}
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <TextField
+              id="ttl"
+              label="Keep jobs (hrs) *"
+              type="number"
+              min={CONSTRAINTS.TTL_MIN}
+              max={CONSTRAINTS.TTL_MAX}
+              step="1"
+              value={ttlHours}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setTtlHours(e.target.value);
+                if (validationErrors.ttlHours) {
+                  setValidationErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.ttlHours;
+                    return next;
+                  });
+                }
+              }}
+              error={validationErrors.ttlHours}
+            />
+            <TextField
+              id="interval"
+              label="Check every (min) *"
+              type="number"
+              min={CONSTRAINTS.INTERVAL_MIN}
+              max={CONSTRAINTS.INTERVAL_MAX}
+              step="1"
+              value={intervalMinutes}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setIntervalMinutes(e.target.value);
+                if (validationErrors.intervalMinutes) {
+                  setValidationErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.intervalMinutes;
+                    return next;
+                  });
+                }
+              }}
+              error={validationErrors.intervalMinutes}
+            />
           </div>
 
           {/* Checkbox */}
-          <div>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginTop: "4px" }}>
-              <input
-                type="checkbox"
-                id="disable_js"
-                checked={disableJavascript}
-                onChange={(e) => setDisableJavascript(e.target.checked)}
-                className="h-4 w-4 accent-black mt-1"
-                style={{ border: "1px solid #1c1c1c", flexShrink: 0 }}
-              />
-              <label
-                htmlFor="disable_js"
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  color: "#aaa",
-                  letterSpacing: "0.05em",
-                  cursor: "pointer",
-                }}
-              >
-                Browser scraping (works on JS-heavy sites)
-              </label>
-            </div>
-          </div>
+          <Checkbox
+            id="disable_js"
+            checked={disableJavascript}
+            onChange={(e) => setDisableJavascript(e.target.checked)}
+            label="Browser scraping (works on JS-heavy sites)"
+            className="text-[13px] sm:text-[15px]"
+          />
 
           {/* Footer */}
-          <DialogFooter
-            style={{
-              borderTop: "1px solid #1c1c1c",
-              paddingTop: "12px",
-              marginTop: "4px",
-              display: "flex",
-              gap: "8px",
-              justifyContent: "flex-end",
-              alignItems: "center",
-            }}
-          >
+          <DialogFooter className="mt-1 flex flex-row items-center justify-end gap-2 border-t border-hairline pt-5">
             {editingId && (
-              <Button
-                type="button"
-                onClick={() => setOpen(false)}
-                variant="outline"
-                onMouseEnter={() => setCancelHovered(true)}
-                onMouseLeave={() => setCancelHovered(false)}
-                style={{
-                  border: cancelHovered ? "1px solid #333" : "1px solid #1c1c1c",
-                  background: "transparent",
-                  color: cancelHovered ? "#aaa" : "#555",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  padding: "7px 16px",
-                  cursor: "pointer",
-                  transition: "border-color 0.1s, color 0.1s",
-                  borderRadius: "2px",
-                  height: "auto",
-                }}
-              >
+              <DsButton type="button" onClick={() => setOpen(false)} variant="secondary" size="sm">
                 Cancel
-              </Button>
+              </DsButton>
             )}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              onMouseEnter={() => setSubmitHovered(true)}
-              onMouseLeave={() => setSubmitHovered(false)}
-              style={{
-                border: "1px solid #ff8c00",
-                background: submitHovered && !isSubmitting ? "rgba(255,140,0,0.18)" : "rgba(255,140,0,0.1)",
-                color: "#ff8c00",
-                fontFamily: "var(--font-mono)",
-                fontSize: "10px",
-                fontWeight: 700,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                padding: "7px 20px",
-                cursor: isSubmitting ? "not-allowed" : "pointer",
-                flex: 1,
-                transition: "background 0.1s",
-                borderRadius: "2px",
-                height: "auto",
-                opacity: isSubmitting ? 0.5 : 1,
-              }}
-            >
+            <DsButton type="submit" disabled={isSubmitting} variant="primary" size="sm" className="flex-1">
               {isSubmitting
                 ? "Saving..."
                 : editingId
                   ? "Update"
                   : "Start Scraping"}
-            </Button>
+            </DsButton>
           </DialogFooter>
         </form>
       </DialogContent>

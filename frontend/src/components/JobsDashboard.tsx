@@ -16,6 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import { useAuth, getAuthHeaders } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { Chip, DsButton, DsCard, Kicker, dsButtonVariants } from "@/components/ds";
+import { cn } from "@/lib/utils";
 import {
   Briefcase,
   Globe,
@@ -49,57 +51,44 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 };
 import Link from "next/link";
 
-const TAB_BASE =
-  "font-mono text-[9px] tracking-widest uppercase font-semibold whitespace-nowrap shrink-0 bg-transparent border-0 border-b-2 border-transparent px-3 py-2.5 transition-colors cursor-pointer rounded-none h-auto data-[state=active]:border-[#ff8c00] data-[state=active]:text-[#ff8c00] data-[state=active]:bg-transparent text-[#555555] hover:text-[#aaaaaa]";
+/**
+ * The `line` TabsList variant supplies the hairline rule and the brick active
+ * underline; triggers only need to opt out of flex-grow so the strip scrolls.
+ */
+const TAB_BASE = "flex-none shrink-0 cursor-pointer";
+
+/** 32px square hairline icon button used across the masthead. */
+const HEADER_ICON_BUTTON =
+  "flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-hairline bg-paper-card text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick";
+
+const SOURCE_META_CHIP = "px-2 py-0.5 text-[11px] uppercase tracking-[0.09em]";
 
 function JobrightEmptyState() {
   return (
-    <div style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "64px 20px",
-      gap: "16px",
-      border: "1px solid #1c1c1c",
-      background: "#080808",
-    }}>
-      <div style={{ width: "40px", height: "40px", background: "rgba(255,140,0,0.1)", border: "1px solid rgba(255,140,0,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <PlugsConnected weight="bold" style={{ width: "18px", height: "18px", color: "#ff8c00" }} />
+    <DsCard
+      interactive={false}
+      className="flex flex-col items-center justify-center gap-4 px-5 py-16"
+    >
+      <div className="ds-well flex size-10 items-center justify-center">
+        <PlugsConnected weight="regular" className="size-4 text-ink-muted" />
       </div>
-      <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "6px" }}>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, letterSpacing: "0.2em", color: "#ff8c00", textTransform: "uppercase" }}>
-          CONNECT JOBRIGHT
-        </div>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.08em", maxWidth: "280px" }}>
-          Add your Jobright credentials in Settings to pull personalized job recommendations.
-        </div>
+      <div className="flex flex-col gap-1.5 text-center">
+        <h3 className="font-serif text-[22px] font-semibold leading-tight text-ink">
+          Connect Jobright
+        </h3>
+        <p className="max-w-[320px] font-sans text-[13px] leading-relaxed text-ink-muted">
+          Add your Jobright credentials in Settings to pull personalized job
+          recommendations.
+        </p>
       </div>
-      <Link href="/settings">
-        <button
-          style={{
-            border: "1px solid #ff8c00",
-            background: "rgba(255,140,0,0.1)",
-            color: "#ff8c00",
-            fontFamily: "var(--font-mono)",
-            fontSize: "10px",
-            fontWeight: 700,
-            letterSpacing: "0.15em",
-            textTransform: "uppercase",
-            padding: "7px 20px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,140,0,0.18)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,140,0,0.1)"; }}
-        >
-          <Gear weight="bold" style={{ width: "12px", height: "12px" }} />
-          SET UP IN SETTINGS
-        </button>
+      <Link
+        href="/settings"
+        className={cn(dsButtonVariants({ variant: "primary", size: "sm" }), "no-underline")}
+      >
+        <Gear weight="regular" className="size-4" />
+        Set up in settings
       </Link>
-    </div>
+    </DsCard>
   );
 }
 
@@ -228,49 +217,32 @@ export function JobsDashboard() {
   const getDynamicIcon = (iconName: string) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const IconComponent: React.ComponentType<any> = ICON_MAP[iconName] ?? Buildings;
-    return <IconComponent weight="bold" className="h-3.5 w-3.5" />;
+    return <IconComponent weight="regular" className="size-4 shrink-0" />;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#000" }}>
-        <CircleNotch weight="bold" className="h-8 w-8 animate-spin" style={{ color: "#ff8c00" }} />
+      <div className="flex min-h-screen items-center justify-center bg-paper">
+        <CircleNotch weight="regular" className="size-8 animate-spin text-ink-muted" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-foreground font-medium transition-colors duration-300" style={{ background: "#000" }}>
-      {/* Bloomberg terminal header */}
-      <header
-        className="sticky top-0 z-40"
-        style={{ height: "44px", background: "#060606", borderBottom: "1px solid #1c1c1c" }}
-      >
-        <div
-          className="h-full px-3 grid items-center"
-          style={{ gridTemplateColumns: "1fr auto 1fr" }}
-        >
+    <div className="min-h-screen bg-paper text-ink">
+      {/* Editorial masthead */}
+      <header className="sticky top-0 z-40 h-14 border-b border-hairline bg-paper-card">
+        <div className="grid h-full grid-cols-[1fr_auto_1fr] items-center px-3">
           {/* Left: brand */}
           <div className="flex items-center gap-2.5">
-            <div
-              className="flex items-center justify-center"
-              style={{ width: "22px", height: "22px", background: "#ff8c00" }}
-            >
-              <Briefcase weight="fill" className="h-3 w-3" style={{ color: "#000" }} />
+            <div className="flex size-6 items-center justify-center rounded-[4px] bg-brick">
+              <Briefcase weight="fill" className="size-3.5 text-paper-card" />
             </div>
-            <div className="flex flex-col leading-none gap-0.5">
-              <span
-                className="font-mono font-bold tracking-[0.2em] uppercase"
-                style={{ fontSize: "11px", color: "#ff8c00" }}
-              >
-                HIREFEED
+            <div className="flex flex-col gap-0.5 leading-none">
+              <span className="font-serif text-[19px] font-semibold leading-none text-ink">
+                Hirefeed
               </span>
-              <span
-                className="font-mono uppercase tracking-[0.12em]"
-                style={{ fontSize: "9px", color: "#555" }}
-              >
-                JOB EXTRACTION ENGINE
-              </span>
+              <Kicker className="text-[10px] leading-none">Job extraction engine</Kicker>
             </div>
           </div>
 
@@ -278,106 +250,54 @@ export function JobsDashboard() {
           <div className="flex items-center justify-center gap-2">
             {user && (
               <>
-                <span
-                  className="animate-live-pulse rounded-full"
-                  style={{ width: "6px", height: "6px", background: "#ff8c00", flexShrink: 0 }}
-                />
+                <span className="size-1.5 shrink-0 animate-live-pulse rounded-full bg-forest" />
                 <span
                   key={countBumpKey}
-                  className="font-mono font-bold tabular-nums animate-count-bump"
-                  style={{ fontSize: "11px", color: "#ffd700" }}
+                  className="animate-count-bump font-serif text-[17px] font-semibold tabular-nums text-ink"
                 >
                   {jobs.length}
                 </span>
-                <span
-                  className="font-mono uppercase tracking-widest"
-                  style={{ fontSize: "9px", color: "#555" }}
-                >
-                  JOBS
-                </span>
+                <Kicker>Jobs</Kicker>
               </>
             )}
           </div>
 
           {/* Right: action buttons */}
           {user && (
-            <div className="flex items-center justify-end gap-0.5">
-              <Link href="/saved" title="Saved jobs">
-                <div
-                  className="flex items-center justify-center cursor-pointer transition-colors"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    border: "1px solid #1c1c1c",
-                    background: "transparent",
-                    color: "#555",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#ff8c00"; (e.currentTarget as HTMLDivElement).style.borderColor = "#ff8c00"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = "#555"; (e.currentTarget as HTMLDivElement).style.borderColor = "#1c1c1c"; }}
-                >
-                  <BookmarkSimple weight="bold" className="h-3.5 w-3.5" />
+            <div className="flex items-center justify-end gap-1.5">
+              <Link href="/saved" title="Saved jobs" aria-label="Saved jobs">
+                <div className={HEADER_ICON_BUTTON}>
+                  <BookmarkSimple weight="regular" className="size-4" />
                 </div>
               </Link>
 
               {/* More menu: Settings, Keywords, Logs */}
-              <div ref={moreMenuRef} style={{ position: "relative" }}>
+              <div ref={moreMenuRef} className="relative">
                 <button
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   title="More"
-                  className="flex items-center justify-center cursor-pointer transition-colors"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    border: `1px solid ${moreMenuOpen ? "#ff8c00" : "#1c1c1c"}`,
-                    background: "transparent",
-                    color: moreMenuOpen ? "#ff8c00" : "#555",
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ff8c00"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff8c00"; }}
-                  onMouseLeave={(e) => {
-                    if (!moreMenuOpen) {
-                      (e.currentTarget as HTMLButtonElement).style.color = "#555";
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c";
-                    }
-                  }}
+                  aria-label="More"
+                  aria-expanded={moreMenuOpen}
+                  className={cn(
+                    HEADER_ICON_BUTTON,
+                    moreMenuOpen && "border-brick text-brick"
+                  )}
                 >
-                  <DotsThreeVertical weight="bold" className="h-3.5 w-3.5" />
+                  <DotsThreeVertical weight="regular" className="size-4" />
                 </button>
 
                 {moreMenuOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      right: 0,
-                      top: "calc(100% + 4px)",
-                      background: "#0d0d0d",
-                      border: "1px solid #2a2a2a",
-                      minWidth: "130px",
-                      zIndex: 50,
-                    }}
-                  >
+                  <div className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[150px] overflow-hidden rounded-[4px] border border-hairline bg-paper-card">
                     {[
-                      { href: "/settings", icon: <Gear weight="bold" className="h-3 w-3" />, label: "SETTINGS" },
-                      { href: "/keyword-matcher", icon: <Tag weight="bold" className="h-3 w-3" />, label: "KEYWORDS" },
-                      { href: "/logs", icon: <TerminalWindow weight="bold" className="h-3 w-3" />, label: "LOGS" },
+                      { href: "/settings", icon: <Gear weight="regular" className="size-4" />, label: "Settings" },
+                      { href: "/keyword-matcher", icon: <Tag weight="regular" className="size-4" />, label: "Keywords" },
+                      { href: "/logs", icon: <TerminalWindow weight="regular" className="size-4" />, label: "Logs" },
                     ].map(({ href, icon, label }) => (
                       <Link
                         key={href}
                         href={href}
                         onClick={() => setMoreMenuOpen(false)}
-                        className="flex items-center gap-2 w-full transition-colors"
-                        style={{
-                          padding: "8px 12px",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "9px",
-                          fontWeight: 600,
-                          letterSpacing: "0.12em",
-                          color: "#666",
-                          borderBottom: "1px solid #1c1c1c",
-                          textDecoration: "none",
-                          display: "flex",
-                        }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#ff8c00"; (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,140,0,0.05)"; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "#666"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
+                        className="flex w-full items-center gap-2 border-b border-hairline px-3 py-2 font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted no-underline transition-colors duration-[120ms] last:border-b-0 hover:bg-paper-sunk hover:text-ink"
                       >
                         {icon}
                         <span>{label}</span>
@@ -392,18 +312,10 @@ export function JobsDashboard() {
               <button
                 onClick={signOut}
                 title="Sign Out"
-                className="flex items-center justify-center cursor-pointer transition-colors"
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  border: "1px solid #1c1c1c",
-                  background: "transparent",
-                  color: "#555",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ff3333"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff3333"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#555"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c"; }}
+                aria-label="Sign out"
+                className={HEADER_ICON_BUTTON}
               >
-                <SignOut weight="bold" className="h-3.5 w-3.5" />
+                <SignOut weight="regular" className="size-4" />
               </button>
             </div>
           )}
@@ -412,7 +324,7 @@ export function JobsDashboard() {
 
       {user && <OnboardingModal userEmail={user.email} />}
 
-      <main className="container mx-auto px-2 sm:px-3 py-2 sm:py-3">
+      <main className="container mx-auto px-2 py-4 sm:px-3 sm:py-6">
         {apiError && (
           <ErrorBanner
             error={apiError}
@@ -424,33 +336,33 @@ export function JobsDashboard() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className={!user ? "w-full mt-2 sm:mt-3" : "w-full"}>
           {user && (
-            <div className="relative flex items-center gap-2 w-full mb-2 sm:mb-3">
+            <div className="relative mb-4 flex w-full items-center gap-2 sm:mb-6">
               <TabsList
-                className="flex flex-nowrap h-auto gap-0 bg-transparent p-0 items-center justify-start border-none overflow-x-auto whitespace-nowrap scrollbar-hide w-full max-w-full"
-                style={{ borderBottom: "1px solid #1c1c1c" }}
+                variant="line"
+                className="w-full max-w-full flex-nowrap justify-start overflow-x-auto whitespace-nowrap scrollbar-hide"
               >
                 <TabsTrigger value="all" className={TAB_BASE}>
                   <div className="flex items-center gap-1.5">
-                    <Globe weight="bold" className="h-3 w-3" />
-                    <span>ALL</span>
-                    <span style={{ color: "#555" }}>({jobs.length})</span>
+                    <Globe weight="regular" className="size-4" />
+                    <span>All</span>
+                    <span className="text-ink-faint">{jobs.length}</span>
                   </div>
                 </TabsTrigger>
 
                 <TabsTrigger value="location" className={TAB_BASE}>
                   <div className="flex items-center gap-1.5">
-                    <MapPin weight="bold" className="h-3 w-3" />
-                    <span>{locationFilterNormalized?.abbreviation || "LOCATION"}</span>
-                    <span style={{ color: "#555" }}>({locationFilteredJobs.length})</span>
+                    <MapPin weight="regular" className="size-4" />
+                    <span>{locationFilterNormalized?.abbreviation || "Location"}</span>
+                    <span className="text-ink-faint">{locationFilteredJobs.length}</span>
                   </div>
                 </TabsTrigger>
 
                 {(linkedinJobs.length > 0 || activeTab === "linkedin") && (
                   <TabsTrigger value="linkedin" className={TAB_BASE}>
                     <div className="flex items-center gap-1.5">
-                      <LinkedinLogo weight="bold" className="h-3 w-3" />
-                      <span>LINKEDIN</span>
-                      <span style={{ color: "#555" }}>({linkedinJobs.length})</span>
+                      <LinkedinLogo weight="regular" className="size-4" />
+                      <span>LinkedIn</span>
+                      <span className="text-ink-faint">{linkedinJobs.length}</span>
                     </div>
                   </TabsTrigger>
                 )}
@@ -458,9 +370,9 @@ export function JobsDashboard() {
                 {(jobrightJobs.length > 0 || activeTab === "jobright" || hasJobrightCreds) && (
                   <TabsTrigger value="jobright" className={TAB_BASE}>
                     <div className="flex items-center gap-1.5">
-                      <Briefcase weight="bold" className="h-3 w-3" />
-                      <span>JOBRIGHT</span>
-                      <span style={{ color: "#555" }}>({jobrightJobs.length})</span>
+                      <Briefcase weight="regular" className="size-4" />
+                      <span>Jobright</span>
+                      <span className="text-ink-faint">{jobrightJobs.length}</span>
                     </div>
                   </TabsTrigger>
                 )}
@@ -468,9 +380,9 @@ export function JobsDashboard() {
                 {(mathworksJobs.length > 0 || activeTab === "mathworks") && (
                   <TabsTrigger value="mathworks" className={TAB_BASE}>
                     <div className="flex items-center gap-1.5">
-                      <Buildings weight="bold" className="h-3 w-3" />
-                      <span>MATHWORKS</span>
-                      <span style={{ color: "#555" }}>({mathworksJobs.length})</span>
+                      <Buildings weight="regular" className="size-4" />
+                      <span>MathWorks</span>
+                      <span className="text-ink-faint">{mathworksJobs.length}</span>
                     </div>
                   </TabsTrigger>
                 )}
@@ -478,9 +390,9 @@ export function JobsDashboard() {
                 {(githubJobs.length > 0 || activeTab === "github") && (
                   <TabsTrigger value="github" className={TAB_BASE}>
                     <div className="flex items-center gap-1.5">
-                      <GithubLogo weight="bold" className="h-3 w-3" />
-                      <span>GITHUB</span>
-                      <span style={{ color: "#555" }}>({githubJobs.length})</span>
+                      <GithubLogo weight="regular" className="size-4" />
+                      <span>GitHub</span>
+                      <span className="text-ink-faint">{githubJobs.length}</span>
                     </div>
                   </TabsTrigger>
                 )}
@@ -488,9 +400,9 @@ export function JobsDashboard() {
                 {(indeedJobs.length > 0 || activeTab === "indeed") && (
                   <TabsTrigger value="indeed" className={TAB_BASE}>
                     <div className="flex items-center gap-1.5">
-                      <MagnifyingGlass weight="bold" className="h-3 w-3" />
-                      <span>INDEED</span>
-                      <span style={{ color: "#555" }}>({indeedJobs.length})</span>
+                      <MagnifyingGlass weight="regular" className="size-4" />
+                      <span>Indeed</span>
+                      <span className="text-ink-faint">{indeedJobs.length}</span>
                     </div>
                   </TabsTrigger>
                 )}
@@ -503,12 +415,12 @@ export function JobsDashboard() {
                       value={source.id}
                       className={TAB_BASE}
                     >
-                      <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="flex min-w-0 items-center gap-1.5">
                         {getDynamicIcon(source.icon)}
                         <span className="truncate max-w-[80px] sm:max-w-[160px]">
-                          {source.name.toUpperCase()}
+                          {source.name}
                         </span>
-                        <span style={{ color: "#555" }} className="shrink-0">({sourceJobs.length})</span>
+                        <span className="shrink-0 text-ink-faint">{sourceJobs.length}</span>
                       </div>
                     </TabsTrigger>
                   );
@@ -519,35 +431,25 @@ export function JobsDashboard() {
                 <AddJobSourceModal
                   onSuccess={(id: string) => setActiveTab(id)}
                   triggerNode={
-                    <button
-                      className="font-mono uppercase tracking-widest transition-colors flex items-center gap-1.5"
-                      style={{
-                        fontSize: "9px",
-                        fontWeight: 600,
-                        border: "1px solid #1c1c1c",
-                        background: "transparent",
-                        color: "#555",
-                        padding: "6px 10px",
-                        cursor: "pointer",
-                        whiteSpace: "nowrap",
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ff8c00"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff8c00"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#555"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c"; }}
+                    <DsButton
+                      variant="secondary"
+                      size="sm"
+                      className="gap-1.5 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.09em]"
                     >
-                      <span style={{ fontSize: "11px", lineHeight: 1 }}>+</span>
-                      <span>SOURCE</span>
-                    </button>
+                      <span className="text-[13px] leading-none">+</span>
+                      <span>Source</span>
+                    </DsButton>
                   }
                 />
               </div>
-              <div className="pointer-events-none absolute right-8 top-0 h-full w-10 bg-gradient-to-l from-black to-transparent md:hidden" aria-hidden="true" />
+              <div className="pointer-events-none absolute right-8 top-0 h-full w-10 bg-gradient-to-l from-paper to-transparent md:hidden" aria-hidden="true" />
             </div>
           )}
 
           <TabsContent value="all" className="mt-0">
             <JobList
               jobs={jobs}
-              emptyMessage="No jobs yet. We're searching now—check back soon."
+              emptyMessage="No jobs yet. We're searching now — check back soon."
               isLocked={!user}
               error={apiError}
               onRetry={retryFetch}
@@ -555,31 +457,16 @@ export function JobsDashboard() {
           </TabsContent>
 
           <TabsContent value="location" className="mt-0">
-            <div
-              className="flex flex-col gap-1 sm:gap-2 mb-2 sm:mb-3 pb-2 sm:flex-row sm:items-center sm:justify-between"
-              style={{ borderBottom: "1px solid #1c1c1c" }}
-            >
-              <div className="flex flex-col gap-0.5">
-                <span
-                  className="font-mono font-semibold uppercase tracking-widest"
-                  style={{ fontSize: "9px", color: "#ff8c00" }}
-                >
-                  {locationFilterNormalized?.full_name || "LOCATION FILTER"}
-                </span>
+            <div className="mb-4 flex flex-col gap-2 border-b border-hairline pb-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-1">
+                <Kicker className="text-ink-2">
+                  {locationFilterNormalized?.full_name || "Location filter"}
+                </Kicker>
                 {locationFilterNormalized && (
-                  <span className="flex gap-2 flex-wrap items-center" style={{ marginTop: "2px" }}>
-                    <span
-                      className="font-mono uppercase tracking-widest"
-                      style={{
-                        fontSize: "9px",
-                        color: "#aaaaaa",
-                        border: "1px solid #1c1c1c",
-                        background: "#080808",
-                        padding: "1px 6px",
-                      }}
-                    >
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Chip tone="sunk" className={SOURCE_META_CHIP}>
                       {locationFilterNormalized.abbreviation}
-                    </span>
+                    </Chip>
                     <ScrapeCountdown nextScrapeAt={nextLocationScrape} />
                   </span>
                 )}
@@ -599,7 +486,7 @@ export function JobsDashboard() {
 
           <TabsContent value="linkedin" className="mt-0">
             {nextLinkedinScrape && (
-              <div className="mb-1.5">
+              <div className="mb-2">
                 <ScrapeCountdown nextScrapeAt={nextLinkedinScrape} />
               </div>
             )}
@@ -640,7 +527,7 @@ export function JobsDashboard() {
 
           <TabsContent value="indeed" className="mt-0">
             {nextIndeedScrape && (
-              <div className="mb-1.5">
+              <div className="mb-2">
                 <ScrapeCountdown nextScrapeAt={nextIndeedScrape} />
               </div>
             )}
@@ -662,145 +549,96 @@ export function JobsDashboard() {
             return (
               <TabsContent key={source.id} value={source.id} className="mt-0">
                 {/* Custom source section header */}
-                <div
-                  className="flex flex-col gap-1 sm:gap-2 mb-2 sm:mb-3 pb-2 sm:flex-row sm:items-center sm:justify-between"
-                  style={{ borderBottom: "1px solid #1c1c1c" }}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span
-                      className="font-mono font-semibold uppercase tracking-widest"
-                      style={{ fontSize: "9px", color: "#ff8c00" }}
-                    >
-                      {source.name}
-                    </span>
-                    <span className="flex gap-2 flex-wrap items-center" style={{ marginTop: "2px" }}>
-                      <span
-                        className="font-mono uppercase tracking-widest"
-                        style={{
-                          fontSize: "9px",
-                          color: "#aaaaaa",
-                          border: "1px solid #1c1c1c",
-                          background: "#080808",
-                          padding: "1px 6px",
-                        }}
-                      >
+                <div className="mb-4 flex flex-col gap-2 border-b border-hairline pb-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-1">
+                    <Kicker className="text-ink-2">{source.name}</Kicker>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Chip tone="sunk" className={SOURCE_META_CHIP}>
                         {source.interval_minutes}m
-                      </span>
-                      <span
-                        className="font-mono uppercase tracking-widest"
-                        style={{
-                          fontSize: "9px",
-                          color: "#aaaaaa",
-                          border: "1px solid #1c1c1c",
-                          background: "#080808",
-                          padding: "1px 6px",
-                        }}
-                      >
+                      </Chip>
+                      <Chip tone="sunk" className={SOURCE_META_CHIP}>
                         {source.ttl_hours}h TTL
-                      </span>
+                      </Chip>
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                  <div className="flex w-full items-center gap-2 sm:w-auto">
                     <AddJobSourceModal
                       editSource={source}
                       triggerNode={
-                        <button
-                          className="font-mono uppercase tracking-widest transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center sm:justify-start"
-                          style={{
-                            fontSize: "9px",
-                            fontWeight: 600,
-                            border: "1px solid #1c1c1c",
-                            background: "transparent",
-                            color: "#ff8c00",
-                            padding: "5px 10px",
-                            cursor: "pointer",
-                          }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff8c00"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,140,0,0.06)"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                        <DsButton
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] sm:flex-none"
                         >
-                          <PencilSimple weight="bold" className="h-3 w-3" />
-                          <span>EDIT</span>
-                        </button>
+                          <PencilSimple weight="regular" className="size-4 text-ink-muted" />
+                          <span>Edit</span>
+                        </DsButton>
                       }
                     />
-                    <button
+                    <DsButton
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDeleteSource(source.id, source.name)}
                       disabled={deletingSourceId === source.id}
-                      className="font-mono uppercase tracking-widest transition-colors flex items-center gap-1 flex-1 sm:flex-none justify-center sm:justify-start disabled:opacity-40"
-                      style={{
-                        fontSize: "9px",
-                        fontWeight: 600,
-                        border: "1px solid #1c1c1c",
-                        background: "transparent",
-                        color: "#ff3333",
-                        padding: "5px 10px",
-                        cursor: "pointer",
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff3333"; (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,51,51,0.06)"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                      className="flex-1 gap-1.5 font-mono text-[11px] uppercase tracking-[0.09em] sm:flex-none"
                     >
                       {deletingSourceId === source.id ? (
-                        <CircleNotch weight="bold" className="h-3 w-3 animate-spin" />
+                        <CircleNotch weight="regular" className="size-4 animate-spin" />
                       ) : (
-                        <Trash weight="bold" className="h-3 w-3" />
+                        <Trash weight="regular" className="size-4" />
                       )}
-                      <span>{deletingSourceId === source.id ? "DELETING..." : "DELETE"}</span>
-                    </button>
+                      <span>{deletingSourceId === source.id ? "Deleting" : "Delete"}</span>
+                    </DsButton>
                   </div>
                 </div>
 
                 {(isProcessing || isError) && (
                   <div
-                    className="mb-2 sm:mb-3 p-3"
-                    style={{
-                      border: isError ? "1px solid #ff3333" : "1px solid #1c1c1c",
-                      background: isError ? "rgba(255,51,51,0.05)" : "#080808",
-                    }}
+                    className={cn(
+                      "mb-4 rounded-[4px] border p-3",
+                      isError ? "border-brick bg-brick-tint" : "border-hairline bg-paper-card"
+                    )}
                   >
-                    <div className="flex items-center gap-2 mb-2.5">
+                    <div className="mb-2.5 flex items-center gap-2">
                       {isProcessing && (
-                        <CircleNotch weight="bold" className="h-3.5 w-3.5 animate-spin shrink-0" style={{ color: "#ff8c00" }} />
+                        <CircleNotch
+                          weight="regular"
+                          className="size-4 shrink-0 animate-spin text-ink-muted"
+                        />
                       )}
                       {isError && (
-                        <X weight="bold" className="h-3.5 w-3.5 shrink-0" style={{ color: "#ff3333" }} />
+                        <X weight="regular" className="size-4 shrink-0 text-ink-muted" />
                       )}
                       <span
-                        className="font-mono uppercase tracking-widest"
-                        style={{
-                          fontSize: "9px",
-                          fontWeight: 600,
-                          color: isError ? "#ff3333" : "#aaaaaa",
-                        }}
+                        className={cn(
+                          "font-mono text-[11px] uppercase tracking-[0.09em]",
+                          isError ? "text-brick" : "text-ink-2"
+                        )}
                       >
-                        {statusMessage || (isProcessing ? "PROCESSING..." : "FETCH FAILED")}
+                        {statusMessage || (isProcessing ? "Processing" : "Fetch failed")}
                       </span>
                     </div>
                     {isProcessing && (
-                      <div
-                        className="w-full h-0.5 overflow-hidden"
-                        style={{ background: "#1c1c1c" }}
-                      >
+                      <div className="h-0.5 w-full overflow-hidden bg-paper-sunk">
                         <div
-                          className="h-full transition-all duration-700 ease-out"
-                          style={{ width: `${progressPercent}%`, background: "#ff8c00" }}
+                          className="h-full bg-brick transition-all duration-700 ease-out"
+                          style={{ width: `${progressPercent}%` }}
                         />
                       </div>
                     )}
                     {isProcessing && (
-                      <div className="flex justify-between mt-2 gap-1">
-                        {["QUEUED", "FETCHING", "ANALYZING", "DONE"].map((step, idx) => {
+                      <div className="mt-2 flex justify-between gap-1">
+                        {["Queued", "Fetching", "Analyzing", "Done"].map((step, idx) => {
                           const stepStatuses = ["pending", "fetching", "parsing", "done"];
                           const currentIdx = stepStatuses.indexOf(status);
                           const isActive = idx <= currentIdx;
                           return (
                             <span
                               key={step}
-                              className="font-mono uppercase tracking-widest"
-                              style={{
-                                fontSize: "8px",
-                                fontWeight: 600,
-                                color: isActive ? "#ff8c00" : "#333",
-                              }}
+                              className={cn(
+                                "font-mono text-[10px] uppercase tracking-[0.09em]",
+                                isActive ? "text-ink-2" : "text-ink-faint"
+                              )}
                             >
                               {step}
                             </span>
@@ -810,23 +648,14 @@ export function JobsDashboard() {
                     )}
                     {isError && (
                       <div className="mt-2.5">
-                        <button
+                        <DsButton
+                          variant="danger"
+                          size="sm"
                           onClick={() => retryFetch()}
-                          className="font-mono uppercase tracking-widest transition-colors"
-                          style={{
-                            fontSize: "9px",
-                            fontWeight: 600,
-                            border: "1px solid #ff3333",
-                            background: "transparent",
-                            color: "#ff3333",
-                            padding: "4px 10px",
-                            cursor: "pointer",
-                          }}
-                          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,51,51,0.1)"; }}
-                          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                          className="font-mono text-[11px] uppercase tracking-[0.09em]"
                         >
-                          RETRY
-                        </button>
+                          Retry
+                        </DsButton>
                       </div>
                     )}
                   </div>
@@ -835,7 +664,7 @@ export function JobsDashboard() {
                 <JobList
                   jobs={sourceJobs}
                   emptyMessage={isProcessing
-                    ? `Processing ${source.name}... Jobs will appear here shortly.`
+                    ? `Processing ${source.name}. Jobs will appear here shortly.`
                     : `Searching ${source.name} for jobs. This may take a few minutes.`
                   }
                   isLocked={!user}
@@ -848,16 +677,15 @@ export function JobsDashboard() {
 
       <Toaster
         position="bottom-right"
-        theme="dark"
+        theme="light"
         toastOptions={{
           style: {
-            background: "#0d0d0d",
-            border: "1px solid #2a2a2a",
-            color: "#f0f0f0",
-            borderRadius: "2px",
-            fontFamily: "var(--font-geist-mono, monospace)",
-            fontSize: "11px",
-            letterSpacing: "0.03em",
+            background: "var(--paper-card)",
+            border: "1px solid var(--border-hairline)",
+            color: "var(--ink)",
+            borderRadius: "4px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "13px",
           },
         }}
       />

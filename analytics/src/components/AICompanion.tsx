@@ -28,7 +28,7 @@ function renderInline(text: string, keyOffset = 0): React.ReactNode[] {
       nodes.push(<em key={key++} style={{ fontStyle: "italic" }}>{match[3]}</em>);
     } else if (match[4]) {
       nodes.push(
-        <code key={key++} style={{ background: "var(--teal-dim)", border: "1px solid rgba(255,140,0,0.2)", padding: "1px 4px", fontSize: "11px", color: "var(--teal)" }}>
+        <code key={key++} style={{ background: "var(--teal-dim)", border: "1px solid var(--teal-glow)", padding: "1px 4px", fontSize: "11px", color: "var(--teal)" }}>
           {match[4]}
         </code>
       );
@@ -82,7 +82,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
             </thead>
             <tbody>
               {body.map((row, ri) => (
-                <tr key={ri} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <tr key={ri} style={{ borderBottom: "1px solid var(--border)" }}>
                   {row.map((cell, ci) => (
                     <td key={ci} style={{ padding: "5px 16px 5px 0", color: "var(--text)", verticalAlign: "top" }}>
                       {renderInline(cell, ri * 10000 + ci * 100)}
@@ -160,7 +160,7 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
           alignItems: "center",
           gap: "6px",
           background: "none",
-          border: "1px solid rgba(255,140,0,0.2)",
+          border: "1px solid var(--teal-glow)",
           borderRadius: "var(--radius)",
           padding: "3px 8px",
           cursor: "pointer",
@@ -173,10 +173,10 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
           transition: "border-color 0.15s",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "rgba(255,140,0,0.5)";
+          e.currentTarget.style.borderColor = "var(--teal)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = "rgba(255,140,0,0.2)";
+          e.currentTarget.style.borderColor = "var(--teal-glow)";
         }}
       >
         {/* Chevron */}
@@ -206,8 +206,8 @@ function ThinkingBlock({ plan }: { plan: QueryPlan }) {
         <div
           style={{
             marginTop: "4px",
-            border: "1px solid rgba(255,140,0,0.12)",
-            background: "var(--bg-panel)",
+            border: "1px solid var(--teal-glow)",
+            background: "var(--paper-sunk)",
             padding: "10px 12px",
             overflow: "auto",
           }}
@@ -293,7 +293,7 @@ function QueryBadge({ plan }: { plan: QueryPlan }) {
   );
 }
 
-// ── Typing indicator (three amber dots) ──────────────────────────────────────
+// ── Typing indicator (three brick dots) ──────────────────────────────────────
 function TypingIndicator() {
   return (
     <div

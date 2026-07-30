@@ -42,7 +42,7 @@ export default class ChartErrorBoundary extends Component<Props, State> {
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: "9px",
-                color: "var(--red, #ef4444)",
+                color: "var(--red, #c0362c)",
                 letterSpacing: "0.1em",
               }}
             >

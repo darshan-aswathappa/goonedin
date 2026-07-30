@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useKnowledgeBase } from "@/hooks/useKnowledgeBase";
 import { ChatMessage, QueryPlan } from "@/types/knowledge-base";
+import { Chip, DsButton, Kicker } from "@/components/ds";
 
 // ── Suggested prompts shown when conversation is empty ────────────────────────
 const SUGGESTED_PROMPTS = [
@@ -11,24 +12,6 @@ const SUGGESTED_PROMPTS = [
   "What's the salary range for ML engineers?",
   "Which job sources are most active?",
 ];
-
-// ── Shared style constants (avoid new objects per render) ─────────────────────
-const MONO_LABEL_STYLE: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "9px",
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-};
-
-const MONO_BODY_STYLE: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: "12px",
-  lineHeight: 1.65,
-  color: "#e8e8e8",
-  letterSpacing: "0.02em",
-  whiteSpace: "pre-wrap",
-  wordBreak: "break-word",
-};
 
 // ── Query plan badge ──────────────────────────────────────────────────────────
 function QueryBadge({ plan }: { plan: QueryPlan }) {
@@ -39,110 +22,53 @@ function QueryBadge({ plan }: { plan: QueryPlan }) {
     none: "NONE",
   };
   return (
-    <span
-      style={{
-        display: "inline-block",
-        fontFamily: "var(--font-mono)",
-        fontSize: "9px",
-        fontWeight: 700,
-        letterSpacing: "0.14em",
-        color: "#ff8c00",
-        border: "1px solid rgba(255,140,0,0.35)",
-        padding: "1px 7px",
-        marginTop: "6px",
-        textTransform: "uppercase",
-      }}
+    <Chip
+      tone="sunk"
+      className="mt-1.5 px-2 py-1 text-[11px] uppercase tracking-[0.09em]"
     >
       {plan.type ? (labels[plan.type] ?? plan.type) : (plan.query_type ?? "")}
       {plan.rows_returned != null ? ` · ${plan.rows_returned} ROWS` : ""}
-    </span>
+    </Chip>
   );
 }
 
-// ── Typing indicator (three amber dots) ──────────────────────────────────────
+// ── Typing indicator (three brick dots) ──────────────────────────────────────
 function TypingIndicator() {
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "10px 14px",
-      }}
-    >
+    <div className="flex items-center gap-1.5 px-3.5 py-3">
       {[0, 1, 2].map((i) => (
         <span
           key={i}
-          style={{
-            display: "inline-block",
-            width: "5px",
-            height: "5px",
-            background: "#ff8c00",
-            borderRadius: "50%",
-            animation: `kb-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-          }}
+          className="inline-block size-1.5 rounded-full bg-brick animate-live-pulse"
+          style={{ animationDelay: `${i * 0.2}s` }}
         />
       ))}
     </div>
   );
 }
 
-// ── Single chat message bubble ────────────────────────────────────────────────
+// ── Single chat message ───────────────────────────────────────────────────────
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
 
   return (
     <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: isUser ? "flex-end" : "flex-start",
-        marginBottom: "12px",
-      }}
+      className={`mb-4 flex flex-col ${isUser ? "items-end" : "items-start"}`}
     >
       {/* Role label */}
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "9px",
-          color: "#555555",
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-          marginBottom: "4px",
-        }}
-      >
-        {isUser ? "YOU" : "AI COMPANION"}
-      </span>
+      <Kicker className="mb-1.5">{isUser ? "YOU" : "AI COMPANION"}</Kicker>
 
-      {/* Bubble */}
+      {/* Message body — sharp corners, editorial rather than chat-bubble */}
       <div
-        style={{
-          maxWidth: "88%",
-          background: isUser ? "#1a1a1a" : "#0d0d0d",
-          border: isUser ? "1px solid #2a2a2a" : "1px solid #1c1c1c",
-          padding: "10px 14px",
-          fontFamily: "var(--font-mono)",
-          fontSize: "12px",
-          lineHeight: 1.65,
-          color: "#e8e8e8",
-          letterSpacing: "0.02em",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-        }}
+        className={`max-w-[88%] whitespace-pre-wrap break-words rounded-[4px] px-3.5 py-3 font-sans text-[15px] leading-relaxed text-ink-2 ${
+          isUser
+            ? "border border-transparent bg-paper-sunk"
+            : "border border-hairline bg-paper-card"
+        }`}
       >
         {message.content}
         {message.isStreaming && (
-          <span
-            style={{
-              display: "inline-block",
-              width: "8px",
-              height: "12px",
-              background: "#ff8c00",
-              marginLeft: "2px",
-              animation: "kb-blink 0.8s step-end infinite",
-              verticalAlign: "middle",
-            }}
-          />
+          <span className="ml-0.5 inline-block h-3 w-2 align-middle bg-brick animate-cursor-blink" />
         )}
       </div>
 
@@ -158,62 +84,13 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 function StatusBar({ status }: { status: string | null }) {
   if (!status) return null;
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "5px 14px",
-        background: "rgba(255, 140, 0, 0.06)",
-        borderBottom: "1px solid rgba(255,140,0,0.12)",
-      }}
-    >
-      <span
-        style={{
-          width: "6px",
-          height: "6px",
-          borderRadius: "50%",
-          background: "#ff8c00",
-          flexShrink: 0,
-          animation: "kb-pulse 1.2s ease-in-out infinite",
-        }}
-      />
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "9px",
-          color: "#ff8c00",
-          letterSpacing: "0.14em",
-          textTransform: "uppercase",
-        }}
-      >
+    <div className="flex items-center gap-2 border-b border-hairline bg-brick-tint px-3.5 py-1.5">
+      <span className="size-1.5 shrink-0 rounded-full bg-brick animate-live-pulse" />
+      <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-brick">
         {status}
       </span>
     </div>
   );
-}
-
-// ── Keyframe injection (once per page load) ───────────────────────────────────
-let stylesInjected = false;
-function injectStyles() {
-  if (stylesInjected || typeof document === "undefined") return;
-  stylesInjected = true;
-  const style = document.createElement("style");
-  style.textContent = `
-    @keyframes kb-pulse {
-      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-      40% { opacity: 1; transform: scale(1.1); }
-    }
-    @keyframes kb-blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
-    }
-    .kb-scroll::-webkit-scrollbar { width: 4px; }
-    .kb-scroll::-webkit-scrollbar-track { background: #000; }
-    .kb-scroll::-webkit-scrollbar-thumb { background: #2a2a2a; }
-    .kb-input-row input::placeholder { color: #333; }
-  `;
-  document.head.appendChild(style);
 }
 
 // ── Main AICompanion component ────────────────────────────────────────────────
@@ -221,14 +98,8 @@ export function AICompanion() {
   const { sendMessage, messages, isStreaming, currentStatus, clearSession } =
     useKnowledgeBase();
   const [input, setInput] = useState("");
-  const [inputFocused, setInputFocused] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Inject keyframe styles
-  useEffect(() => {
-    injectStyles();
-  }, []);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -257,62 +128,25 @@ export function AICompanion() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        background: "#080808",
-        border: "1px solid #1c1c1c",
-      }}
-    >
+    <div className="flex h-full flex-col rounded-[4px] border border-hairline bg-paper-card">
       {/* Header */}
-      <div
-        style={{
-          height: "44px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 14px",
-          borderBottom: "1px solid #1c1c1c",
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.18em",
-              color: "#ff8c00",
-              textTransform: "uppercase",
-            }}
-          >
-            // AI COMPANION
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline px-3.5">
+        <h2 className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+          AI Companion
+        </h2>
+
+        <div className="flex items-center gap-3">
           {/* Status indicator */}
-          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+          <div className="flex items-center gap-[7px]">
             <span
-              style={{
-                width: "6px",
-                height: "6px",
-                borderRadius: "50%",
-                background: isStreaming ? "#ff8c00" : "#00B050",
-                flexShrink: 0,
-                transition: "background 0.3s",
-              }}
+              className={`size-1.5 shrink-0 rounded-full transition-colors duration-300 ${
+                isStreaming ? "bg-brick animate-live-pulse" : "bg-forest"
+              }`}
             />
             <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                color: isStreaming ? "#ff8c00" : "#555555",
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-              }}
+              className={`font-mono text-[11px] uppercase tracking-[0.09em] ${
+                isStreaming ? "text-brick" : "text-ink-muted"
+              }`}
             >
               {isStreaming ? "PROCESSING" : "IDLE"}
             </span>
@@ -320,33 +154,15 @@ export function AICompanion() {
 
           {/* Clear session button */}
           {messages.length > 0 && (
-            <button
+            <DsButton
+              variant="ghost"
+              size="sm"
               onClick={clearSession}
               title="Clear conversation"
-              style={{
-                background: "none",
-                border: "1px solid #2a2a2a",
-                color: "#555555",
-                fontFamily: "var(--font-mono)",
-                fontSize: "9px",
-                letterSpacing: "0.1em",
-                padding: "3px 8px",
-                cursor: "pointer",
-                textTransform: "uppercase",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "#ff3333";
-                (e.currentTarget as HTMLButtonElement).style.color = "#ff3333";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.borderColor =
-                  "#2a2a2a";
-                (e.currentTarget as HTMLButtonElement).style.color = "#555555";
-              }}
+              className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted hover:bg-brick-tint hover:text-brick"
             >
-              CLEAR
-            </button>
+              Clear
+            </DsButton>
           )}
         </div>
       </div>
@@ -355,79 +171,20 @@ export function AICompanion() {
       <StatusBar status={currentStatus} />
 
       {/* Messages area */}
-      <div
-        className="kb-scroll"
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "16px 14px",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <div className="flex flex-1 flex-col overflow-y-auto px-3.5 py-4">
         {isEmpty ? (
           /* Suggested prompts when no messages */
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px",
-              margin: "auto 0",
-              paddingTop: "20px",
-            }}
-          >
+          <div className="my-auto flex flex-col gap-5 pt-5">
             <div>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "9px",
-                  letterSpacing: "0.18em",
-                  color: "#555555",
-                  textTransform: "uppercase",
-                  marginBottom: "12px",
-                }}
-              >
-                SUGGESTED QUERIES
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "6px",
-                }}
-              >
+              <Kicker className="mb-3">SUGGESTED QUERIES</Kicker>
+              <div className="flex flex-col gap-2">
                 {SUGGESTED_PROMPTS.map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => handleSuggestion(prompt)}
-                    style={{
-                      background: "#0d0d0d",
-                      border: "1px solid #1c1c1c",
-                      color: "#aaaaaa",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "11px",
-                      letterSpacing: "0.03em",
-                      padding: "9px 12px",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      transition: "border-color 0.1s, color 0.1s",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor =
-                        "#ff8c00";
-                      (e.currentTarget as HTMLButtonElement).style.color =
-                        "#f0f0f0";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLButtonElement).style.borderColor =
-                        "#1c1c1c";
-                      (e.currentTarget as HTMLButtonElement).style.color =
-                        "#aaaaaa";
-                    }}
+                    className="rounded-[4px] border border-hairline bg-paper-sunk px-3 py-2.5 text-left font-sans text-[15px] text-ink-2 transition-colors duration-[120ms] hover:border-brick hover:text-ink"
                   >
-                    <span style={{ color: "#ff8c00", marginRight: "8px" }}>
-                      &gt;
-                    </span>
+                    <span className="mr-2 font-mono text-brick">&gt;</span>
                     {prompt}
                   </button>
                 ))}
@@ -443,14 +200,7 @@ export function AICompanion() {
             {isStreaming &&
               messages[messages.length - 1]?.role === "assistant" &&
               messages[messages.length - 1]?.content === "" && (
-                <div
-                  style={{
-                    alignSelf: "flex-start",
-                    background: "#0d0d0d",
-                    border: "1px solid #1c1c1c",
-                    marginBottom: "12px",
-                  }}
-                >
+                <div className="mb-4 self-start rounded-[4px] border border-hairline bg-paper-card">
                   <TypingIndicator />
                 </div>
               )}
@@ -460,69 +210,26 @@ export function AICompanion() {
       </div>
 
       {/* Input row */}
-      <div
-        style={{
-          borderTop: "1px solid #1c1c1c",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 14px",
-          flexShrink: 0,
-          background: "#080808",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "13px",
-            color: inputFocused ? "#ff8c00" : "#555555",
-            marginRight: "10px",
-            userSelect: "none",
-            flexShrink: 0,
-            transition: "color 0.15s",
-          }}
-        >
+      <div className="group flex shrink-0 items-center border-t border-hairline bg-paper-card px-3.5">
+        <span className="mr-2.5 shrink-0 select-none font-mono text-[15px] text-ink-muted transition-colors duration-[150ms] group-focus-within:text-brick">
           &gt;
         </span>
         <input
           ref={inputRef}
-          className="kb-input-row"
+          aria-label="Ask the AI companion"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
           disabled={isStreaming}
           placeholder={isStreaming ? "processing..." : "ask anything about your job market..."}
-          style={{
-            flex: 1,
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            color: "#f0f0f0",
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            letterSpacing: "0.02em",
-            padding: "13px 0",
-            opacity: isStreaming ? 0.5 : 1,
-          }}
+          className="flex-1 border-none bg-transparent py-3.5 font-mono text-[13px] text-ink outline-none placeholder:text-ink-faint disabled:opacity-50"
         />
         <button
           onClick={handleSubmit}
           disabled={!input.trim() || isStreaming}
           title="Send"
-          style={{
-            background: "none",
-            border: "none",
-            color:
-              input.trim() && !isStreaming ? "#ff8c00" : "#333333",
-            fontFamily: "var(--font-mono)",
-            fontSize: "12px",
-            cursor: input.trim() && !isStreaming ? "pointer" : "not-allowed",
-            padding: "4px 0 4px 10px",
-            letterSpacing: "0.05em",
-            flexShrink: 0,
-            transition: "color 0.15s",
-          }}
+          aria-label="Send"
+          className="shrink-0 border-none bg-transparent py-1 pl-2.5 font-mono text-[15px] text-brick transition-colors duration-[150ms] disabled:cursor-not-allowed disabled:text-ink-faint"
         >
           ↵
         </button>

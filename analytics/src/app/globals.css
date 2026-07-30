@@ -1,45 +1,113 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════
+   HIREFEED ANALYTICS — token layer
+   Warm editorial paper. Light mode only. One brick-red accent.
+   Three type voices: serif (display) / sans (body) / mono (structural).
+
+   Variable NAMES are held stable from the previous terminal theme so the
+   ~60 consuming components need no edits; only the VALUES are remapped.
+   ═══════════════════════════════════════════════════════════════════ */
+
 :root {
-  /* Backgrounds — stark black, no gradients */
-  --bg-root: #000000;
-  --bg-panel: #080808;
-  --bg-panel-hover: #0f0f0f;
-  --border: #1c1c1c;
-  --border-bright: #333333;
+  /* ── Surfaces: warm off-white paper, never pure white ──────────── */
+  --bg-root: #f8f3ec;        /* page       (= --paper)      */
+  --bg-panel: #fdfbf7;       /* panels     (= --paper-card) */
+  --bg-panel-hover: #f1ebe0; /* wells      (= --paper-sunk) */
+  --border: #e4ddd1;         /* hairline                    */
+  --border-bright: #d3c9b8;  /* strong                      */
 
-  /* Bloomberg signature amber/orange — headers, panel titles, key labels */
-  --teal: #ff8c00;
-  --teal-dim: rgba(255, 140, 0, 0.12);
-  --teal-glow: rgba(255, 140, 0, 0.35);
+  /* Canonical HireFeed DS names — mirrored from the sibling app so the
+     two codebases share one vocabulary. Prefer these in new code. */
+  --paper: #f8f3ec;
+  --paper-card: #fdfbf7;
+  --paper-sunk: #f1ebe0;
+  --ink: #1c1b19;
+  --ink-2: #3a352d;
+  --ink-muted: #8b8277;
+  --ink-faint: #b9af9d;
+  --border-hairline: #e4ddd1;
+  --border-strong: #d3c9b8;
+  --accent: #c0362c;
+  --accent-hover: #a52d24;
+  --accent-tint: #f3e1dd;
+  --accent-tint-strong: #ecd0ca;
+  --green-tint: #e3ebe4;
 
-  /* Yellow — alerts, warnings, highlighted data */
-  --amber: #ffd700;
-  --amber-dim: rgba(255, 215, 0, 0.12);
+  /* ── The one accent: brick/masthead red ─────────────────────────
+     Panel headers, key labels, active state. Signals what matters.
+     Never diluted by using it everywhere. */
+  --teal: #c0362c;
+  --teal-dim: rgba(192, 54, 44, 0.10);
+  /* Retained for API compatibility only — this is a flat tint, NOT a glow.
+     The paper system has no glows; nothing may box-shadow with this. */
+  --teal-glow: rgba(192, 54, 44, 0.20);
 
-  /* Red — drops, negative values, negative trends */
-  --red: #ff3333;
-  --red-dim: rgba(255, 51, 51, 0.12);
+  /* ── Chart series: desaturated, earthy, legible on paper ────────
+     Deliberately not a rainbow. Forest green IS success; brick red IS
+     negative. (This reverses the old terminal rule where yellow took
+     the positive role and green was unused.) */
 
-  /* No green for positives — yellow takes that role */
-  --green: #ffd700;
-  --green-dim: rgba(255, 215, 0, 0.12);
+  /* Ochre — alerts, warnings, highlighted data */
+  --amber: #a8843f;
+  --amber-dim: rgba(168, 132, 63, 0.10);
 
-  /* Cyan/light blue — interactive fields, hyperlinks, highlighted data */
-  --blue: #00bfff;
-  --blue-dim: rgba(0, 191, 255, 0.12);
+  /* Brick — drops, negative values, negative trends */
+  --red: #c0362c;
+  --red-dim: rgba(192, 54, 44, 0.10);
 
-  /* Magenta — certain data categories, chart series */
-  --purple: #cc33cc;
+  /* Muted forest — gains, positive trends, success / complete / passed */
+  --green: #3a5f4a;
+  --green-dim: rgba(58, 95, 74, 0.10);
 
-  /* Text — high contrast white/light gray against black */
-  --text: #f0f0f0;
-  --text-dim: #aaaaaa;
-  --muted: #555555;
+  /* Slate — interactive fields, hyperlinks, secondary series */
+  --blue: #5f6f7a;
+  --blue-dim: rgba(95, 111, 122, 0.10);
 
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
-  --font-sans: "Inter", system-ui, sans-serif;
-  --radius: 2px;
+  /* Mauve — additional data categories, chart series */
+  --purple: #6b5f74;
+  --purple-dim: rgba(107, 95, 116, 0.10);
+
+  /* ── Extended categorical series scale ─────────────────────────
+     Some charts (job functions, seniority) carry up to 10 categories.
+     Cycling 5 hues would make two slices identical, so the scale is
+     extended — but only within the earthy/desaturated family. Every
+     value clears 4.5:1 against --paper. Never add a saturated hue here. */
+  --series-1: #c0362c; /* brick       */
+  --series-2: #3a5f4a; /* forest      */
+  --series-3: #5f6f7a; /* slate       */
+  --series-4: #6b5f74; /* mauve       */
+  --series-5: #a8843f; /* ochre       */
+  --series-6: #8b8277; /* stone       */
+  --series-7: #8a4f42; /* clay        */
+  --series-8: #6e7a4f; /* olive       */
+
+  /* ── Ink: warm near-black through to faint ─────────────────────── */
+  --text: #1c1b19;
+  --text-dim: #3a352d;
+  --muted: #8b8277;
+  --faint: #b9af9d;
+
+  /* ── Three type voices ─────────────────────────────────────────
+     serif  = display / masthead
+     sans   = body / prose
+     mono   = structural labels, numerals, terminal output */
+  --font-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-plex-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo,
+    monospace;
+
+  /* ── Radii: sharp. 4px cards. Never pill-shaped. ───────────────── */
+  --radius: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --stripe-w: 3px;
+
+  /* ── Effects: flat by default. No shadow on resting elements. ───
+     Shadows exist only to lift transient popovers off the page. */
+  --shadow-popover: 0 8px 24px rgba(28, 27, 25, 0.10);
+  --shadow-modal: 0 24px 64px rgba(28, 27, 25, 0.22);
+  --scrim: rgba(28, 27, 25, 0.35);
 
   /* Spacing scale — use these for gaps and padding, not arbitrary values */
   --gap-xs: 4px;
@@ -75,17 +143,26 @@ body {
   overflow-x: hidden;
 }
 
-/* Scrollbar */
+/* Scrollbar — warm paper tones. Kept narrow: these live inside dense
+   panels where a wide track would eat chart width. */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-panel);
+  background: var(--paper-sunk);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-bright);
+  background: var(--border-strong);
   border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+}
+
+::selection {
+  background: var(--accent-tint-strong);
+  color: var(--ink);
 }
 
 /* Panel base */
@@ -101,7 +178,7 @@ body {
   display: none;
 }
 
-/* Panel header */
+/* Panel header — mono structural label. Brick title, muted "//" prefix. */
 .panel-header {
   font-family: var(--font-mono);
   font-size: 9px;
@@ -118,14 +195,14 @@ body {
 
 .panel-header::before {
   content: "//";
-  color: var(--teal);
+  color: var(--muted);
   font-size: 9px;
 }
 
-/* LIVE dot */
+/* LIVE dot — flat blink, no glow */
 @keyframes blink-dot {
-  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--teal-glow); }
-  50% { opacity: 0; box-shadow: none; }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .live-dot {
@@ -155,24 +232,12 @@ body {
   animation: chart-enter 0.4s ease-out forwards;
 }
 
-/* Scanline overlay */
-@keyframes scanline-move {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 100%; }
-}
-
+/* Scanline overlay — intentionally inert.
+   The CRT scanline texture belonged to the black terminal skin. The paper
+   system allows no textures or gradients, so the element is retained (it is
+   still mounted and aria-hidden) but paints nothing. */
 .scanline-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
+  display: none;
 }
 
 /* Number counter animation */
@@ -185,7 +250,7 @@ body {
   animation: count-up 0.5s ease-out forwards;
 }
 
-/* Grid flicker on load */
+/* Grid fade on load */
 @keyframes panel-flicker {
   0% { opacity: 0.6; }
   10% { opacity: 1; }
@@ -206,10 +271,11 @@ body {
 
 .recharts-default-tooltip {
   background: var(--bg-panel) !important;
-  border: 1px solid var(--border-bright) !important;
+  border: 1px solid var(--border) !important;
   border-radius: var(--radius) !important;
   font-family: var(--font-mono) !important;
   font-size: 11px !important;
+  box-shadow: var(--shadow-popover) !important;
 }
 
 .recharts-tooltip-label {
@@ -304,7 +370,9 @@ body {
   left: 0;
   top: 0;
   bottom: 0;
-  opacity: 0.2;
+  /* Raised from 0.2: a 20% tint of an earthy hue is nearly invisible on
+     paper, whereas on black it read fine. */
+  opacity: 0.16;
   border-radius: 1px;
   transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 2px;
@@ -350,7 +418,7 @@ body {
 }
 
 .filter-btn:focus-visible {
-  outline: 1px solid var(--teal);
+  outline: 2px solid var(--teal);
   outline-offset: 1px;
 }
 
@@ -365,11 +433,11 @@ body {
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.12em;
-  color: var(--muted);
+  color: var(--text-dim);
   background: none;
   border: 1px solid var(--border);
   padding: 6px 14px;
-  border-radius: var(--radius);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -380,7 +448,7 @@ body {
 }
 
 .ghost-btn:focus-visible {
-  outline: 1px solid var(--teal);
+  outline: 2px solid var(--teal);
   outline-offset: 1px;
 }
 
@@ -400,13 +468,13 @@ body {
   margin-top: 2px;
 }
 
-/* ── Empty panel ─────────────────────────────────────────────────── */
+/* ── Empty panel — terminal output rendered as ink on paper ──────── */
 .empty-panel-body {
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 20px 20px 20px 22px;
-  border-left: 2px solid var(--border-bright);
+  border-left: var(--stripe-w) solid var(--border-bright);
   margin: 16px 14px;
   height: calc(100% - 71px);
 }
@@ -446,7 +514,7 @@ body {
 .empty-panel-waiting {
   font-family: var(--font-mono);
   font-size: 9px;
-  color: var(--border-bright);
+  color: var(--ink-faint);
   letter-spacing: 0.1em;
 }
 
@@ -454,7 +522,7 @@ body {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: var(--border-bright);
+  background: var(--ink-faint);
   animation: empty-pulse 1.4s ease-in-out infinite;
 }
 
@@ -641,7 +709,7 @@ body {
   left: 0;
   right: 0;
   height: 20px;
-  background: #0a0a0a;
+  background: var(--paper-sunk);
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -656,7 +724,7 @@ body {
 /* ── Ticker strip (below header) ─────────────────────────────────── */
 .ticker-strip {
   height: 20px;
-  background: #080808;
+  background: var(--paper-sunk);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -673,6 +741,7 @@ body {
   flex-shrink: 0;
 }
 
+/* Forest green = gain, brick red = drop */
 .ticker-item .up {
   color: var(--green);
 }
@@ -696,7 +765,7 @@ body {
   font-size: 7px;
   letter-spacing: 0.15em;
   color: var(--muted);
-  background: #111;
+  background: var(--paper-sunk);
   padding: 1px 4px;
   border: 1px solid var(--border);
   margin-right: 6px;
@@ -708,7 +777,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 4px 12px;
-  background: #0a0a0a;
+  background: var(--paper-sunk);
   border-bottom: 1px solid var(--border-bright);
   font-family: var(--font-mono);
   font-size: 9px;
@@ -739,17 +808,17 @@ body {
 
 /* AI Companion suggestion button focus state */
 .ai-suggestion-btn:focus-visible {
-  outline: 1px solid var(--teal);
+  outline: 2px solid var(--teal);
   outline-offset: -1px;
 }
 
 /* AI Companion scrollable messages area */
 .kb-scroll::-webkit-scrollbar { width: 4px; }
-.kb-scroll::-webkit-scrollbar-track { background: var(--bg-root); }
-.kb-scroll::-webkit-scrollbar-thumb { background: var(--border-bright); }
+.kb-scroll::-webkit-scrollbar-track { background: var(--paper-sunk); }
+.kb-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); }
 
 /* AI Companion input placeholder */
-.kb-input-row::placeholder { color: var(--border-bright); }
+.kb-input-row::placeholder { color: var(--ink-faint); }
 
 /* ── Skill Momentum Table responsive ────────────────────────────── */
 /* Override .panel's overflow:hidden so the table body can scroll   */

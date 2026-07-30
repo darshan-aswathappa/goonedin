@@ -240,14 +240,16 @@ export function aggregateSalary(
 // Seniority aggregation
 // ---------------------------------------------------------------------------
 
+// Ordinal ramp: neutral stone at the entry level, warming through the earthy
+// series to brick at the top. Adjacent levels stay distinguishable on paper.
 const SENIORITY_COLORS: Record<string, string> = {
-  Intern: "#64748b",
-  Junior: "#3b82f6",
-  "Mid-Level": "#00d4aa",
-  Senior: "#4ade80",
-  "Staff/Principal": "#a855f7",
-  "Lead/Manager": "#f59e0b",
-  "Director+": "#ef4444",
+  Intern: "var(--series-6)", // stone
+  Junior: "var(--series-8)", // olive
+  "Mid-Level": "var(--series-2)", // forest
+  Senior: "var(--series-3)", // slate
+  "Staff/Principal": "var(--series-4)", // mauve
+  "Lead/Manager": "var(--series-5)", // ochre
+  "Director+": "var(--series-1)", // brick
 };
 
 export function extractSeniority(title: string): string {
@@ -278,7 +280,7 @@ export function aggregateSeniority(
     .map(([level, count]) => ({
       level,
       count,
-      color: SENIORITY_COLORS[level] ?? "#64748b",
+      color: SENIORITY_COLORS[level] ?? "var(--muted)",
     }))
     .sort((a, b) => b.count - a.count);
 }
@@ -363,16 +365,17 @@ export function aggregateVisa(
     freq[bucket] = (freq[bucket] ?? 0) + 1;
   }
 
+  // Semantic, not categorical: forest = yes, brick = no, ochre = conditional.
   const COLORS: Record<string, string> = {
-    "Sponsorship Available": "#00d4aa",
-    "No Sponsorship": "#ef4444",
-    "Citizens/GC Only": "#f59e0b",
-    Unknown: "#64748b",
-    Other: "#3b82f6",
+    "Sponsorship Available": "var(--green)", // forest — positive
+    "No Sponsorship": "var(--red)", // brick — negative
+    "Citizens/GC Only": "var(--amber)", // ochre — conditional
+    Unknown: "var(--muted)", // stone — unknown
+    Other: "var(--blue)", // slate — neutral
   };
 
   return Object.entries(freq)
-    .map(([label, count]) => ({ label, count, color: COLORS[label] ?? "#a855f7" }))
+    .map(([label, count]) => ({ label, count, color: COLORS[label] ?? "var(--purple)" }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -540,7 +543,7 @@ export function aggregateJobFunctions(
   if (other > 0) freq['General SW'] = other;
 
   return Object.entries(freq)
-    .map(([fn, count]) => ({ function: fn, count, color: JOB_FUNCTION_COLOR_MAP[fn] ?? '#64748b' }))
+    .map(([fn, count]) => ({ function: fn, count, color: JOB_FUNCTION_COLOR_MAP[fn] ?? 'var(--muted)' }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -548,21 +551,25 @@ export function aggregateJobFunctions(
 // Salary by job function aggregation
 // ---------------------------------------------------------------------------
 
+// Categorical: the 8-step earthy series covers 9 functions, so the two rarest
+// tail buckets (Security, Embedded) reuse a head bucket's hue. Slices are
+// rendered sorted by count, so a tail/head pair is never visually adjacent.
+// --series-6 (stone) is reserved for the 'General SW' catch-all below.
 const JOB_FUNCTION_DEFS: { key: string; pattern: RegExp; color: string }[] = [
-  { key: 'Full Stack', pattern: /full.?stack/i, color: '#00d4aa' },
-  { key: 'Frontend', pattern: /front.?end|react\s+eng|angular\s+eng|vue\s+eng|ui\s+eng/i, color: '#3b82f6' },
-  { key: 'Backend', pattern: /back.?end|api\s+eng|server.side/i, color: '#4ade80' },
-  { key: 'Data Eng', pattern: /data\s+eng|etl\s+eng|analytics\s+eng|pipeline\s+eng/i, color: '#f59e0b' },
-  { key: 'ML/AI', pattern: /machine\s+learning|ml\s+eng|ai\s+eng|deep\s+learning|llm\s+eng|nlp\s+eng/i, color: '#a855f7' },
-  { key: 'DevOps/SRE', pattern: /devops|site\s+reliability|platform\s+eng|infrastructure\s+eng|cloud\s+eng/i, color: '#ef4444' },
-  { key: 'Mobile', pattern: /\bios\b|\bandroid\b|flutter|react\s+native|mobile\s+eng/i, color: '#06b6d4' },
-  { key: 'Security', pattern: /security\s+eng|cybersecurity|infosec/i, color: '#f97316' },
-  { key: 'Embedded', pattern: /embedded|firmware/i, color: '#84cc16' },
+  { key: 'Full Stack', pattern: /full.?stack/i, color: 'var(--series-1)' },
+  { key: 'Frontend', pattern: /front.?end|react\s+eng|angular\s+eng|vue\s+eng|ui\s+eng/i, color: 'var(--series-3)' },
+  { key: 'Backend', pattern: /back.?end|api\s+eng|server.side/i, color: 'var(--series-2)' },
+  { key: 'Data Eng', pattern: /data\s+eng|etl\s+eng|analytics\s+eng|pipeline\s+eng/i, color: 'var(--series-5)' },
+  { key: 'ML/AI', pattern: /machine\s+learning|ml\s+eng|ai\s+eng|deep\s+learning|llm\s+eng|nlp\s+eng/i, color: 'var(--series-4)' },
+  { key: 'DevOps/SRE', pattern: /devops|site\s+reliability|platform\s+eng|infrastructure\s+eng|cloud\s+eng/i, color: 'var(--series-7)' },
+  { key: 'Mobile', pattern: /\bios\b|\bandroid\b|flutter|react\s+native|mobile\s+eng/i, color: 'var(--series-8)' },
+  { key: 'Security', pattern: /security\s+eng|cybersecurity|infosec/i, color: 'var(--series-3)' },
+  { key: 'Embedded', pattern: /embedded|firmware/i, color: 'var(--series-2)' },
 ];
 
 const JOB_FUNCTION_COLOR_MAP = Object.fromEntries([
   ...JOB_FUNCTION_DEFS.map((f) => [f.key, f.color]),
-  ['General SW', '#64748b'],
+  ['General SW', 'var(--muted)'],
 ]);
 
 function classifyJobFunction(title: string): string {
@@ -597,7 +604,7 @@ export function aggregateSalaryByFunction(
       function: fn,
       median,
       count: values.length,
-      color: JOB_FUNCTION_COLOR_MAP[fn] ?? '#64748b',
+      color: JOB_FUNCTION_COLOR_MAP[fn] ?? 'var(--muted)',
     };
   });
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Timer, CircleNotch } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
 
 interface ScrapeCountdownProps {
   nextScrapeAt: string | null;
@@ -36,25 +37,19 @@ export function ScrapeCountdown({ nextScrapeAt, label = "NEXT UPDATE IN" }: Scra
 
   return (
     <span
-      className="inline-flex items-center gap-1.5"
-      style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: "9px",
-        fontWeight: 600,
-        letterSpacing: "0.15em",
-        textTransform: "uppercase",
-        border: `1px solid ${isActive ? "rgba(74,222,128,0.3)" : "#1c1c1c"}`,
-        background: isActive ? "rgba(74,222,128,0.06)" : "#080808",
-        color: isActive ? "#4ade80" : "#555",
-        padding: "2px 8px",
-      }}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-[4px] border px-2 py-0.5 font-mono text-[11px] uppercase tracking-[0.09em]",
+        isActive
+          ? "border-hairline bg-forest-tint text-forest"
+          : "border-hairline bg-paper-sunk text-ink-muted"
+      )}
     >
       {isActive ? (
-        <CircleNotch weight="bold" style={{ width: "10px", height: "10px", flexShrink: 0 }} className="animate-spin" />
+        <CircleNotch weight="regular" className="size-3.5 shrink-0 animate-spin" />
       ) : (
-        <Timer weight="bold" style={{ width: "10px", height: "10px", flexShrink: 0 }} />
+        <Timer weight="regular" className="size-3.5 shrink-0" />
       )}
-      {isActive ? "CHECKING NOW..." : `${label} ${display}`}
+      {isActive ? "Checking now" : `${label} ${display}`}
     </span>
   );
 }

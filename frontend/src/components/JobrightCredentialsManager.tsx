@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { useJobsStore } from "@/store/jobs";
+import { DsButton, StatusBadge, TextField, type StatusTone } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const PASSWORD_SENTINEL = "••••••••";
@@ -29,8 +30,6 @@ export function JobrightCredentialsManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passFocused, setPassFocused] = useState(false);
   const [emailError, setEmailError] = useState("");
 
   const fetchCredentials = useCallback(async () => {
@@ -166,207 +165,144 @@ export function JobrightCredentialsManager() {
     }
   };
 
-  const statusDot = connStatus === "connected"
-    ? { color: "#22c55e", label: "CONNECTED" }
-    : connStatus === "disconnected"
-    ? { color: "#555", label: "DISCONNECTED" }
-    : { color: "#ffd700", label: "CHECKING" };
-
-  const inputStyle = (focused: boolean) => ({
-    background: "#0a0a0a",
-    border: focused ? "1px solid #ff8c00" : "1px solid #1c1c1c",
-    color: "#f0f0f0",
-    fontFamily: "var(--font-mono)",
-    fontSize: "11px",
-    padding: "7px 10px",
-    outline: "none",
-    borderRadius: "2px",
-    width: "100%",
-    boxSizing: "border-box" as const,
-  });
+  const statusDot: { tone: StatusTone; label: string; live?: boolean } =
+    connStatus === "connected"
+      ? { tone: "complete", label: "CONNECTED" }
+      : connStatus === "disconnected"
+      ? { tone: "pending", label: "DISCONNECTED" }
+      : { tone: "active", label: "CHECKING", live: true };
 
   return (
-    <div style={{ background: "#080808", border: "1px solid #1c1c1c", borderRadius: "2px" }}>
+    <div className="rounded-[4px] border border-hairline bg-paper-card">
       {/* Panel header */}
-      <div style={{ borderBottom: "1px solid #1c1c1c", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{ width: "22px", height: "22px", background: "#ff8c00", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <PlugsConnected weight="fill" style={{ color: "#000", width: "12px", height: "12px" }} />
-          </div>
+      <div className="flex items-start justify-between gap-4 border-b border-hairline px-5 py-4">
+        <div className="flex items-start gap-3">
+          <PlugsConnected className="mt-1 size-4 shrink-0 text-ink-muted" />
           <div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.18em", color: "#ff8c00", textTransform: "uppercase" }}>
-              // JOBRIGHT CREDENTIALS
-            </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.05em", marginTop: "2px" }}>
+            <h2 className="font-mono text-[11px] uppercase tracking-[0.09em] text-ink-muted">
+              Jobright Credentials
+            </h2>
+            <p className="mt-1 max-w-[440px] font-sans text-[13px] text-ink-muted">
               Connect your Jobright account to pull personalized job recommendations
-            </div>
+            </p>
           </div>
         </div>
         {/* Status pill */}
         {!isFetching && (
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", border: "1px solid #1c1c1c", padding: "3px 10px" }}>
-            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: statusDot.color, flexShrink: 0 }} />
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "8px", letterSpacing: "0.12em", color: statusDot.color }}>{statusDot.label}</span>
+          <div className="shrink-0 rounded-[4px] border border-hairline bg-paper-sunk px-2.5 py-1">
+            <StatusBadge
+              label={statusDot.label}
+              tone={statusDot.tone}
+              live={statusDot.live}
+            />
           </div>
         )}
       </div>
 
       {/* Body */}
-      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div className="flex flex-col gap-5 p-5">
         {isFetching ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "24px 0" }}>
-            <CircleNotch style={{ width: "20px", height: "20px", color: "#ff8c00" }} className="animate-spin" />
+          <div className="flex justify-center py-6">
+            <CircleNotch className="size-5 animate-spin text-ink-muted" />
           </div>
         ) : (
           <>
             {/* Email */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <label style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                JOBRIGHT EMAIL
-              </label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
-                placeholder="your@email.com"
-                style={inputStyle(emailFocused)}
-              />
-              {emailError && (
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#ff3333" }}>{emailError}</span>
-              )}
-            </div>
+            <TextField
+              label="JOBRIGHT EMAIL"
+              type="text"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
+              placeholder="your@email.com"
+              error={emailError || undefined}
+              autoComplete="username"
+            />
 
             {/* Password */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-              <label style={{ fontFamily: "var(--font-mono)", fontSize: "9px", color: "#555", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                PASSWORD
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setPassFocused(true)}
-                  onBlur={() => setPassFocused(false)}
-                  placeholder="••••••••"
-                  style={{ ...inputStyle(passFocused), paddingRight: "36px" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#555",
-                    display: "flex",
-                    padding: "2px",
-                  }}
-                  tabIndex={-1}
-                >
-                  {showPassword
-                    ? <EyeSlash style={{ width: "13px", height: "13px" }} />
-                    : <Eye style={{ width: "13px", height: "13px" }} />
-                  }
-                </button>
-              </div>
+            <div className="relative">
+              <TextField
+                label="PASSWORD"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                className="pr-11"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+                className="absolute bottom-0 right-2 flex h-12 items-center rounded-[4px] px-1 text-ink-muted transition-colors duration-[120ms] hover:text-ink"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeSlash className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", paddingTop: "4px", flexWrap: "wrap" }}>
+            <div className="flex flex-wrap justify-end gap-3 pt-1">
               {/* Disconnect — only show when connected */}
               {connStatus === "connected" && (
-                <button
+                <DsButton
+                  variant="danger"
+                  size="sm"
                   onClick={handleDisconnect}
                   disabled={isDisconnecting}
-                  style={{
-                    border: "1px solid #333",
-                    background: "transparent",
-                    color: "#555",
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    letterSpacing: "0.15em",
-                    textTransform: "uppercase",
-                    padding: "7px 16px",
-                    cursor: isDisconnecting ? "not-allowed" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    opacity: isDisconnecting ? 0.6 : 1,
-                  }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff3333"; (e.currentTarget as HTMLButtonElement).style.color = "#ff3333"; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#333"; (e.currentTarget as HTMLButtonElement).style.color = "#555"; }}
                 >
-                  {isDisconnecting
-                    ? <CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />
-                    : <Trash style={{ width: "12px", height: "12px" }} />
-                  }
-                  {isDisconnecting ? "DISCONNECTING..." : "DISCONNECT"}
-                </button>
+                  {isDisconnecting ? (
+                    <CircleNotch className="size-3.5 animate-spin" />
+                  ) : (
+                    <Trash className="size-3.5" />
+                  )}
+                  {isDisconnecting ? "Disconnecting…" : "Disconnect"}
+                </DsButton>
               )}
 
               {/* Test Connection */}
-              <button
+              <DsButton
+                variant="secondary"
+                size="sm"
                 onClick={handleTest}
                 disabled={isTesting || isSaving}
-                style={{
-                  border: "1px solid #1c1c1c",
-                  background: "transparent",
-                  color: "#aaa",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  padding: "7px 16px",
-                  cursor: (isTesting || isSaving) ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  opacity: (isTesting || isSaving) ? 0.6 : 1,
-                }}
-                onMouseEnter={(e) => { if (!isTesting && !isSaving) { (e.currentTarget as HTMLButtonElement).style.borderColor = "#ff8c00"; (e.currentTarget as HTMLButtonElement).style.color = "#ff8c00"; }}}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = "#1c1c1c"; (e.currentTarget as HTMLButtonElement).style.color = "#aaa"; }}
               >
-                {isTesting
-                  ? <><CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />TESTING...</>
-                  : <><PlugsConnected style={{ width: "12px", height: "12px" }} />TEST CONNECTION</>
-                }
-              </button>
+                {isTesting ? (
+                  <>
+                    <CircleNotch className="size-3.5 animate-spin" />
+                    Testing…
+                  </>
+                ) : (
+                  <>
+                    <PlugsConnected className="size-3.5" />
+                    Test connection
+                  </>
+                )}
+              </DsButton>
 
               {/* Save */}
-              <button
+              <DsButton
+                variant="primary"
+                size="sm"
                 onClick={handleSave}
                 disabled={isSaving || isTesting}
-                style={{
-                  border: "1px solid #ff8c00",
-                  background: "rgba(255,140,0,0.1)",
-                  color: "#ff8c00",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  padding: "7px 20px",
-                  cursor: (isSaving || isTesting) ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  opacity: (isSaving || isTesting) ? 0.6 : 1,
-                }}
               >
-                {isSaving
-                  ? <><CircleNotch style={{ width: "12px", height: "12px" }} className="animate-spin" />SAVING...</>
-                  : <><FloppyDisk style={{ width: "12px", height: "12px" }} />SAVE CREDENTIALS</>
-                }
-              </button>
+                {isSaving ? (
+                  <>
+                    <CircleNotch className="size-3.5 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    <FloppyDisk className="size-3.5" />
+                    Save credentials
+                  </>
+                )}
+              </DsButton>
             </div>
           </>
         )}

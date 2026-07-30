@@ -44,9 +44,10 @@ function VelocityTooltip({
   return (
     <div
       style={{
-        background: "rgba(8,8,8,0.96)",
-        border: "1px solid var(--border-bright)",
-        borderRadius: "2px",
+        background: "var(--paper-card)",
+        border: "1px solid var(--border-hairline)",
+        borderRadius: "var(--radius)",
+        boxShadow: "var(--shadow-popover)",
         padding: "10px 14px",
         fontFamily: "var(--font-mono)",
         minWidth: "160px",
@@ -145,7 +146,7 @@ export default function HiringVelocityChart({ companies, data }: Props) {
       <div style={{ padding: "8px 12px 0", height: "calc(100% - 68px)" }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 6, right: 16, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#111111" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="day"
               tickFormatter={(v) => {
@@ -176,7 +177,7 @@ export default function HiringVelocityChart({ companies, data }: Props) {
                 stroke={c.color}
                 strokeWidth={1.5}
                 dot={false}
-                activeDot={{ r: 4, fill: c.color, stroke: "#000", strokeWidth: 1.5 }}
+                activeDot={{ r: 4, fill: c.color, stroke: "var(--paper-card)", strokeWidth: 1.5 }}
                 animationDuration={500}
               />
             ))}

@@ -1,6 +1,7 @@
 "use client";
 
-import { X } from "@phosphor-icons/react";
+import { X, WarningCircle } from "@phosphor-icons/react";
+import { DsButton } from "@/components/ds";
 
 interface ErrorBannerProps {
   error: string;
@@ -16,12 +17,15 @@ export function ErrorBanner({
   showRetry = true,
 }: ErrorBannerProps) {
   return (
-    <div className="brutal-border bg-red-50 dark:bg-red-950/30 border-destructive p-4 mb-6 shadow-[4px_4px_0px_0px_var(--border)]">
+    <div className="mb-6 rounded-[4px] border border-brick bg-brick-tint p-4">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div className="text-destructive font-black text-lg mt-0.5 shrink-0">⚠️</div>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <WarningCircle
+            weight="regular"
+            className="mt-0.5 size-4 shrink-0 text-ink-muted"
+          />
           <div className="min-w-0 flex-1">
-            <p className="font-bold text-destructive dark:text-destructive break-words">
+            <p className="break-words font-sans text-[15px] leading-snug text-ink">
               {error}
             </p>
           </div>
@@ -29,22 +33,19 @@ export function ErrorBanner({
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="shrink-0 p-1 brutal-border bg-card text-destructive hover:bg-destructive hover:text-white transition-all brutal-btn-hover"
+            className="shrink-0 rounded-[4px] border border-hairline bg-paper-card p-1 text-ink-muted transition-colors duration-[120ms] hover:border-brick hover:text-brick"
             aria-label="Dismiss error"
           >
-            <X weight="bold" className="h-5 w-5" />
+            <X weight="regular" className="size-4" />
           </button>
         )}
       </div>
 
       {showRetry && onRetry && (
         <div className="mt-3 flex gap-2">
-          <button
-            onClick={onRetry}
-            className="brutal-border px-4 py-2 font-black text-sm uppercase bg-destructive text-white hover:bg-destructive/90 brutal-btn-hover"
-          >
+          <DsButton variant="primary" size="sm" onClick={onRetry}>
             Retry
-          </button>
+          </DsButton>
         </div>
       )}
     </div>

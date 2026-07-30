@@ -205,17 +205,16 @@ export default function MetricCard({
         </div>
       )}
 
-      {/* Bottom accent bar — striped terminal data-bar */}
+      {/* Top stripe — flat solid accent. Signals data status, matching the
+          sibling app's "top stripe" convention. No texture, no fade. */}
       <div
         style={{
           position: "absolute",
-          bottom: 0,
+          top: 0,
           left: 0,
           right: 0,
-          height: "2px",
-          background: `repeating-linear-gradient(90deg, ${color} 0px, ${color} 3px, transparent 3px, transparent 6px)`,
-          opacity: 0.6,
-          color: color,
+          height: "var(--stripe-w)",
+          background: color,
         }}
       />
     </div>

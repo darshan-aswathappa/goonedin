@@ -443,7 +443,8 @@ describe("aggregateSeniority", () => {
     const rows = [{ title: "Senior Engineer" }];
     const result = aggregateSeniority(rows);
     expect(result[0].color).toBeDefined();
-    expect(result[0].color).toMatch(/^#/);
+    // Design-token reference rather than a hex literal — see globals.css.
+    expect(result[0].color).toMatch(/^var\(--[a-z0-9-]+\)$/);
   });
 
   it("sorts by count descending", () => {
@@ -823,7 +824,8 @@ describe("aggregateJobFunctions", () => {
   it("includes color for each function", () => {
     const rows = [{ title: "Full Stack Engineer" }];
     const result = aggregateJobFunctions(rows);
-    expect(result[0].color).toMatch(/^#/);
+    // Design-token reference rather than a hex literal — see globals.css.
+    expect(result[0].color).toMatch(/^var\(--[a-z0-9-]+\)$/);
   });
 
   it("sorts by count descending", () => {

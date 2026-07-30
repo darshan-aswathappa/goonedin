@@ -16,11 +16,11 @@ beforeAll(() => {
 });
 
 const mockData = [
-  { function: "ML/AI", median: 182000, count: 28, color: "#a855f7" },
-  { function: "Backend", median: 155000, count: 64, color: "#4ade80" },
-  { function: "Full Stack", median: 138000, count: 41, color: "#00d4aa" },
-  { function: "Frontend", median: 122000, count: 33, color: "#3b82f6" },
-  { function: "General SW", median: 119000, count: 87, color: "#64748b" },
+  { function: "ML/AI", median: 182000, count: 28, color: "var(--series-4)" },
+  { function: "Backend", median: 155000, count: 64, color: "var(--series-2)" },
+  { function: "Full Stack", median: 138000, count: 41, color: "var(--series-1)" },
+  { function: "Frontend", median: 122000, count: 33, color: "var(--series-3)" },
+  { function: "General SW", median: 119000, count: 87, color: "var(--muted)" },
 ];
 
 describe("SalaryByJobFunctionChart", () => {
@@ -57,7 +57,7 @@ describe("SalaryByJobFunctionChart", () => {
   });
 
   it("renders a single function without crashing", () => {
-    const single = [{ function: "Backend", median: 150000, count: 5, color: "#4ade80" }];
+    const single = [{ function: "Backend", median: 150000, count: 5, color: "var(--series-2)" }];
     expect(() => render(<SalaryByJobFunctionChart data={single} />)).not.toThrow();
   });
 });
