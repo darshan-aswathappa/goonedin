@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import { useJobsStore } from "@/store/jobs";
+import { useSettingsStore } from "@/store/settings";
+import { filterSponsorshipEligible } from "@/lib/visaFilter";
 import { useShallow } from "zustand/react/shallow";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useJobsApi } from "@/hooks/useJobsApi";
@@ -100,19 +102,19 @@ export function JobsDashboard() {
   const { refetch: retryFetch } = useJobsApi(!!user);
 
   const {
-    jobs,
+    jobs: rawJobs,
     apiError,
     setApiError,
-    linkedinJobs,
-    jobrightJobs,
-    mathworksJobs,
-    githubJobs,
-    locationFilteredJobs,
+    linkedinJobs: rawLinkedinJobs,
+    jobrightJobs: rawJobrightJobs,
+    mathworksJobs: rawMathworksJobs,
+    githubJobs: rawGithubJobs,
+    locationFilteredJobs: rawLocationFilteredJobs,
     locationFilterLocation,
     locationFilterNormalized,
     nextLinkedinScrape,
     nextLocationScrape,
-    indeedJobs,
+    indeedJobs: rawIndeedJobs,
     nextIndeedScrape,
     customSources,
     removeCustomSource,
@@ -139,6 +141,39 @@ export function JobsDashboard() {
       sourceStatuses: state.sourceStatuses,
       hasJobrightCreds: state.hasJobrightCreds,
     })),
+  );
+
+  const hideNotEligibleForSponsorship = useSettingsStore(
+    (state) => state.hideNotEligibleForSponsorship
+  );
+
+  const jobs = useMemo(
+    () => filterSponsorshipEligible(rawJobs, hideNotEligibleForSponsorship),
+    [rawJobs, hideNotEligibleForSponsorship]
+  );
+  const linkedinJobs = useMemo(
+    () => filterSponsorshipEligible(rawLinkedinJobs, hideNotEligibleForSponsorship),
+    [rawLinkedinJobs, hideNotEligibleForSponsorship]
+  );
+  const jobrightJobs = useMemo(
+    () => filterSponsorshipEligible(rawJobrightJobs, hideNotEligibleForSponsorship),
+    [rawJobrightJobs, hideNotEligibleForSponsorship]
+  );
+  const mathworksJobs = useMemo(
+    () => filterSponsorshipEligible(rawMathworksJobs, hideNotEligibleForSponsorship),
+    [rawMathworksJobs, hideNotEligibleForSponsorship]
+  );
+  const githubJobs = useMemo(
+    () => filterSponsorshipEligible(rawGithubJobs, hideNotEligibleForSponsorship),
+    [rawGithubJobs, hideNotEligibleForSponsorship]
+  );
+  const indeedJobs = useMemo(
+    () => filterSponsorshipEligible(rawIndeedJobs, hideNotEligibleForSponsorship),
+    [rawIndeedJobs, hideNotEligibleForSponsorship]
+  );
+  const locationFilteredJobs = useMemo(
+    () => filterSponsorshipEligible(rawLocationFilteredJobs, hideNotEligibleForSponsorship),
+    [rawLocationFilteredJobs, hideNotEligibleForSponsorship]
   );
 
   const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);

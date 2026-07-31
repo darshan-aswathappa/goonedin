@@ -18,6 +18,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
 import { ResumeManager } from "@/components/ResumeManager";
 import { JobrightCredentialsManager } from "@/components/JobrightCredentialsManager";
+import { SponsorshipFilterToggle } from "@/components/SponsorshipFilterToggle";
 import { Kicker, DsButton } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -389,6 +390,7 @@ export default function SettingsPage() {
           <div className="flex flex-col gap-6">
             <ResumeManager />
             <JobrightCredentialsManager />
+            <SponsorshipFilterToggle />
 
             {CONFIG_SECTIONS.map((section) => (
               <div key={section.key} className="relative">

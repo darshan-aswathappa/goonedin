@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Chip, DsCard, dsButtonVariants } from "@/components/ds";
 import { cn } from "@/lib/utils";
+import { isSponsorshipIneligible } from "@/lib/visaFilter";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -67,14 +68,7 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
 
   const formatVisa = (visa: string) => {
     if (!visa) return visa;
-    const vLower = visa.toLowerCase();
-    if (
-      (vLower.includes("without") && vLower.includes("sponsorship")) ||
-      vLower.includes("not eligible") ||
-      vLower.includes("does not sponsor") ||
-      vLower.includes("no sponsorship") ||
-      (vLower.includes("eligible") && vLower.includes("without"))
-    ) {
+    if (isSponsorshipIneligible(visa)) {
       return "Not eligible for sponsorship";
     }
     return visa;
