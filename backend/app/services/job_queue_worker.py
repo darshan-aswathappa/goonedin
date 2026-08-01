@@ -125,17 +125,22 @@ async def _process_one(supabase: Any, row: dict):
             )
 
             if analysis:
-                # Extract salary and visa from analysis result
+                # Extract salary, visa and min experience from analysis result
                 salary = analysis.pop("compensation", None)
                 visa = analysis.pop("visa_status", None)
+                min_exp_raw = analysis.pop("min_experience_years", None)
+                try:
+                    min_exp = int(min_exp_raw) if min_exp_raw is not None else None
+                except (TypeError, ValueError):
+                    min_exp = None
 
                 # Write to global cache
                 logger.info(f"[JobQueue] Analysis successful for {external_id}, calling write_analysis_to_cache...")
-                cache_result = await write_analysis_to_cache(supabase, external_id, job_url, analysis, salary, visa)
+                cache_result = await write_analysis_to_cache(supabase, external_id, job_url, analysis, salary, visa, min_exp)
                 logger.info(f"[JobQueue] write_analysis_to_cache returned {cache_result} for {external_id}")
 
                 # Bulk update all user rows for this job
-                await bulk_apply_analysis(supabase, external_id, analysis, salary, visa)
+                await bulk_apply_analysis(supabase, external_id, analysis, salary, visa, min_exp)
 
                 # Notify all affected users
                 for t in pending_targets:

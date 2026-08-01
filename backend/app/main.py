@@ -281,6 +281,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 job_dict["analysis_status"] = "completed"
                 job_dict["salary"] = cache.get("salary")
                 job_dict["visa"] = cache.get("visa")
+                job_dict["min_exp"] = cache.get("min_exp")
                 job_dict["visible"] = True
                 inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=SEEN_JOB_TTL_SECONDS)
                 _mark_seen(ctx.user_id, job.external_id)

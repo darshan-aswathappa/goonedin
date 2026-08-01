@@ -36,6 +36,7 @@ JOB_ANALYSIS_PROMPT = """You are an expert job posting analyzer. Given a job des
   "must_have_keywords": ["keyword1", "keyword2", ...],
   "good_to_have_keywords": ["keyword1", "keyword2", ...],
   "minimum_qualifications": ["qualification1", "qualification2", ...],
+  "min_experience_years": 0,
   "summary": "A 1-2 sentence summary of what the role is about.",
   "compensation": "string | null",
   "visa_status": "string | null"
@@ -45,6 +46,15 @@ Rules:
 - "must_have_keywords" should include skills, technologies, frameworks, languages, and domain expertise that are explicitly REQUIRED or stated as mandatory in the job description. Look for phrases like "required", "must have", "minimum", "essential", "X+ years of experience with".
 - "good_to_have_keywords" should include skills and technologies that are PREFERRED, DESIRED, or listed as a plus. Look for phrases like "preferred", "nice to have", "bonus", "ideally", "plus", "familiarity with".
 - "minimum_qualifications" should include degree requirements, years of experience, certifications, clearances, or any hard prerequisites.
+- "min_experience_years" MUST be an integer (>= 0, never null) for the minimum total years of professional work experience REQUIRED to be eligible for the role. Apply these rules exactly, in order:
+    * Consider ONLY hard requirements. Look for "required", "must have", "minimum", "at least", "X+ years". IGNORE any years that appear under "preferred", "nice to have", "bonus", "a plus", "ideally", or "desired".
+    * Single value (e.g. "5 years", "5+ years", "at least 5 years") -> use that number (5).
+    * A range (e.g. "1-2 years", "3 to 5 years") -> use the LOWER bound (1, 3).
+    * MULTIPLE required amounts (e.g. "5+ years overall AND 3+ years with Python") -> use the HIGHEST required number (5).
+    * Entry-level, new-grad, internship, or "0-2 years" -> use 0.
+    * A seniority TITLE only (e.g. "Senior", "Staff", "Principal") with NO explicit number of years stated anywhere -> use 0. Do NOT infer years from the title.
+    * No experience requirement mentioned at all -> use 0.
+    * Round partial years down ("18 months" -> 1, "6 months" -> 0).
 - "summary" should be a concise description of the role in 1-2 sentences.
 - "compensation" should contain ONLY the Salary/Compensation range (e.g., "$92,000 - $147,000 USD"). Do NOT include location or extra text. If absent, set to null.
 - "visa_status" should be summarized. If the company does not provide sponsorship or requires existing eligibility, set to exactly "Not eligible for sponsorship". If they DO sponsor, keep it brief (e.g., "Sponsorship Available"). If absent, set to null.
@@ -134,7 +144,7 @@ def analyze_job_with_deepseek(description: str, api_key: str) -> dict[str, Any]:
     )
 
     response = client.chat.completions.create(
-        model="deepseek-chat",
+        model="deepseek-v4-flash",
         messages=[
             {"role": "system", "content": JOB_ANALYSIS_PROMPT},
             {"role": "user", "content": f"Analyze this job description:\n\n{description}"},
@@ -161,6 +171,7 @@ def analyze_job_with_deepseek(description: str, api_key: str) -> dict[str, Any]:
             "must_have_keywords": [],
             "good_to_have_keywords": [],
             "minimum_qualifications": [],
+            "min_experience_years": None,
             "summary": "Analysis could not be parsed.",
             "compensation": None,
             "visa_status": None,

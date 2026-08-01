@@ -33,6 +33,8 @@ export interface Job {
   posted_at?: string;
   salary?: string;
   visa?: string;
+  /** Minimum required years of experience (from AI analysis). null = unknown → always shown. */
+  min_exp?: number | null;
   work_model?: string;
   is_new: boolean;
   is_notified?: boolean;

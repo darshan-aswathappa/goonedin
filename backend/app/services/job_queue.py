@@ -74,6 +74,7 @@ async def write_analysis_to_cache(
     analysis: dict,
     salary: Optional[str],
     visa: Optional[str],
+    min_exp: Optional[int] = None,
 ) -> bool:
     """Write (or create) cache entry with completed analysis results.
 
@@ -91,6 +92,7 @@ async def write_analysis_to_cache(
             "analysis_status": "completed",
             "salary": salary,
             "visa": visa,
+            "min_exp": min_exp,
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
         logger.debug(f"[CacheWrite] Row data: {row}")

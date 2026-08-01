@@ -19,6 +19,7 @@ import { getAuthHeaders } from "@/hooks/useAuth";
 import { ResumeManager } from "@/components/ResumeManager";
 import { JobrightCredentialsManager } from "@/components/JobrightCredentialsManager";
 import { SponsorshipFilterToggle } from "@/components/SponsorshipFilterToggle";
+import { ExperienceFilterToggle } from "@/components/ExperienceFilterToggle";
 import { Kicker, DsButton } from "@/components/ds";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -391,6 +392,7 @@ export default function SettingsPage() {
             <ResumeManager />
             <JobrightCredentialsManager />
             <SponsorshipFilterToggle />
+            <ExperienceFilterToggle />
 
             {CONFIG_SECTIONS.map((section) => (
               <div key={section.key} className="relative">

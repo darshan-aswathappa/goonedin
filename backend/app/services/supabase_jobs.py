@@ -67,6 +67,7 @@ async def upsert_job(
         "is_notified": job_data.get("is_notified", False),
         "salary": job_data.get("salary"),
         "visa": job_data.get("visa"),
+        "min_exp": job_data.get("min_exp"),
         "analysis": json.dumps(job_data["analysis"]) if job_data.get("analysis") else None,
         "analysis_status": job_data.get("analysis_status"),
     }
@@ -115,6 +116,7 @@ async def insert_job_if_new(
         "is_notified": job_data.get("is_notified", False),
         "salary": job_data.get("salary"),
         "visa": job_data.get("visa"),
+        "min_exp": job_data.get("min_exp"),
         "analysis": json.dumps(job_data["analysis"]) if job_data.get("analysis") else None,
         "analysis_status": job_data.get("analysis_status"),
     }
@@ -419,6 +421,7 @@ async def bulk_apply_analysis(
     analysis: dict,
     salary: Optional[str],
     visa: Optional[str],
+    min_exp: Optional[int] = None,
 ) -> bool:
     """Update all LinkedIn jobs with this external_id to visible=True and attach analysis."""
     try:
@@ -428,6 +431,7 @@ async def bulk_apply_analysis(
             "analysis_status": "completed",
             "salary": salary,
             "visa": visa,
+            "min_exp": min_exp,
         }
         await asyncio.to_thread(
             lambda: supabase.table("scraped_jobs")
