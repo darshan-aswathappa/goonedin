@@ -10,6 +10,7 @@ import {
   LinkedinLogo,
   GithubLogo,
   Buildings,
+  Leaf,
   Gear,
   Terminal,
 } from "@phosphor-icons/react";
@@ -144,6 +145,7 @@ const DATA_SOURCES = [
   { icon: GithubLogo, label: "GitHub" },
   { icon: Buildings, label: "MathWorks" },
   { icon: Briefcase, label: "Jobright" },
+  { icon: Leaf, label: "Greenhouse" },
 ];
 
 function StepWelcome({ userEmail }: { userEmail?: string }) {
@@ -197,7 +199,7 @@ const PROCESS_STEPS = [
   {
     num: "01",
     title: "SCAN SOURCES",
-    desc: "LinkedIn, GitHub, MathWorks, Jobright & custom boards scanned continuously.",
+    desc: "LinkedIn, GitHub, MathWorks, Jobright, Greenhouse & custom boards scanned continuously.",
   },
   {
     num: "02",

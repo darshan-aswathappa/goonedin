@@ -14,6 +14,7 @@ from app.core.auth import get_current_user
 from app.core.context_vars import current_user_id
 from app.core.supabase_config import (
     get_target_keywords,
+    get_target_locations,
     get_blocked_companies,
     get_title_filter_keywords,
     get_all_config,
@@ -64,6 +65,11 @@ from app.services.scraper_github import fetch_github_jobs
 from app.services.scraper_jobright import fetch_jobright_jobs
 import httpx
 from app.services.scraper_indeed import fetch_indeed_jobs
+from app.services.greenhouse_crawler import run_greenhouse_crawler
+from app.services.greenhouse_jobs import get_jobs_since
+from app.services.greenhouse_match import location_matches
+from app.services.scraper_greenhouse import ParsedJob  # noqa: F401 (type ref)
+from app.models.job import JobCreate
 
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
@@ -91,6 +97,7 @@ JOB_RECENCY_MINUTES = 600
 SEEN_JOB_TTL_SECONDS = 60 * 60 * 2
 GITHUB_TTL_SECONDS = 24 * 60 * 60
 INDEED_TTL_SECONDS = 60 * 60 * 2  # 2 hours
+GREENHOUSE_TTL_SECONDS = 24 * 60 * 60  # 24 hours (batch-discovered, like GitHub)
 
 # ── In-memory dedup for LinkedIn jobs ──────────────────────────────
 # Maps user_id → {external_id: timestamp_added}
@@ -144,6 +151,9 @@ async def lifespan(app: FastAPI):
     # Job analysis queue processor task (global, handles all users)
     job_queue_task = asyncio.create_task(process_job_analysis_queue(supabase))
 
+    # Global Greenhouse crawler (single task, fills the shared greenhouse_jobs pool)
+    greenhouse_crawler_task = asyncio.create_task(run_greenhouse_crawler(supabase))
+
     # Start knowledge base embedding backfill (runs in background, non-blocking)
     from app.services.knowledge_base_service import backfill_embeddings, close_pool
     asyncio.create_task(backfill_embeddings(supabase))
@@ -168,6 +178,7 @@ async def lifespan(app: FastAPI):
     cleanup_task.cancel()
     resume_queue_task.cancel()
     job_queue_task.cancel()
+    greenhouse_crawler_task.cancel()
     for ctx in user_registry.values():
         if ctx.hf_task and not ctx.hf_task.done():
             ctx.hf_task.cancel()
@@ -177,6 +188,8 @@ async def lifespan(app: FastAPI):
             ctx.custom_sources_task.cancel()
         if ctx.location_task and not ctx.location_task.done():
             ctx.location_task.cancel()
+        if getattr(ctx, "greenhouse_task", None) and not ctx.greenhouse_task.done():
+            ctx.greenhouse_task.cancel()
 
     # Gracefully close the asyncpg read-only pool used by the knowledge base
     await close_pool()
@@ -231,6 +244,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
     github_jobs: List[Any] = []
     indeed_jobs: List[Any] = []
     indeed_descriptions: dict[str, str] = {}
+    greenhouse_jobs: List[Any] = []
 
     for r in results:
         if isinstance(r, dict) and "jobs" in r:
@@ -250,6 +264,8 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
                 elif hasattr(first_job, "source") and first_job.source == "Indeed":
                     indeed_jobs.extend(r["jobs"])
                     indeed_descriptions.update(r.get("descriptions", {}))
+                elif hasattr(first_job, "source") and first_job.source == "Greenhouse":
+                    greenhouse_jobs.extend(r["jobs"])
                 else:
                     all_jobs.extend(r["jobs"])
         elif isinstance(r, Exception):
@@ -391,6 +407,59 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
         await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=INDEED_TTL_SECONDS)
         logger.info(f"New Target (Indeed): {job.title} @ {job.company} | salary={job_dict.get('salary')}")
 
+    # ── Greenhouse jobs: mirror the LinkedIn analysis path. Freshness and
+    #    keyword/location filtering already happened (crawl + matcher), so no
+    #    is_recent gate here. The crawler pre-stored the description and enqueued
+    #    analysis; the calls below are idempotent for any not-yet-analyzed job. ──
+    for job in greenhouse_jobs:
+        if _is_seen(ctx.user_id, job.external_id):
+            continue
+
+        job_dict = job.model_dump(mode="json")
+
+        if settings.DEEPSEEK_API_KEY:
+            cache = await get_cache_entry(supabase, job_dict["external_id"])
+            if cache and cache["analysis_status"] == "completed":
+                # Reuse cached analysis — show immediately.
+                job_dict["analysis"] = cache["analysis"]
+                job_dict["analysis_status"] = "completed"
+                job_dict["salary"] = cache.get("salary")
+                job_dict["visa"] = cache.get("visa")
+                job_dict["min_exp"] = cache.get("min_exp")
+                job_dict["visible"] = True
+                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=GREENHOUSE_TTL_SECONDS)
+                _mark_seen(ctx.user_id, job.external_id)
+                if inserted is None:
+                    continue
+                total_finds += 1
+                await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+                job_dict["is_notified"] = True
+                await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GREENHOUSE_TTL_SECONDS)
+                logger.info(f"New Target (Greenhouse, cached): {job.title} @ {job.company}")
+            else:
+                # Ensure enqueued (idempotent), insert hidden; worker flips + broadcasts.
+                await create_cache_entry(supabase, job_dict["external_id"], job_dict["url"])
+                await enqueue_job(supabase, job_dict["external_id"], job_dict["url"])
+                job_dict["visible"] = False
+                inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=GREENHOUSE_TTL_SECONDS)
+                _mark_seen(ctx.user_id, job.external_id)
+                if inserted is None:
+                    continue
+                total_finds += 1
+                logger.info(f"Queued Greenhouse job {job_dict['external_id']} for analysis")
+        else:
+            # No analysis key — show immediately.
+            job_dict["visible"] = True
+            inserted = await insert_job_if_new(supabase, ctx.user_id, job_dict, ttl_seconds=GREENHOUSE_TTL_SECONDS)
+            _mark_seen(ctx.user_id, job.external_id)
+            if inserted is None:
+                continue
+            total_finds += 1
+            await manager.broadcast(ctx.user_id, {"type": "NEW_JOB", "data": job_dict})
+            job_dict["is_notified"] = True
+            await upsert_job(supabase, ctx.user_id, job_dict, ttl_seconds=GREENHOUSE_TTL_SECONDS)
+            logger.info(f"New Target (Greenhouse): {job.title} @ {job.company}")
+
     return total_finds
 
 
@@ -518,6 +587,85 @@ async def run_indeed_loop(ctx: UserContext):
             await asyncio.sleep(sleep_secs)
     finally:
         await client.aclose()
+
+
+async def run_greenhouse_match_loop(ctx: UserContext):
+    """Per-user Greenhouse matcher — DB-only, no external requests.
+
+    The global crawler fills the shared greenhouse_jobs pool. This loop reads
+    jobs discovered since its last run, applies the user's keyword / title-block
+    / blocked-company / location filters, and hands matches to
+    process_and_alert_jobs (which reuses the shared analysis + broadcast path).
+    """
+    supabase = get_supabase_client()
+    # In-memory cursor: only surface jobs discovered after the user came online,
+    # matching LinkedIn's "new going forward" semantics. insert_job_if_new makes
+    # a re-scan after restart harmless anyway.
+    cursor = datetime.now(timezone.utc).isoformat()
+    logger.info(f"[Greenhouse] Matcher started for {ctx.user_id}")
+
+    while True:
+        token = current_user_id.set(ctx.user_id)
+        try:
+            rows = await get_jobs_since(supabase, cursor, limit=500)
+            if rows:
+                target_keywords = await get_target_keywords(supabase, ctx.user_id)
+                target_keywords_lower = [kw.lower() for kw in target_keywords]
+                target_locations = await get_target_locations(supabase, ctx.user_id)
+                title_filter_kws = await get_title_filter_keywords(supabase, ctx.user_id)
+                blocked_companies = [c.lower() for c in await get_blocked_companies(supabase, ctx.user_id)]
+
+                matched: List[JobCreate] = []
+                for row in rows:
+                    title = row.get("title") or ""
+                    title_lower = title.lower()
+                    company = row.get("company_name") or "Unknown Company"
+                    location_raw = row.get("location_raw") or ""
+
+                    if not any(kw in title_lower for kw in target_keywords_lower):
+                        continue
+                    if is_title_blocked(title, title_filter_kws):
+                        continue
+                    if any(b in company.lower() for b in blocked_companies):
+                        continue
+                    if not location_matches(location_raw, target_locations):
+                        continue
+
+                    posted_at = None
+                    if row.get("first_published"):
+                        try:
+                            posted_at = datetime.fromisoformat(
+                                row["first_published"].replace("Z", "+00:00")
+                            )
+                        except (ValueError, AttributeError):
+                            posted_at = None
+
+                    matched.append(JobCreate(
+                        external_id=str(row["external_id"]),
+                        title=title,
+                        company=company,
+                        location=location_raw or "Unknown Location",
+                        url=row["url"],
+                        source="Greenhouse",
+                        posted_at=posted_at,
+                    ))
+
+                # Advance cursor to the newest row we just read (rows are asc by crawled_at).
+                cursor = rows[-1]["crawled_at"]
+
+                if matched:
+                    new_finds = await process_and_alert_jobs([{"jobs": matched}], ctx)
+                    if new_finds:
+                        logger.info(f"[Greenhouse] {ctx.user_id} matched {new_finds} new job(s)")
+        except asyncio.CancelledError:
+            current_user_id.reset(token)
+            logger.info(f"[Greenhouse] Matcher stopped for {ctx.user_id}")
+            break
+        except Exception as e:
+            logger.error(f"[Greenhouse] {ctx.user_id} matcher error: {e}")
+        finally:
+            current_user_id.reset(token)
+        await asyncio.sleep(settings.GREENHOUSE_MATCH_INTERVAL + random.uniform(-10, 10))
 
 
 async def run_custom_sources_loop(ctx: UserContext):
@@ -729,6 +877,10 @@ def start_user_scrapers(ctx: UserContext) -> None:
         ctx.custom_sources_task = asyncio.create_task(run_custom_sources_loop(ctx))
     if ctx.indeed_task is None or ctx.indeed_task.done():
         ctx.indeed_task = asyncio.create_task(run_indeed_loop(ctx))
+    if settings.GREENHOUSE_ENABLED and (
+        getattr(ctx, "greenhouse_task", None) is None or ctx.greenhouse_task.done()
+    ):
+        ctx.greenhouse_task = asyncio.create_task(run_greenhouse_match_loop(ctx))
 
     # Start location scraper if user has a location filter set
     if ctx.location_task is None or ctx.location_task.done():
