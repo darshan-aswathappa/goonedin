@@ -229,9 +229,13 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
     }
   };
 
-  const isAnalyzable = job.source === "LinkedIn" || job.source === "Jobright";
+  const isAnalyzable =
+    job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Greenhouse";
   const hasEnrichedFields =
-    job.source === "LinkedIn" || job.source === "Jobright" || job.source === "Indeed";
+    job.source === "LinkedIn" ||
+    job.source === "Jobright" ||
+    job.source === "Indeed" ||
+    job.source === "Greenhouse";
 
   return (
     <>

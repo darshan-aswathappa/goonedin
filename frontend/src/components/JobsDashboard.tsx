@@ -39,6 +39,7 @@ import {
   X,
   Code,
   MagnifyingGlass,
+  Leaf,
   Monitor,
   DotsThreeVertical,
   PlugsConnected,
@@ -117,6 +118,7 @@ export function JobsDashboard() {
     nextLocationScrape,
     indeedJobs: rawIndeedJobs,
     nextIndeedScrape,
+    greenhouseJobs: rawGreenhouseJobs,
     customSources,
     removeCustomSource,
     sourceStatuses,
@@ -131,6 +133,7 @@ export function JobsDashboard() {
       mathworksJobs: state.mathworksJobs,
       githubJobs: state.githubJobs,
       indeedJobs: state.indeedJobs,
+      greenhouseJobs: state.greenhouseJobs,
       locationFilteredJobs: state.locationFilteredJobs,
       locationFilterLocation: state.locationFilterLocation,
       locationFilterNormalized: state.locationFilterNormalized,
@@ -185,6 +188,10 @@ export function JobsDashboard() {
   const indeedJobs = useMemo(
     () => applyFilters(rawIndeedJobs),
     [rawIndeedJobs, applyFilters]
+  );
+  const greenhouseJobs = useMemo(
+    () => applyFilters(rawGreenhouseJobs),
+    [rawGreenhouseJobs, applyFilters]
   );
   const locationFilteredJobs = useMemo(
     () => applyFilters(rawLocationFilteredJobs),
@@ -491,6 +498,16 @@ export function JobsDashboard() {
                   </TabsTrigger>
                 )}
 
+                {(greenhouseJobs.length > 0 || activeTab === "greenhouse") && (
+                  <TabsTrigger value="greenhouse" className={TAB_BASE}>
+                    <div className="flex items-center gap-1.5">
+                      <Leaf weight="regular" className="size-4" />
+                      <span>Greenhouse</span>
+                      <span className="text-ink-faint">{greenhouseJobs.length}</span>
+                    </div>
+                  </TabsTrigger>
+                )}
+
                 {customSources.map((source) => {
                   const sourceJobs = jobs.filter((j) => j.source === source.name);
                   return (
@@ -617,6 +634,14 @@ export function JobsDashboard() {
             <JobList
               jobs={indeedJobs}
               emptyMessage="No Indeed jobs found yet. Scanning every 10 minutes."
+              isLocked={!user}
+            />
+          </TabsContent>
+
+          <TabsContent value="greenhouse" className="mt-0">
+            <JobList
+              jobs={greenhouseJobs}
+              emptyMessage="No Greenhouse jobs found yet. We'll update you as we discover them."
               isLocked={!user}
             />
           </TabsContent>

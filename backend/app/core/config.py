@@ -66,6 +66,23 @@ class Settings(BaseSettings):
     # TTL in seconds for the in-process embedding cache
     KB_EMBED_CACHE_TTL: int = int(os.getenv("KB_EMBED_CACHE_TTL", "3600"))
 
+    # --- GREENHOUSE INGESTION ---
+    # Kill-switch for the global Greenhouse crawler + per-user matcher.
+    GREENHOUSE_ENABLED: bool = os.getenv("GREENHOUSE_ENABLED", "true").lower() == "true"
+    # Boards fetched per crawl round (shard size). Full sweep = 5148 / this.
+    GREENHOUSE_SHARD_SIZE: int = int(os.getenv("GREENHOUSE_SHARD_SIZE", "200"))
+    # Max concurrent board fetches within a round.
+    GREENHOUSE_CONCURRENCY: int = int(os.getenv("GREENHOUSE_CONCURRENCY", "15"))
+    # Only ingest jobs whose first_published is within this many hours.
+    # Also guards the first sweep from dumping every historically-open job.
+    GREENHOUSE_FRESHNESS_HOURS: int = int(os.getenv("GREENHOUSE_FRESHNESS_HOURS", "48"))
+    # Seconds to sleep between crawl rounds (jittered).
+    GREENHOUSE_ROUND_DELAY: int = int(os.getenv("GREENHOUSE_ROUND_DELAY", "20"))
+    # Consecutive 404/failures before a board is marked dead.
+    GREENHOUSE_MAX_FAILURES: int = int(os.getenv("GREENHOUSE_MAX_FAILURES", "3"))
+    # Per-user matcher poll interval (seconds).
+    GREENHOUSE_MATCH_INTERVAL: int = int(os.getenv("GREENHOUSE_MATCH_INTERVAL", "120"))
+
     class Config:
         case_sensitive = True
         env_file = ".env"
