@@ -118,6 +118,23 @@ async def _process_one(supabase: Any, row: dict):
             # Check for pre-fetched description (e.g. Indeed jobs already have it)
             pre_description = pop_description(external_id)
 
+            # For Greenhouse jobs, the description is stored durably in greenhouse_jobs.
+            # If the in-memory store was cleared (e.g. server restart), fall back to DB.
+            if not pre_description and "greenhouse.io" in job_url:
+                try:
+                    gh_resp = await asyncio.to_thread(
+                        lambda: supabase.table("greenhouse_jobs")
+                        .select("content")
+                        .eq("external_id", int(external_id))
+                        .limit(1)
+                        .execute()
+                    )
+                    if gh_resp.data and gh_resp.data[0].get("content"):
+                        pre_description = gh_resp.data[0]["content"]
+                        logger.info(f"[JobQueue] Recovered description from greenhouse_jobs for {external_id}")
+                except Exception as gh_err:
+                    logger.warning(f"[JobQueue] Could not recover greenhouse description for {external_id}: {gh_err}")
+
             # Run analysis
             analysis, error_reason = await run_job_analysis(
                 external_id, job_url, settings.DEEPSEEK_API_KEY,
