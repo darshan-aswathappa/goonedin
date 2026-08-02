@@ -12,6 +12,7 @@ import {
   BookmarkSimple,
   CurrencyDollar,
   Globe,
+  Briefcase,
   CircleNotch,
 } from "@phosphor-icons/react";
 import { formatDistanceToNow } from "date-fns";
@@ -302,6 +303,18 @@ function JobCardComponent({ job, isLocked = false }: JobCardProps) {
                 </Chip>
               );
             })()}
+
+            {typeof job.min_exp === "number" && job.min_exp >= 1 && (
+              <Chip
+                tone="default"
+                className="w-fit max-w-full gap-1.5 overflow-hidden px-2 py-1 text-[11px] tracking-[0.04em]"
+              >
+                <Briefcase weight="regular" className="size-3.5 shrink-0" />
+                <span className="truncate">
+                  Min. {job.min_exp} {job.min_exp === 1 ? "yr" : "yrs"} experience
+                </span>
+              </Chip>
+            )}
           </div>
 
           <div className="mt-auto flex flex-col items-center justify-between gap-2 border-t border-hairline pt-3 sm:flex-row">
