@@ -16,6 +16,15 @@ export default function LoginPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
 
+  // Already signed in? Don't show the login form — send them to the app.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        window.location.href = "/";
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_AUTO_LOGIN === "true") {
       const autoLogin = async () => {
