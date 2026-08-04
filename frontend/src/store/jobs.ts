@@ -53,35 +53,19 @@ interface LocationNormalized {
 }
 
 const matchesLocationFilter = (job: Job, normalized: LocationNormalized | null): boolean => {
-  // Use dynamic normalized data if available, else fall back to static config
-  if (normalized) {
-    const location = job.location;
-    const locationLower = location.toLowerCase();
+  // If no location filter is set (normalized is null), show all jobs
+  if (!normalized) return true;
 
-    const hasStateMatch = normalized.state_patterns.some(pattern =>
-      location.includes(pattern) || locationLower.includes(pattern.toLowerCase())
-    );
-    if (hasStateMatch) return true;
-
-    const hasCityMatch = normalized.cities.some(city => {
-      const cityLower = city.toLowerCase();
-      const regex = new RegExp(`\\b${cityLower}\\b`, 'i');
-      return regex.test(location);
-    });
-    return hasCityMatch;
-  }
-
-  // Fallback to static LOCATION_FILTER
-  if (!LOCATION_FILTER.enabled) return false;
+  // Use dynamic normalized data if a location filter is active
   const location = job.location;
   const locationLower = location.toLowerCase();
 
-  const hasStateMatch = LOCATION_FILTER.exactStatePatterns.some(pattern =>
+  const hasStateMatch = normalized.state_patterns.some(pattern =>
     location.includes(pattern) || locationLower.includes(pattern.toLowerCase())
   );
   if (hasStateMatch) return true;
 
-  const hasCityMatch = LOCATION_FILTER.cityPatterns.some(city => {
+  const hasCityMatch = normalized.cities.some(city => {
     const cityLower = city.toLowerCase();
     const regex = new RegExp(`\\b${cityLower}\\b`, 'i');
     return regex.test(location);
