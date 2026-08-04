@@ -62,6 +62,7 @@ export default function LoginPage() {
 
     try {
       const callbackUrl = process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL || `${window.location.origin}/auth/callback`;
+      console.log('Auth callback URL:', callbackUrl, 'Env var:', process.env.NEXT_PUBLIC_AUTH_CALLBACK_URL);
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: {
