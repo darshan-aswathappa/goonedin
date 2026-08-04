@@ -17,7 +17,7 @@ export function useJobsApi(enabled: boolean = true) {
     try {
       const headers = await getAuthHeaders();
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       let jobsRes: Response, savedRes: Response, customRes: Response, locationRes: Response;
       try {

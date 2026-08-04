@@ -236,7 +236,7 @@ export function JobsDashboard() {
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const timeoutId = setTimeout(() => controller.abort(), 15000);
 
           let res: Response;
           try {
