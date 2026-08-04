@@ -68,6 +68,7 @@ services:
         NEXT_PUBLIC_WS_URL: wss://api.goonedin.xyz/ws/jobs
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_AUTH_CALLBACK_URL: https://goonedin.xyz/auth/callback
     restart: unless-stopped
 
   analytics:
