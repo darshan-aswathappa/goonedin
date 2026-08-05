@@ -288,7 +288,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
 
         job_dict = job.model_dump(mode="json")
 
-        if job.source == "LinkedIn" and settings.DEEPSEEK_API_KEY:
+        if job.source == "LinkedIn" and settings.LLM_API_KEY:
             # Check if analysis already cached
             cache = await get_cache_entry(supabase, job_dict["external_id"])
             if cache and cache["analysis_status"] == "completed":
@@ -417,7 +417,7 @@ async def process_and_alert_jobs(results: Any, ctx: UserContext) -> int:
 
         job_dict = job.model_dump(mode="json")
 
-        if settings.DEEPSEEK_API_KEY:
+        if settings.LLM_API_KEY:
             cache = await get_cache_entry(supabase, job_dict["external_id"])
             if cache and cache["analysis_status"] == "completed":
                 # Reuse cached analysis — show immediately.
@@ -1711,9 +1711,9 @@ async def extract_keywords(
     from openai import OpenAI
 
     settings = get_settings()
-    api_key = settings.DEEPSEEK_API_KEY
+    api_key = settings.LLM_API_KEY
     if not api_key:
-        raise HTTPException(status_code=400, detail="DeepSeek API key not configured")
+        raise HTTPException(status_code=400, detail="LLM API key not configured")
 
     KEYWORD_PROMPT = """You are an ATS (Applicant Tracking System) expert.
 Given a job description, extract ALL keywords and phrases that an ATS system
@@ -1742,10 +1742,10 @@ Example:
   "soft_skills": ["Cross-functional Collaboration", "Analytical Problem-Solving", "Technical Communication"]
 }"""
 
-    client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+    client = OpenAI(api_key=api_key, base_url=settings.LLM_BASE_URL)
     response = await asyncio.to_thread(
         lambda: client.chat.completions.create(
-            model="deepseek-chat",
+            model=settings.LLM_MODEL,
             messages=[
                 {"role": "system", "content": KEYWORD_PROMPT},
                 {"role": "user", "content": request.job_description},

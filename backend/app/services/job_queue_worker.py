@@ -72,15 +72,18 @@ async def process_job_analysis_queue(supabase: Any):
                 .select("*")
                 .eq("status", "pending")
                 .lte("next_retry_at", now_iso)
-                .limit(1)  # Process one job at a time
+                .limit(settings.ANALYSIS_WORKER_CONCURRENCY)
                 .execute()
             )
             rows_data = rows.data or []
 
             if rows_data:
                 logger.debug(f"[JobQueue] Polled {len(rows_data)} pending jobs")
-                for row in rows_data:
-                    await _process_one(supabase, row)  # Sequential: await each job
+                # Concurrent: the semaphore in _process_one caps in-flight jobs
+                # at ANALYSIS_WORKER_CONCURRENCY.
+                await asyncio.gather(
+                    *(_process_one(supabase, row) for row in rows_data)
+                )
 
         except Exception as e:
             logger.error(f"[JobQueue] Poll error: {e}")
@@ -137,7 +140,7 @@ async def _process_one(supabase: Any, row: dict):
 
             # Run analysis
             analysis, error_reason = await run_job_analysis(
-                external_id, job_url, settings.DEEPSEEK_API_KEY,
+                external_id, job_url, settings.LLM_API_KEY,
                 description=pre_description,
             )
 

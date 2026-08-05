@@ -100,8 +100,12 @@ def delete_session(session_id: str) -> bool:
 
 def _get_deepseek_client() -> AsyncOpenAI:
     return AsyncOpenAI(
-        api_key=settings.DEEPSEEK_API_KEY,
-        base_url="https://api.deepseek.com",
+        api_key=settings.LLM_API_KEY,
+        base_url=settings.LLM_BASE_URL,
+        default_headers={
+            "HTTP-Referer": "https://goonedin.xyz",
+            "X-Title": "HireFeed",
+        },
     )
 
 
@@ -221,7 +225,7 @@ async def classify_and_plan(
     client = _get_deepseek_client()
     try:
         response = await client.chat.completions.create(
-            model="deepseek-chat",
+            model=settings.LLM_MODEL,
             messages=messages,
             max_tokens=512,
             temperature=0,      # deterministic planning
@@ -276,7 +280,7 @@ async def _self_correct_sql(
     client = _get_deepseek_client()
     try:
         resp = await client.chat.completions.create(
-            model="deepseek-chat",
+            model=settings.LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=512,
             temperature=0,
@@ -446,7 +450,7 @@ async def synthesize_answer(
     for attempt in range(max_attempts):
         try:
             stream = await client.chat.completions.create(
-                model="deepseek-chat",
+                model=settings.LLM_MODEL,
                 messages=messages,
                 max_tokens=2048,
                 temperature=0.3,

@@ -139,12 +139,16 @@ def analyze_job_with_deepseek(description: str, api_key: str) -> dict[str, Any]:
     Call the DeepSeek API to analyze a job description and return classified keywords.
     """
     client = OpenAI(
-        api_key=api_key,
-        base_url="https://api.deepseek.com",
+        api_key=api_key or settings.LLM_API_KEY,
+        base_url=settings.LLM_BASE_URL,
+        default_headers={
+            "HTTP-Referer": "https://goonedin.xyz",
+            "X-Title": "HireFeed",
+        },
     )
 
     response = client.chat.completions.create(
-        model="deepseek-v4-flash",
+        model=settings.LLM_MODEL,
         messages=[
             {"role": "system", "content": JOB_ANALYSIS_PROMPT},
             {"role": "user", "content": f"Analyze this job description:\n\n{description}"},

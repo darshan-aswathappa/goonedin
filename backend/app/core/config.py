@@ -19,8 +19,18 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
     SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
 
-    # --- AI / DEEPSEEK ---
+    # --- AI / DEEPSEEK (legacy; kept for backward compat) ---
     DEEPSEEK_API_KEY: str = os.getenv("DEEPSEEK_API_KEY", "")
+
+    # --- LLM PROVIDER (OpenRouter-compatible; used for job analysis + KB) ---
+    # OpenRouter is OpenAI-compatible, so the same SDK works with a new base_url.
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen/qwen3-30b-a3b-instruct-2507")
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    # Unified key: prefer OpenRouter, fall back to the legacy DeepSeek key.
+    LLM_API_KEY: str = (
+        os.getenv("OPENROUTER_API_KEY", "") or os.getenv("DEEPSEEK_API_KEY", "")
+    )
 
     # --- MICROSERVICES ---
     RESUME_SERVICE_URL: str = os.getenv(
@@ -40,7 +50,7 @@ class Settings(BaseSettings):
 
     # --- QUEUE WORKER ---
     ANALYSIS_WORKER_CONCURRENCY: int = int(
-        os.getenv("ANALYSIS_WORKER_CONCURRENCY", "3")
+        os.getenv("ANALYSIS_WORKER_CONCURRENCY", "6")
     )
 
     # --- KNOWLEDGE BASE / AI QUERY ---
