@@ -12,6 +12,7 @@ from typing import Any
 from datetime import datetime, timezone, timedelta
 
 from app.core.config import get_settings
+from app.core.supabase_retry import retry_supabase
 from app.api.websocket import manager
 from app.services.job_analyzer import run_job_analysis
 from app.services.job_queue import (
@@ -53,7 +54,7 @@ async def process_job_analysis_queue(supabase: Any):
 
     # On startup: reset any rows stuck in 'processing' from a previous crash/restart
     try:
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("job_analysis_queue")
             .update({"status": "pending"})
             .eq("status", "processing")
@@ -67,7 +68,7 @@ async def process_job_analysis_queue(supabase: Any):
         try:
             # Poll for pending jobs that are ready to be retried
             now_iso = datetime.now(timezone.utc).isoformat()
-            rows = await asyncio.to_thread(
+            rows = await retry_supabase(
                 lambda: supabase.table("job_analysis_queue")
                 .select("*")
                 .eq("status", "pending")
@@ -101,7 +102,7 @@ async def _process_one(supabase: Any, row: dict):
 
         try:
             # Optimistic lock: mark as processing
-            updated = await asyncio.to_thread(
+            updated = await retry_supabase(
                 lambda: supabase.table("job_analysis_queue")
                 .update({"status": "processing", "updated_at": datetime.now(timezone.utc).isoformat()})
                 .eq("id", queue_id)
@@ -125,7 +126,7 @@ async def _process_one(supabase: Any, row: dict):
             # If the in-memory store was cleared (e.g. server restart), fall back to DB.
             if not pre_description and "greenhouse.io" in job_url:
                 try:
-                    gh_resp = await asyncio.to_thread(
+                    gh_resp = await retry_supabase(
                         lambda: supabase.table("greenhouse_jobs")
                         .select("content")
                         .eq("external_id", int(external_id))
@@ -172,7 +173,7 @@ async def _process_one(supabase: Any, row: dict):
                         await manager.broadcast(user_id, {"type": "NEW_JOB", "data": job_dict})
 
                 # Mark queue entry as completed
-                await asyncio.to_thread(
+                await retry_supabase(
                     lambda: supabase.table("job_analysis_queue")
                     .update({"status": "completed", "updated_at": datetime.now(timezone.utc).isoformat()})
                     .eq("id", queue_id)
@@ -193,7 +194,7 @@ async def _process_one(supabase: Any, row: dict):
                         datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)
                     ).isoformat()
 
-                    await asyncio.to_thread(
+                    await retry_supabase(
                         lambda: supabase.table("job_analysis_queue")
                         .update({
                             "status": "pending",
@@ -224,7 +225,7 @@ async def _process_one(supabase: Any, row: dict):
                             await manager.broadcast(user_id, {"type": "NEW_JOB", "data": job_dict})
 
                     # Mark queue entry as failed with error reason
-                    await asyncio.to_thread(
+                    await retry_supabase(
                         lambda: supabase.table("job_analysis_queue")
                         .update({"status": "failed", "error": error_reason or "Max retries exceeded", "updated_at": datetime.now(timezone.utc).isoformat()})
                         .eq("id", queue_id)
@@ -236,7 +237,7 @@ async def _process_one(supabase: Any, row: dict):
             logger.error(f"[JobQueue] Error processing job {external_id}: {e}")
             # Mark as failed on unexpected error
             try:
-                await asyncio.to_thread(
+                await retry_supabase(
                     lambda: supabase.table("job_analysis_queue")
                     .update({"status": "failed", "error": str(e), "updated_at": datetime.now(timezone.utc).isoformat()})
                     .eq("id", queue_id)

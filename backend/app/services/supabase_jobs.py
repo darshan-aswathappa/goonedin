@@ -23,7 +23,7 @@ async def is_already_seen(
 ) -> bool:
     """Check if a job has already been scraped for this user."""
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .select("id")
             .eq("user_id", user_id)
@@ -75,7 +75,7 @@ async def upsert_job(
         row["expires_at"] = expires_at
 
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .upsert(row, on_conflict="user_id,source,external_id")
             .execute()
@@ -124,7 +124,7 @@ async def insert_job_if_new(
         row["expires_at"] = expires_at
 
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .upsert(row, on_conflict="user_id,source,external_id", ignore_duplicates=True)
             .execute()
@@ -148,7 +148,7 @@ async def update_job(
         if "analysis" in updates and updates["analysis"] is not None:
             updates["analysis"] = json.dumps(updates["analysis"])
 
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .update(updates)
             .eq("user_id", user_id)
@@ -167,7 +167,7 @@ async def get_job(
 ) -> Optional[dict]:
     """Fetch a single job by its unique key."""
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .select("*")
             .eq("user_id", user_id)
@@ -245,7 +245,7 @@ async def delete_jobs_by_company(
 
     # 1) Soft-delete from scraped_jobs
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .select("external_id, company")
             .eq("user_id", user_id)
@@ -259,7 +259,7 @@ async def delete_jobs_by_company(
                 to_hide.append(row["external_id"])
 
         if to_hide:
-            await asyncio.to_thread(
+            await retry_supabase(
                 lambda: supabase.table("scraped_jobs")
                 .update({"visible": False})
                 .eq("user_id", user_id)
@@ -272,7 +272,7 @@ async def delete_jobs_by_company(
 
     # 2) Soft-delete from custom_source_jobs
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("custom_source_jobs")
             .select("external_id, company")
             .eq("user_id", user_id)
@@ -286,7 +286,7 @@ async def delete_jobs_by_company(
                 to_hide_custom.append(row["external_id"])
 
         if to_hide_custom:
-            await asyncio.to_thread(
+            await retry_supabase(
                 lambda: supabase.table("custom_source_jobs")
                 .update({"visible": False})
                 .eq("user_id", user_id)
@@ -315,7 +315,7 @@ async def hide_jobs_by_title_keywords(
 
     for table in ("scraped_jobs", "custom_source_jobs"):
         try:
-            resp = await asyncio.to_thread(
+            resp = await retry_supabase(
                 lambda t=table: supabase.table(t)
                 .select("external_id, title")
                 .eq("user_id", user_id)
@@ -329,7 +329,7 @@ async def hide_jobs_by_title_keywords(
             ]
 
             if to_hide:
-                await asyncio.to_thread(
+                await retry_supabase(
                     lambda t=table, ids=to_hide: supabase.table(t)
                     .update({"visible": False})
                     .eq("user_id", user_id)
@@ -352,7 +352,7 @@ async def cleanup_expired_jobs(supabase: Any) -> int:
     now_iso = datetime.now(timezone.utc).isoformat()
     soft_deleted = 0
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .update({"visible": False})
             .eq("visible", True)           # skip already-hidden
@@ -374,7 +374,7 @@ async def cleanup_old_invisible_jobs(supabase: Any) -> int:
     deleted = 0
     cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .delete()
             .eq("visible", False)
@@ -395,7 +395,7 @@ async def get_users_with_pending_job(
 ) -> list[str]:
     """Get all distinct user_ids that have a pending (visible=False) job with this external_id."""
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .select("user_id, source")
             .eq("external_id", external_id)
@@ -433,7 +433,7 @@ async def bulk_apply_analysis(
             "visa": visa,
             "min_exp": min_exp,
         }
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .update(updates)
             .eq("external_id", external_id)
@@ -452,7 +452,7 @@ async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
             "visible": True,
             "analysis_status": "unavailable",
         }
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("scraped_jobs")
             .update(updates)
             .eq("external_id", external_id)

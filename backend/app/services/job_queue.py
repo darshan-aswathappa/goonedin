@@ -16,6 +16,8 @@ import logging
 from typing import Any, Optional
 from datetime import datetime, timezone
 
+from app.core.supabase_retry import retry_supabase
+
 logger = logging.getLogger("JobQueue")
 
 _analysis_write_count = 0
@@ -24,7 +26,7 @@ _analysis_write_count = 0
 async def get_cache_entry(supabase: Any, external_id: str) -> Optional[dict]:
     """Fetch a cache entry from job_analysis_cache by external_id."""
     try:
-        resp = await asyncio.to_thread(
+        resp = await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
             .select("*")
             .eq("external_id", external_id)
@@ -56,7 +58,7 @@ async def create_cache_entry(
             "job_url": job_url,
             "analysis_status": "pending",
         }
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
             .upsert(row, on_conflict="external_id", ignore_duplicates=True)
             .execute()
@@ -96,7 +98,7 @@ async def write_analysis_to_cache(
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
         logger.debug(f"[CacheWrite] Row data: {row}")
-        result = await asyncio.to_thread(
+        result = await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
             .upsert(row, on_conflict="external_id")
             .execute()
@@ -108,7 +110,7 @@ async def write_analysis_to_cache(
         _analysis_write_count += 1
         if _analysis_write_count % 50 == 0:
             try:
-                await asyncio.to_thread(
+                await retry_supabase(
                     lambda: supabase.rpc("refresh_ai_kb_views").execute()
                 )
                 logger.info(f"[CacheWrite] Refreshed AI KB materialized views (after {_analysis_write_count} analyses)")
@@ -143,7 +145,7 @@ async def write_analysis_to_cache(
                         # Capturing in local vars avoids lambda closure pitfalls.
                         _eid = external_id
                         _vec = vector
-                        await asyncio.to_thread(
+                        await retry_supabase(
                             lambda: supabase.table("job_analysis_cache")
                             .update({"embedding": _vec, "embedding_generated_at": datetime.now(timezone.utc).isoformat()})
                             .eq("external_id", _eid)
@@ -173,7 +175,7 @@ async def mark_cache_unavailable(supabase: Any, external_id: str) -> bool:
             "analysis_status": "unavailable",
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
             .upsert(row, on_conflict="external_id")
             .execute()
@@ -202,7 +204,7 @@ async def enqueue_job(
             "retry_count": 0,
             "max_retries": 3,
         }
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("job_analysis_queue")
             .upsert(row, on_conflict="external_id")
             .execute()
