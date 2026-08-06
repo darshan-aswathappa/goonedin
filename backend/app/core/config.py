@@ -27,10 +27,15 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "https://openrouter.ai/api/v1")
     LLM_MODEL: str = os.getenv("LLM_MODEL", "qwen/qwen3-30b-a3b-instruct-2507")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
-    # Unified key: prefer OpenRouter, fall back to the legacy DeepSeek key.
-    LLM_API_KEY: str = (
-        os.getenv("OPENROUTER_API_KEY", "") or os.getenv("DEEPSEEK_API_KEY", "")
-    )
+
+    @property
+    def LLM_API_KEY(self) -> str:
+        """Unified key: prefer OpenRouter, fall back to the legacy DeepSeek key.
+
+        Must be a computed property (not a field) so it reads the values
+        pydantic loaded from .env, rather than a stale os.getenv default.
+        """
+        return self.OPENROUTER_API_KEY or self.DEEPSEEK_API_KEY
 
     # --- MICROSERVICES ---
     RESUME_SERVICE_URL: str = os.getenv(
