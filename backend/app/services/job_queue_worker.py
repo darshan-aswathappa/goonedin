@@ -121,10 +121,6 @@ async def _process_one(supabase: Any, row: dict):
 
             logger.info(f"[JobQueue] Processing analysis for job {external_id}")
 
-            # IMPORTANT: Capture pending targets BEFORE bulk update
-            # (they're visible=FALSE now; after bulk update they'll be TRUE)
-            pending_targets = await get_users_with_pending_job(supabase, external_id)
-
             # Check for pre-fetched description (e.g. Indeed jobs already have it)
             pre_description = pop_description(external_id)
 
@@ -165,6 +161,11 @@ async def _process_one(supabase: Any, row: dict):
                 logger.info(f"[JobQueue] Analysis successful for {external_id}, calling write_analysis_to_cache...")
                 cache_result = await write_analysis_to_cache(supabase, external_id, job_url, analysis, salary, visa, min_exp)
                 logger.info(f"[JobQueue] write_analysis_to_cache returned {cache_result} for {external_id}")
+
+                # Capture pending targets BEFORE the bulk update (they're
+                # visible=FALSE now; after it they'll be TRUE). Only looked up on
+                # a final outcome — retries don't need it.
+                pending_targets = await get_users_with_pending_job(supabase, external_id)
 
                 # Bulk update all user rows for this job
                 await bulk_apply_analysis(supabase, external_id, analysis, salary, visa, min_exp)
@@ -217,7 +218,9 @@ async def _process_one(supabase: Any, row: dict):
                     )
 
                 else:
-                    # Max retries exceeded — mark unavailable
+                    # Max retries exceeded — mark unavailable. Capture pending
+                    # targets before bulk_mark_unavailable flips them visible.
+                    pending_targets = await get_users_with_pending_job(supabase, external_id)
                     await mark_cache_unavailable(supabase, external_id)
                     await bulk_mark_unavailable(supabase, external_id)
 
