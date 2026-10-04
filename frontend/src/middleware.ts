@@ -6,7 +6,6 @@ import { NextResponse, type NextRequest } from "next/server";
  * starts with one of these prefixes is redirected to /login when signed out.
  */
 const PROTECTED_PREFIXES = [
-  "/analytics",
   "/keyword-matcher",
   "/logs",
   "/resume-optimizer",

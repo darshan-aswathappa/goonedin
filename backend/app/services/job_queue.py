@@ -3,11 +3,6 @@ Job analysis cache and queue management using Supabase tables.
 
 This centralizes AI analysis at the job description level (by external_id),
 avoiding duplicate DeepSeek API calls when multiple users see the same job.
-
-Embedding hook:
-  write_analysis_to_cache() calls knowledge_base_service.embed_text() after
-  a successful cache write.  Embedding failure is non-fatal — it is logged
-  and silently skipped so a transient OpenAI error never blocks job analysis.
 """
 
 import asyncio
@@ -19,8 +14,6 @@ from datetime import datetime, timezone
 from app.core.supabase_retry import retry_supabase
 
 logger = logging.getLogger("JobQueue")
-
-_analysis_write_count = 0
 
 
 async def get_cache_entry(supabase: Any, external_id: str) -> Optional[dict]:
@@ -78,13 +71,7 @@ async def write_analysis_to_cache(
     visa: Optional[str],
     min_exp: Optional[int] = None,
 ) -> bool:
-    """Write (or create) cache entry with completed analysis results.
-
-    After a successful Supabase upsert, attempts to generate and store an
-    embedding for the job via knowledge_base_service.  Embedding failure is
-    intentionally non-fatal — it is logged at WARNING level and silently
-    skipped so a transient OpenAI error never blocks job analysis delivery.
-    """
+    """Write (or create) cache entry with completed analysis results."""
     try:
         logger.info(f"[CacheWrite] Starting write_analysis_to_cache for {external_id}")
         row = {
@@ -104,63 +91,6 @@ async def write_analysis_to_cache(
             .execute()
         )
         logger.info(f"[CacheWrite] Successfully wrote cache for {external_id}. Result: {result}")
-
-        # Track writes and refresh materialized views every 50 analyses
-        global _analysis_write_count
-        _analysis_write_count += 1
-        if _analysis_write_count % 50 == 0:
-            try:
-                await retry_supabase(
-                    lambda: supabase.rpc("refresh_ai_kb_views").execute()
-                )
-                logger.info(f"[CacheWrite] Refreshed AI KB materialized views (after {_analysis_write_count} analyses)")
-            except Exception as mv_err:
-                logger.warning(f"[CacheWrite] MV refresh failed (non-fatal): {mv_err}")
-
-        # ---- Embedding: non-blocking, non-fatal ----
-        # Import here (not at module top) to avoid a circular import at cold start,
-        # because knowledge_base_service itself imports from config which imports
-        # nothing from services.  The lazy import is also guarded by a try/except
-        # so a missing OPENAI_API_KEY or import error is fully silent.
-        try:
-            from app.services.knowledge_base_service import (
-                build_job_embedding_text,
-                embed_text,
-            )
-            from app.core.config import get_settings
-            _settings = get_settings()
-            if _settings.OPENAI_API_KEY:
-                embed_record = {
-                    "external_id": external_id,
-                    "job_url": job_url,
-                    "analysis": json.dumps(analysis) if analysis else None,
-                    "salary": salary,
-                    "visa": visa,
-                }
-                text = build_job_embedding_text(embed_record)
-                if text.strip():
-                    vector = await embed_text(text)
-                    if vector is not None:
-                        # Pass list directly — PostgREST casts JSON array → vector.
-                        # Capturing in local vars avoids lambda closure pitfalls.
-                        _eid = external_id
-                        _vec = vector
-                        await retry_supabase(
-                            lambda: supabase.table("job_analysis_cache")
-                            .update({"embedding": _vec, "embedding_generated_at": datetime.now(timezone.utc).isoformat()})
-                            .eq("external_id", _eid)
-                            .execute()
-                        )
-                        logger.info(
-                            f"[CacheWrite] Embedding stored for {_eid} "
-                            f"({len(_vec)} dims)"
-                        )
-        except Exception as embed_err:
-            # Non-fatal — analysis is already persisted above
-            logger.warning(
-                f"[CacheWrite] Embedding failed for {external_id} (non-fatal): {embed_err}"
-            )
-
         return True
     except Exception as e:
         logger.error(f"[CacheWrite] write_analysis_to_cache FAILED for {external_id}: {e}", exc_info=True)

@@ -7,7 +7,6 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
-      - "analytics/**"
       - "resume_service/**"
       - "docker-compose.yml"
       - "Caddyfile"
@@ -28,11 +27,10 @@ jobs:
             set -eu
             cd /opt/goonedin/goonedin
             git pull origin main
-            # Build serially: the 4GB host OOMs when BuildKit runs the two
-            # Next.js builds plus the Playwright install concurrently.
+            # Build serially: the 4GB host OOMs when BuildKit runs the Next.js
+            # build and the Playwright install concurrently.
             docker compose build resume-service
             docker compose build backend
             docker compose build frontend
-            docker compose build analytics
             docker compose up -d
             docker image prune -f

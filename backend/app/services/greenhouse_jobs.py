@@ -9,7 +9,7 @@ job_analysis_cache, keyed by the same external_id.
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from app.services.scraper_greenhouse import ParsedJob
 
@@ -20,16 +20,22 @@ async def upsert_greenhouse_job(
     supabase: Any,
     job: ParsedJob,
     content: str,
+    board_slug: str,
 ) -> bool:
     """Insert a job into the shared pool if new. Returns True only when a row
     was actually inserted (so the crawler enqueues analysis exactly once).
 
     Uses ignore_duplicates so re-seeing a job never rewrites it or re-triggers
     analysis. `crawled_at` defaults to now() in the DB.
+
+    `board_slug` must be the registry slug the job was fetched from — it is an
+    FK to greenhouse_boards. Don't derive it from absolute_url: boards with a
+    custom careers domain (e.g. company.com/careers?gh_jid=...) yield a value
+    that isn't a registered slug and the insert fails the FK.
     """
     row = {
         "external_id": job.external_id,
-        "board_slug": _board_from_url(job) or job.company_name,
+        "board_slug": board_slug,
         "title": job.title,
         "company_name": job.company_name,
         "location_raw": job.location_raw,
@@ -48,16 +54,6 @@ async def upsert_greenhouse_job(
     except Exception as e:
         logger.error(f"upsert_greenhouse_job failed for {job.external_id}: {e}")
         return False
-
-
-def _board_from_url(job: ParsedJob) -> Optional[str]:
-    """Best-effort board slug from the absolute_url path (.../{slug}/jobs/{id})."""
-    try:
-        parts = job.url.split("/")
-        idx = parts.index("jobs")
-        return parts[idx - 1] or None
-    except (ValueError, IndexError):
-        return None
 
 
 async def get_jobs_since(

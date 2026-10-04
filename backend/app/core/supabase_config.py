@@ -72,6 +72,11 @@ def _cache_key(user_id: str, key: str) -> str:
 
 async def _get_setting(supabase: Any, user_id: str, key: str) -> list:
     """Read a single setting from Supabase, using cache when possible."""
+    # Global callers (e.g. the Greenhouse crawler) pass user_id="" — there is no
+    # user_settings row to read, and `user_id=eq.` fails uuid parsing in Postgres.
+    if not user_id:
+        return []
+
     ck = _cache_key(user_id, key)
     cached = _cache.get(ck)
     if cached:

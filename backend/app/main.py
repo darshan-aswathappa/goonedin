@@ -77,7 +77,6 @@ from app.services.resume_analyzer import enqueue_resume_analysis, process_resume
 from app.services.job_analyzer import run_job_analysis
 from app.services.job_queue import get_cache_entry, create_cache_entry, enqueue_job
 from app.services.job_queue_worker import process_job_analysis_queue, store_description
-from app.api.knowledge_base import router as kb_router
 from app.services.jobright_credentials import get_jobright_credentials
 from app.api.jobright_config import router as jobright_config_router
 
@@ -154,17 +153,6 @@ async def lifespan(app: FastAPI):
     # Global Greenhouse crawler (single task, fills the shared greenhouse_jobs pool)
     greenhouse_crawler_task = asyncio.create_task(run_greenhouse_crawler(supabase))
 
-    # Start knowledge base embedding backfill (runs in background, non-blocking)
-    from app.services.knowledge_base_service import backfill_embeddings, close_pool
-    asyncio.create_task(backfill_embeddings(supabase))
-
-    from app.services.knowledge_base.conversation_memory import start_cleanup_task
-    start_cleanup_task()
-
-    # Fetch live database schema for AI query layer (non-blocking)
-    from app.services.knowledge_base.schema_introspection import refresh_schema_cache
-    asyncio.create_task(refresh_schema_cache())
-
     try:
         contexts = await load_all_users()
         for ctx in contexts:
@@ -191,9 +179,6 @@ async def lifespan(app: FastAPI):
         if getattr(ctx, "greenhouse_task", None) and not ctx.greenhouse_task.done():
             ctx.greenhouse_task.cancel()
 
-    # Gracefully close the asyncpg read-only pool used by the knowledge base
-    await close_pool()
-
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -211,7 +196,6 @@ app.add_middleware(
 )
 
 app.include_router(websocket.router)
-app.include_router(kb_router)
 app.include_router(jobright_config_router)
 
 @app.get("/api/health")

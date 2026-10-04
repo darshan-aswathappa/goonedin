@@ -3,9 +3,19 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
-import { Command, CommandGroup } from "@/types/knowledge-base";
 import { cn } from "@/lib/utils";
 import { Kicker } from "@/components/ds";
+
+type CommandGroup = "NAVIGATE" | "ACTION";
+
+interface Command {
+  id: string;
+  label: string;
+  description?: string;
+  group: CommandGroup;
+  shortcut?: string;
+  action: () => void;
+}
 
 // ── Palette open/close event (cross-component) ───────────────────────────────
 const OPEN_EVENT = "commandpalette:open";
@@ -16,8 +26,7 @@ export function openCommandPalette() {
 // ── Suggested commands ────────────────────────────────────────────────────────
 function buildCommands(
   router: ReturnType<typeof useRouter>,
-  closeAndNavigate: (path: string) => void,
-  onAskAI: () => void
+  closeAndNavigate: (path: string) => void
 ): Command[] {
   return [
     {
@@ -27,14 +36,6 @@ function buildCommands(
       group: "NAVIGATE",
       shortcut: "G D",
       action: () => closeAndNavigate("/"),
-    },
-    {
-      id: "nav-analytics",
-      label: "Analytics",
-      description: "Job market intelligence",
-      group: "NAVIGATE",
-      shortcut: "G A",
-      action: () => closeAndNavigate("/analytics"),
     },
     {
       id: "nav-saved",
@@ -59,14 +60,6 @@ function buildCommands(
       group: "NAVIGATE",
       shortcut: "G L",
       action: () => closeAndNavigate("/logs"),
-    },
-    {
-      id: "action-ai",
-      label: "Ask AI Companion",
-      description: "Query job market with natural language",
-      group: "ACTION",
-      shortcut: "⌘ K",
-      action: onAskAI,
     },
   ];
 }
@@ -148,15 +141,9 @@ export function CommandPalette() {
     [router]
   );
 
-  const onAskAI = useCallback(() => {
-    setOpen(false);
-    setQuery("");
-    router.push("/analytics");
-  }, [router]);
-
   const commands = useMemo(
-    () => buildCommands(router, closeAndNavigate, onAskAI),
-    [router, closeAndNavigate, onAskAI]
+    () => buildCommands(router, closeAndNavigate),
+    [router, closeAndNavigate]
   );
 
   // Filter, group, and flatten — recomputed only when query or commands change

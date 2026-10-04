@@ -368,7 +368,6 @@ export function JobsDashboard() {
                     {[
                       { href: "/settings", icon: <Gear weight="regular" className="size-4" />, label: "Settings" },
                       { href: "/keyword-matcher", icon: <Tag weight="regular" className="size-4" />, label: "Keywords" },
-                      { href: "/analytics", icon: <Monitor weight="regular" className="size-4" />, label: "Analytics" },
                       { href: "/logs", icon: <TerminalWindow weight="regular" className="size-4" />, label: "Logs" },
                     ].map(({ href, icon, label }) => (
                       <Link

@@ -8,11 +8,6 @@ api.goonedin.xyz {
       reverse_proxy backend:8000
 }
 
-analytics.goonedin.xyz {
-      encode zstd gzip
-      reverse_proxy analytics:3001
-}
-
 # Résumé Desk - a separate single-user tool (xanf-code/resume-auto-generation-bot)
 # with no auth of its own, so it's gated with HTTP basic auth here. Credentials
 # come from RESUMEDESK_AUTH_USER/HASH (set on the caddy service in
@@ -34,5 +29,9 @@ resumedesk.goonedin.xyz {
 # credential working untouched; Caddy only terminates TLS.
 tracker.goonedin.xyz {
       encode zstd gzip
+      reverse_proxy host.docker.internal:8080
+}
+
+bostonbot.goonedin.xyz {
       reverse_proxy host.docker.internal:8080
 }

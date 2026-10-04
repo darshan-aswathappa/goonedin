@@ -19,7 +19,7 @@ services:
     # Lets the Caddyfile reach host nginx on :8080, which fronts DassTracker.
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on: [frontend, backend, analytics, resumedesk]
+    depends_on: [frontend, backend, resumedesk]
 
   resumedesk:
     # Sibling checkout of xanf-code/resume-auto-generation-bot (separate repo,
@@ -70,17 +70,6 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
         NEXT_PUBLIC_AUTH_CALLBACK_URL: https://goonedin.xyz/auth/callback
     restart: unless-stopped
-
-  analytics:
-    build:
-      context: ./analytics
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_API_URL: https://api.goonedin.xyz
-    restart: unless-stopped
-    environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
 
 volumes:
   caddy_data:

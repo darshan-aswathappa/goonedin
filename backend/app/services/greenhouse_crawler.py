@@ -89,7 +89,7 @@ async def _crawl_board(
         async with sem:
             content = await fetch_job_content(client, slug, job.external_id)
 
-        inserted = await upsert_greenhouse_job(supabase, job, content)
+        inserted = await upsert_greenhouse_job(supabase, job, content, slug)
         if not inserted:
             continue  # already in the shared pool — skip re-enqueue
 
