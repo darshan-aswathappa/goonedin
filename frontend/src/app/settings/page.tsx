@@ -16,7 +16,6 @@ import {
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 import { getAuthHeaders } from "@/hooks/useAuth";
-import { ResumeManager } from "@/components/ResumeManager";
 import { JobrightCredentialsManager } from "@/components/JobrightCredentialsManager";
 import { SponsorshipFilterToggle } from "@/components/SponsorshipFilterToggle";
 import { ExperienceFilterToggle } from "@/components/ExperienceFilterToggle";
@@ -389,7 +388,6 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-6">
-            <ResumeManager />
             <JobrightCredentialsManager />
             <SponsorshipFilterToggle />
             <ExperienceFilterToggle />

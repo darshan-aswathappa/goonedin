@@ -36,17 +36,6 @@ services:
       timeout: 5s
       retries: 3
 
-  resume-service:
-    build: ./resume_service
-    restart: unless-stopped
-    environment:
-      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
   backend:
     build: ./backend
     restart: unless-stopped
@@ -54,11 +43,7 @@ services:
     environment:
       - PORT=8000
       - ENVIRONMENT=production
-      - RESUME_SERVICE_URL=http://resume-service:8001
     shm_size: 1gb          # Chromium crashes with the 64MB default
-    depends_on:
-      resume-service:
-        condition: service_healthy
 
   frontend:
     build:

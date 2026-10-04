@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import logging
@@ -36,6 +36,7 @@ from app.services.supabase_jobs import (
     hide_jobs_by_title_keywords,
     cleanup_expired_jobs,
     cleanup_old_invisible_jobs,
+    run_retention,
 )
 from app.models.custom_source import CustomJobSource
 from app.services.custom_source_supabase import (
@@ -73,7 +74,6 @@ from app.models.job import JobCreate
 
 from app.api.websocket import manager, log_manager
 from app.services.log_handler import BroadcastLogHandler, get_historical_logs
-from app.services.resume_analyzer import enqueue_resume_analysis, process_resume_analysis_queue
 from app.services.job_analyzer import run_job_analysis
 from app.services.job_queue import get_cache_entry, create_cache_entry, enqueue_job
 from app.services.job_queue_worker import process_job_analysis_queue, store_description
@@ -97,6 +97,7 @@ SEEN_JOB_TTL_SECONDS = 60 * 60 * 2
 GITHUB_TTL_SECONDS = 24 * 60 * 60
 INDEED_TTL_SECONDS = 60 * 60 * 2  # 2 hours
 GREENHOUSE_TTL_SECONDS = 24 * 60 * 60  # 24 hours (batch-discovered, like GitHub)
+RETENTION_INTERVAL_SECONDS = 60 * 60  # run_retention() is a bounded batch; hourly drains steady-state growth
 
 # ── In-memory dedup for LinkedIn jobs ──────────────────────────────
 # Maps user_id → {external_id: timestamp_added}
@@ -127,25 +128,23 @@ async def lifespan(app: FastAPI):
     set_supabase_client(supabase)
     logger.info("Supabase client initialized.")
 
-    # Resume analysis queue table will be created by Supabase migrations if needed
-    # The queue processor will handle creating entries in the table
-
     # Periodic cleanup task for expired scraped jobs
     async def _cleanup_loop():
+        last_retention = 0.0
         while True:
             try:
                 await cleanup_expired_jobs(supabase)               # soft-delete expired scraped_jobs
-                await cleanup_old_invisible_jobs(supabase)         # hard-delete 60d+ invisible scraped_jobs
-                await cleanup_old_invisible_custom_jobs(supabase)  # hard-delete 60d+ invisible custom jobs
+                await cleanup_old_invisible_jobs(supabase)         # hard-delete 30d+ invisible scraped_jobs
+                await cleanup_old_invisible_custom_jobs(supabase)  # hard-delete 30d+ invisible custom jobs
                 _prune_seen()                                      # evict stale in-memory dedup entries
+                if _time.monotonic() - last_retention >= RETENTION_INTERVAL_SECONDS:
+                    await run_retention(supabase)                  # queue / greenhouse / orphan cache
+                    last_retention = _time.monotonic()
             except Exception as e:
                 logger.warning(f"Expired job cleanup error: {e}")
             await asyncio.sleep(300)  # every 5 minutes
 
     cleanup_task = asyncio.create_task(_cleanup_loop())
-
-    # Resume analysis queue processor task
-    resume_queue_task = asyncio.create_task(process_resume_analysis_queue(supabase))
 
     # Job analysis queue processor task (global, handles all users)
     job_queue_task = asyncio.create_task(process_job_analysis_queue(supabase))
@@ -164,7 +163,6 @@ async def lifespan(app: FastAPI):
     yield
 
     cleanup_task.cancel()
-    resume_queue_task.cancel()
     job_queue_task.cancel()
     greenhouse_crawler_task.cancel()
     for ctx in user_registry.values():
@@ -1498,186 +1496,6 @@ async def get_job_analysis(external_id: str, ctx: UserContext = Depends(_get_ctx
 
     except Exception as e:
         logger.error(f"Error fetching job analysis: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch analysis")
-
-
-@app.get("/resumes")
-async def get_resumes(user: dict = Depends(get_current_user)):
-    """Fetch all uploaded resumes for the current user."""
-    _supabase_client = get_supabase_client()
-    try:
-        def _fetch_resumes(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("user_resumes") \
-                .select("*") \
-                .eq("user_id", user["user_id"]) \
-                .order("created_at", desc=True) \
-                .execute()
-
-        response = await asyncio.to_thread(_fetch_resumes)
-        return {"resumes": response.data, "count": len(response.data)}
-    except Exception as e:
-        logger.error(f"Error fetching resumes: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch resumes")
-
-
-@app.post("/resumes")
-async def upload_resume(
-    file: UploadFile = File(...),
-    filename: Optional[str] = Form(None),
-    user: dict = Depends(get_current_user)
-):
-    """Upload a resume PDF to Supabase Storage and track it in the DB."""
-    _supabase_client = get_supabase_client()
-    import uuid
-    import time
-
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-
-    display_name = filename or file.filename
-    # Generate unique storage path: user_id/timestamp_uuid.pdf
-    unique_id = str(uuid.uuid4())[:8]
-    storage_path = f"{user['user_id']}/{int(time.time())}_{unique_id}.pdf"
-
-    try:
-        content = await file.read()
-        
-        # Upload to Storage
-        def _upload_to_storage(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.storage.from_("resumes").upload(
-                path=storage_path,
-                file=content,
-                file_options={"content-type": "application/pdf"}
-            )
-
-        storage_res = await asyncio.to_thread(_upload_to_storage)
-        
-        # Insert metadata into db with analysis_status = processing
-        def _insert_resume_db(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("user_resumes").insert({
-                "user_id": user["user_id"],
-                "filename": display_name,
-                "file_path": storage_path,
-                "analysis_status": "processing"
-            }).execute()
-
-        db_res = await asyncio.to_thread(_insert_resume_db)
-        resume_record = db_res.data[0]
-
-        # Enqueue AI analysis for background processing
-        # API key is retrieved from environment at processing time (never stored in database)
-        await enqueue_resume_analysis(
-            resume_id=resume_record["id"],
-            user_id=user["user_id"],
-            file_path=storage_path,
-            supabase_client=_supabase_client,
-        )
-        logger.info(f"Resume analysis queued for {resume_record['id']}")
-
-        return {"success": True, "resume": resume_record}
-    except Exception as e:
-        logger.error(f"Error uploading resume: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.delete("/resumes/{resume_id}")
-async def delete_resume(resume_id: str, user: dict = Depends(get_current_user)):
-    """Delete a resume from Supabase Storage and DB."""
-    _supabase_client = get_supabase_client()
-    try:
-        # First, get the file path
-        def _get_resume_path(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("user_resumes") \
-                .select("file_path") \
-                .eq("id", resume_id) \
-                .eq("user_id", user["user_id"]) \
-                .execute()
-
-        get_res = await asyncio.to_thread(_get_resume_path)
-        
-        if not get_res.data:
-            raise HTTPException(status_code=404, detail="Resume not found")
-            
-        file_path = get_res.data[0]["file_path"]
-
-        # Delete from Storage
-        def _delete_from_storage(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.storage.from_("resumes").remove([file_path])
-
-        await asyncio.to_thread(_delete_from_storage)
-
-        # Clean up dependent analysis data first
-        def _delete_queue_items(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("resume_analysis_queue") \
-                .delete() \
-                .eq("resume_id", resume_id) \
-                .eq("user_id", user["user_id"]) \
-                .execute()
-
-        await asyncio.to_thread(_delete_queue_items)
-
-        def _delete_analysis(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("resume_analysis") \
-                .delete() \
-                .eq("resume_id", resume_id) \
-                .eq("user_id", user["user_id"]) \
-                .execute()
-
-        await asyncio.to_thread(_delete_analysis)
-
-        # Delete from DB
-        def _delete_resume_db(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("user_resumes") \
-                .delete() \
-                .eq("id", resume_id) \
-                .eq("user_id", user["user_id"]) \
-                .execute()
-
-        await asyncio.to_thread(_delete_resume_db)
-        
-        return {"success": True, "message": "Resume deleted"}
-    except Exception as e:
-        logger.error(f"Error deleting resume: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/resumes/{resume_id}/analysis")
-async def get_resume_analysis(resume_id: str, user: dict = Depends(get_current_user)):
-    """Fetch AI analysis results for a specific resume."""
-    _supabase_client = get_supabase_client()
-    try:
-        def _fetch_analysis(*args: Any, **kwargs: Any) -> Any:
-            return _supabase_client.table("resume_analysis") \
-                .select("*") \
-                .eq("resume_id", resume_id) \
-                .eq("user_id", user["user_id"]) \
-                .execute()
-
-        response = await asyncio.to_thread(_fetch_analysis)
-
-        if not response.data:
-            # Check if the resume exists and its status
-            def _check_status(*args: Any, **kwargs: Any) -> Any:
-                return _supabase_client.table("user_resumes") \
-                    .select("analysis_status") \
-                    .eq("id", resume_id) \
-                    .eq("user_id", user["user_id"]) \
-                    .execute()
-
-            status_res = await asyncio.to_thread(_check_status)
-            if not status_res.data:
-                raise HTTPException(status_code=404, detail="Resume not found")
-
-            status = status_res.data[0].get("analysis_status", "pending")
-            return {"status": status, "analysis": None}
-
-        analysis = response.data[0]
-
-        return {"status": "completed", "analysis": analysis}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching resume analysis: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch analysis")
 
 

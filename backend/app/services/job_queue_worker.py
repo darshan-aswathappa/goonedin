@@ -12,6 +12,8 @@ from typing import Any
 from datetime import datetime, timezone, timedelta
 
 from app.core.config import get_settings
+from postgrest import CountMethod, ReturnMethod
+
 from app.core.supabase_retry import retry_supabase
 from app.api.websocket import manager
 from app.services.job_analyzer import run_job_analysis
@@ -56,7 +58,7 @@ async def process_job_analysis_queue(supabase: Any):
     try:
         await retry_supabase(
             lambda: supabase.table("job_analysis_queue")
-            .update({"status": "pending"})
+            .update({"status": "pending"}, returning=ReturnMethod.minimal)
             .eq("status", "processing")
             .execute()
         )
@@ -70,7 +72,7 @@ async def process_job_analysis_queue(supabase: Any):
             now_iso = datetime.now(timezone.utc).isoformat()
             rows = await retry_supabase(
                 lambda: supabase.table("job_analysis_queue")
-                .select("*")
+                .select("id, external_id, job_url, retry_count, max_retries")
                 .eq("status", "pending")
                 .lte("next_retry_at", now_iso)
                 .limit(settings.ANALYSIS_WORKER_CONCURRENCY)
@@ -104,12 +106,16 @@ async def _process_one(supabase: Any, row: dict):
             # Optimistic lock: mark as processing
             updated = await retry_supabase(
                 lambda: supabase.table("job_analysis_queue")
-                .update({"status": "processing", "updated_at": datetime.now(timezone.utc).isoformat()})
+                .update(
+                    {"status": "processing", "updated_at": datetime.now(timezone.utc).isoformat()},
+                    returning=ReturnMethod.minimal,
+                    count=CountMethod.exact,
+                )
                 .eq("id", queue_id)
                 .eq("status", "pending")
                 .execute()
             )
-            if not updated.data:
+            if not updated.count:
                 # Another worker already got this job
                 return
 
@@ -175,7 +181,7 @@ async def _process_one(supabase: Any, row: dict):
                 # Mark queue entry as completed
                 await retry_supabase(
                     lambda: supabase.table("job_analysis_queue")
-                    .update({"status": "completed", "updated_at": datetime.now(timezone.utc).isoformat()})
+                    .update({"status": "completed", "updated_at": datetime.now(timezone.utc).isoformat()}, returning=ReturnMethod.minimal)
                     .eq("id", queue_id)
                     .execute()
                 )
@@ -201,7 +207,7 @@ async def _process_one(supabase: Any, row: dict):
                             "retry_count": next_retry,
                             "next_retry_at": next_retry_at,
                             "updated_at": datetime.now(timezone.utc).isoformat(),
-                        })
+                        }, returning=ReturnMethod.minimal)
                         .eq("id", queue_id)
                         .execute()
                     )
@@ -227,7 +233,7 @@ async def _process_one(supabase: Any, row: dict):
                     # Mark queue entry as failed with error reason
                     await retry_supabase(
                         lambda: supabase.table("job_analysis_queue")
-                        .update({"status": "failed", "error": error_reason or "Max retries exceeded", "updated_at": datetime.now(timezone.utc).isoformat()})
+                        .update({"status": "failed", "error": error_reason or "Max retries exceeded", "updated_at": datetime.now(timezone.utc).isoformat()}, returning=ReturnMethod.minimal)
                         .eq("id", queue_id)
                         .execute()
                     )
@@ -239,7 +245,7 @@ async def _process_one(supabase: Any, row: dict):
             try:
                 await retry_supabase(
                     lambda: supabase.table("job_analysis_queue")
-                    .update({"status": "failed", "error": str(e), "updated_at": datetime.now(timezone.utc).isoformat()})
+                    .update({"status": "failed", "error": str(e), "updated_at": datetime.now(timezone.utc).isoformat()}, returning=ReturnMethod.minimal)
                     .eq("id", queue_id)
                     .execute()
                 )

@@ -7,7 +7,6 @@ on:
     paths:
       - "backend/**"
       - "frontend/**"
-      - "resume_service/**"
       - "docker-compose.yml"
       - "Caddyfile"
       - ".github/workflows/deploy.yml"
@@ -29,8 +28,7 @@ jobs:
             git pull origin main
             # Build serially: the 4GB host OOMs when BuildKit runs the Next.js
             # build and the Playwright install concurrently.
-            docker compose build resume-service
             docker compose build backend
             docker compose build frontend
-            docker compose up -d
+            docker compose up -d --remove-orphans
             docker image prune -f

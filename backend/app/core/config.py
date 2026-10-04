@@ -37,11 +37,6 @@ class Settings(BaseSettings):
         """
         return self.OPENROUTER_API_KEY or self.DEEPSEEK_API_KEY
 
-    # --- MICROSERVICES ---
-    RESUME_SERVICE_URL: str = os.getenv(
-        "RESUME_SERVICE_URL", "http://resume-service:8001"
-    )
-
     # --- INDEED ---
     INDEED_API_KEY: str = os.getenv(
         "INDEED_API_KEY",

@@ -9,10 +9,17 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
+from postgrest import CountMethod, ReturnMethod
+
 from app.core.supabase_retry import retry_supabase
 from app.core.title_filter import is_title_blocked
 
 logger = logging.getLogger("SupabaseJobs")
+
+# Dismissed/expired jobs are kept this long so re-scrapes don't resurface
+# them, then hard-deleted. 30 days keeps the DB inside the Free plan quota;
+# the scrapers only look at recent postings, so older jobs never come back.
+INVISIBLE_JOB_RETENTION_DAYS = 30
 
 # Last-known-good cache for job reads to prevent brief "empty" flashes on transient DB failures
 _jobs_cache: dict[str, list] = {}
@@ -75,12 +82,12 @@ async def upsert_job(
         row["expires_at"] = expires_at
 
     try:
-        resp = await retry_supabase(
+        await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .upsert(row, on_conflict="user_id,source,external_id")
+            .upsert(row, on_conflict="user_id,source,external_id", returning=ReturnMethod.minimal)
             .execute()
         )
-        return resp.data[0] if resp.data else row
+        return row
     except Exception as e:
         logger.error(f"upsert_job failed: {e}")
         return row
@@ -126,10 +133,16 @@ async def insert_job_if_new(
     try:
         resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .upsert(row, on_conflict="user_id,source,external_id", ignore_duplicates=True)
+            .upsert(
+                row,
+                on_conflict="user_id,source,external_id",
+                ignore_duplicates=True,
+                returning=ReturnMethod.minimal,
+                count=CountMethod.exact,
+            )
             .execute()
         )
-        return resp.data[0] if resp.data else None
+        return row if resp.count else None
     except Exception as e:
         logger.error(f"insert_job_if_new failed: {e}")
         return None
@@ -150,7 +163,7 @@ async def update_job(
 
         await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .update(updates)
+            .update(updates, returning=ReturnMethod.minimal)
             .eq("user_id", user_id)
             .eq("source", source)
             .eq("external_id", external_id)
@@ -261,7 +274,7 @@ async def delete_jobs_by_company(
         if to_hide:
             await retry_supabase(
                 lambda: supabase.table("scraped_jobs")
-                .update({"visible": False})
+                .update({"visible": False}, returning=ReturnMethod.minimal)
                 .eq("user_id", user_id)
                 .in_("external_id", to_hide)
                 .execute()
@@ -288,7 +301,7 @@ async def delete_jobs_by_company(
         if to_hide_custom:
             await retry_supabase(
                 lambda: supabase.table("custom_source_jobs")
-                .update({"visible": False})
+                .update({"visible": False}, returning=ReturnMethod.minimal)
                 .eq("user_id", user_id)
                 .in_("external_id", to_hide_custom)
                 .execute()
@@ -331,7 +344,7 @@ async def hide_jobs_by_title_keywords(
             if to_hide:
                 await retry_supabase(
                     lambda t=table, ids=to_hide: supabase.table(t)
-                    .update({"visible": False})
+                    .update({"visible": False}, returning=ReturnMethod.minimal)
                     .eq("user_id", user_id)
                     .in_("external_id", ids)
                     .execute()
@@ -354,14 +367,13 @@ async def cleanup_expired_jobs(supabase: Any) -> int:
     try:
         resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .update({"visible": False})
+            .update({"visible": False}, returning=ReturnMethod.minimal, count=CountMethod.exact)
             .eq("visible", True)           # skip already-hidden
             .lt("expires_at", now_iso)
             .not_.is_("expires_at", "null")
             .execute()
         )
-        if resp.data:
-            soft_deleted = len(resp.data)
+        soft_deleted = resp.count or 0
         if soft_deleted:
             logger.info(f"Soft-deleted {soft_deleted} expired scraped jobs")
     except Exception as e:
@@ -370,21 +382,20 @@ async def cleanup_expired_jobs(supabase: Any) -> int:
 
 
 async def cleanup_old_invisible_jobs(supabase: Any) -> int:
-    """Hard-delete scraped_jobs rows where visible=False AND created_at older than 60 days."""
+    """Hard-delete invisible scraped_jobs rows older than INVISIBLE_JOB_RETENTION_DAYS."""
     deleted = 0
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=INVISIBLE_JOB_RETENTION_DAYS)).isoformat()
     try:
         resp = await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .delete()
+            .delete(returning=ReturnMethod.minimal, count=CountMethod.exact)
             .eq("visible", False)
             .lt("created_at", cutoff)
             .execute()
         )
-        if resp.data:
-            deleted = len(resp.data)
+        deleted = resp.count or 0
         if deleted:
-            logger.info(f"Hard-deleted {deleted} old invisible scraped jobs (>60 days)")
+            logger.info(f"Hard-deleted {deleted} old invisible scraped jobs (>{INVISIBLE_JOB_RETENTION_DAYS} days)")
     except Exception as e:
         logger.error(f"Failed to hard-delete old invisible scraped jobs: {e}")
     return deleted
@@ -435,7 +446,7 @@ async def bulk_apply_analysis(
         }
         await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .update(updates)
+            .update(updates, returning=ReturnMethod.minimal)
             .eq("external_id", external_id)
             .execute()
         )
@@ -454,7 +465,7 @@ async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
         }
         await retry_supabase(
             lambda: supabase.table("scraped_jobs")
-            .update(updates)
+            .update(updates, returning=ReturnMethod.minimal)
             .eq("external_id", external_id)
             .execute()
         )
@@ -464,3 +475,16 @@ async def bulk_mark_unavailable(supabase: Any, external_id: str) -> bool:
         return False
 
 
+async def run_retention(supabase: Any) -> dict:
+    """Prune finished queue rows, stale Greenhouse descriptions and orphaned
+    analysis-cache entries (see migration 015). Batched server-side, so a
+    backlog drains over successive calls."""
+    try:
+        resp = await retry_supabase(lambda: supabase.rpc("run_retention").execute())
+        result = resp.data or {}
+        if any(result.values()):
+            logger.info(f"Retention pruned {result}")
+        return result
+    except Exception as e:
+        logger.error(f"run_retention failed: {e}")
+        return {}

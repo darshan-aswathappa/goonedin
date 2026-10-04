@@ -38,7 +38,10 @@ def test_save_crawl_results_sends_one_upsert():
     rows = [crawled_row({"slug": "a"}), failed_row({"slug": "b"}, 3)]
     asyncio.run(save_crawl_results(supabase, rows))
     supabase.table.assert_called_once_with("greenhouse_boards")
-    supabase.table.return_value.upsert.assert_called_once_with(rows, on_conflict="slug")
+    upsert = supabase.table.return_value.upsert
+    upsert.assert_called_once()
+    assert upsert.call_args.args == (rows,)
+    assert upsert.call_args.kwargs["on_conflict"] == "slug"
 
 
 def test_save_crawl_results_skips_empty_round():

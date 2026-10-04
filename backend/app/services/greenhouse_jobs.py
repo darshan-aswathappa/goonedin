@@ -11,6 +11,8 @@ import asyncio
 import logging
 from typing import Any
 
+from postgrest import CountMethod, ReturnMethod
+
 from app.services.scraper_greenhouse import ParsedJob
 
 logger = logging.getLogger("GreenhouseJobs")
@@ -47,13 +49,41 @@ async def upsert_greenhouse_job(
     try:
         resp = await asyncio.to_thread(
             lambda: supabase.table("greenhouse_jobs")
-            .upsert(row, on_conflict="external_id", ignore_duplicates=True)
+            .upsert(
+                row,
+                on_conflict="external_id",
+                ignore_duplicates=True,
+                returning=ReturnMethod.minimal,
+                count=CountMethod.exact,
+            )
             .execute()
         )
-        return bool(resp.data)
+        return bool(resp.count)
     except Exception as e:
         logger.error(f"upsert_greenhouse_job failed for {job.external_id}: {e}")
         return False
+
+
+async def get_known_ids(supabase: Any, external_ids: list[int]) -> set[int]:
+    """Return which of `external_ids` are already in the shared pool.
+
+    Lets the crawler skip re-downloading and re-upserting descriptions for jobs
+    it saw in earlier rounds. On error returns an empty set, which just falls
+    back to the upsert's own dedup.
+    """
+    if not external_ids:
+        return set()
+    try:
+        resp = await asyncio.to_thread(
+            lambda: supabase.table("greenhouse_jobs")
+            .select("external_id")
+            .in_("external_id", external_ids)
+            .execute()
+        )
+        return {int(r["external_id"]) for r in (resp.data or [])}
+    except Exception as e:
+        logger.error(f"get_known_ids failed: {e}")
+        return set()
 
 
 async def get_jobs_since(

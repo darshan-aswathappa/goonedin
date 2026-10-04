@@ -11,6 +11,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from postgrest import ReturnMethod
+
 from app.core.supabase_retry import retry_supabase
 
 logger = logging.getLogger("GreenhouseBoards")
@@ -47,7 +49,7 @@ async def seed_boards(supabase: Any, boards: list[dict]) -> int:
         try:
             await asyncio.to_thread(
                 lambda c=chunk: supabase.table("greenhouse_boards")
-                .upsert(c, on_conflict="slug")
+                .upsert(c, on_conflict="slug", returning=ReturnMethod.minimal)
                 .execute()
             )
             sent += len(chunk)
@@ -126,7 +128,7 @@ async def save_crawl_results(supabase: Any, rows: list[dict]) -> None:
     try:
         await retry_supabase(
             lambda: supabase.table("greenhouse_boards")
-            .upsert(rows, on_conflict="slug")
+            .upsert(rows, on_conflict="slug", returning=ReturnMethod.minimal)
             .execute()
         )
     except Exception as e:

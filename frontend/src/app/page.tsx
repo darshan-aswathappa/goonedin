@@ -35,7 +35,7 @@ const CAPABILITIES = [
   },
   {
     label: "INTELLIGENCE",
-    rows: ["AI job analysis", "Resume matching", "Keyword filtering", "Company blocking"],
+    rows: ["AI job analysis", "Keyword filtering", "Company blocking"],
     icon: FileText,
   },
   {

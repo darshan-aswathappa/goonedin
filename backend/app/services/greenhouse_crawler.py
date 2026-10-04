@@ -28,7 +28,7 @@ from app.services.greenhouse_boards import (
     get_shard,
     save_crawl_results,
 )
-from app.services.greenhouse_jobs import upsert_greenhouse_job
+from app.services.greenhouse_jobs import get_known_ids, upsert_greenhouse_job
 from app.services.job_queue import create_cache_entry, enqueue_job
 from app.services.job_queue_worker import store_description
 from app.services.scraper_greenhouse import (
@@ -102,8 +102,12 @@ async def _ingest_survivors(
 ) -> int:
     """Fetch descriptions for survivors, then persist + enqueue genuinely-new
     jobs. Returns the number newly ingested."""
+    known = await get_known_ids(supabase, [job.external_id for job in survivors])
     new_count = 0
     for job in survivors:
+        if job.external_id in known:
+            continue  # already in the shared pool from an earlier round
+
         async with sem:
             content = await fetch_job_content(client, slug, job.external_id)
 

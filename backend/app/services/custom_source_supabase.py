@@ -10,7 +10,10 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
 
+from postgrest import CountMethod, ReturnMethod
+
 from app.core.supabase_retry import retry_supabase
+from app.services.supabase_jobs import INVISIBLE_JOB_RETENTION_DAYS
 
 logger = logging.getLogger("CustomSourceSupabase")
 
@@ -233,7 +236,7 @@ async def dismiss_custom_job(supabase: Any, user_id: str, external_id: str) -> b
     try:
         await asyncio.to_thread(
             lambda: supabase.table("custom_source_jobs")
-            .update({"visible": False})
+            .update({"visible": False}, returning=ReturnMethod.minimal)
             .eq("user_id", user_id)
             .eq("external_id", external_id)
             .execute()
@@ -260,15 +263,14 @@ async def delete_expired_jobs(supabase: Any) -> int:
             ).isoformat()
             resp = await asyncio.to_thread(
                 lambda c=cutoff, s=src: supabase.table("custom_source_jobs")
-                .update({"visible": False})
+                .update({"visible": False}, returning=ReturnMethod.minimal, count=CountMethod.exact)
                 .eq("user_id", s["user_id"])
                 .eq("source_id", s["id"])
                 .eq("visible", True)       # skip already-hidden
                 .lt("created_at", c)
                 .execute()
             )
-            if resp.data:
-                soft_deleted += len(resp.data)
+            soft_deleted += resp.count or 0
         if soft_deleted:
             logger.info(f"Soft-deleted {soft_deleted} expired custom source jobs")
     except Exception as e:
@@ -277,21 +279,20 @@ async def delete_expired_jobs(supabase: Any) -> int:
 
 
 async def cleanup_old_invisible_custom_jobs(supabase: Any) -> int:
-    """Hard-delete custom_source_jobs rows where visible=False AND created_at older than 60 days."""
+    """Hard-delete invisible custom_source_jobs rows older than INVISIBLE_JOB_RETENTION_DAYS."""
     deleted = 0
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=60)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=INVISIBLE_JOB_RETENTION_DAYS)).isoformat()
     try:
         resp = await asyncio.to_thread(
             lambda: supabase.table("custom_source_jobs")
-            .delete()
+            .delete(returning=ReturnMethod.minimal, count=CountMethod.exact)
             .eq("visible", False)
             .lt("created_at", cutoff)
             .execute()
         )
-        if resp.data:
-            deleted = len(resp.data)
+        deleted = resp.count or 0
         if deleted:
-            logger.info(f"Hard-deleted {deleted} old invisible custom source jobs (>60 days)")
+            logger.info(f"Hard-deleted {deleted} old invisible custom source jobs (>{INVISIBLE_JOB_RETENTION_DAYS} days)")
     except Exception as e:
         logger.error(f"Failed to hard-delete old invisible custom jobs: {e}")
     return deleted

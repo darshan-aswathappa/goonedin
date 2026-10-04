@@ -11,6 +11,8 @@ import logging
 from typing import Any, Optional
 from datetime import datetime, timezone
 
+from postgrest import ReturnMethod
+
 from app.core.supabase_retry import retry_supabase
 
 logger = logging.getLogger("JobQueue")
@@ -53,7 +55,7 @@ async def create_cache_entry(
         }
         await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
-            .upsert(row, on_conflict="external_id", ignore_duplicates=True)
+            .upsert(row, on_conflict="external_id", ignore_duplicates=True, returning=ReturnMethod.minimal)
             .execute()
         )
         return True
@@ -85,12 +87,12 @@ async def write_analysis_to_cache(
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
         logger.debug(f"[CacheWrite] Row data: {row}")
-        result = await retry_supabase(
+        await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
-            .upsert(row, on_conflict="external_id")
+            .upsert(row, on_conflict="external_id", returning=ReturnMethod.minimal)
             .execute()
         )
-        logger.info(f"[CacheWrite] Successfully wrote cache for {external_id}. Result: {result}")
+        logger.info(f"[CacheWrite] Successfully wrote cache for {external_id}")
         return True
     except Exception as e:
         logger.error(f"[CacheWrite] write_analysis_to_cache FAILED for {external_id}: {e}", exc_info=True)
@@ -107,7 +109,7 @@ async def mark_cache_unavailable(supabase: Any, external_id: str) -> bool:
         }
         await retry_supabase(
             lambda: supabase.table("job_analysis_cache")
-            .upsert(row, on_conflict="external_id")
+            .upsert(row, on_conflict="external_id", returning=ReturnMethod.minimal)
             .execute()
         )
         return True
@@ -121,10 +123,17 @@ async def enqueue_job(
 ) -> bool:
     """Enqueue a job for analysis (skip if already completed)."""
     try:
-        # Check if already analyzed and cached
-        cache_entry = await get_cache_entry(supabase, external_id)
-        if cache_entry and cache_entry.get("analysis_status") in ("completed", "processing"):
-            logger.debug(f"Job {external_id} already {cache_entry.get('analysis_status')} in cache, skipping re-enqueue")
+        # Check if already analyzed and cached (status only — skip the analysis payload)
+        status_resp = await retry_supabase(
+            lambda: supabase.table("job_analysis_cache")
+            .select("analysis_status")
+            .eq("external_id", external_id)
+            .limit(1)
+            .execute()
+        )
+        status = status_resp.data[0].get("analysis_status") if status_resp.data else None
+        if status in ("completed", "processing"):
+            logger.debug(f"Job {external_id} already {status} in cache, skipping re-enqueue")
             return True
 
         row = {
@@ -136,7 +145,7 @@ async def enqueue_job(
         }
         await retry_supabase(
             lambda: supabase.table("job_analysis_queue")
-            .upsert(row, on_conflict="external_id")
+            .upsert(row, on_conflict="external_id", returning=ReturnMethod.minimal)
             .execute()
         )
         return True
