@@ -80,7 +80,9 @@ COMMIT;
 
 -- 5. AI query roles (read-only SQL layer). Outside the transaction so a
 --    failure here (e.g. grants held by another owner) doesn't undo the above.
-DROP OWNED BY ai_query_user;
-DROP OWNED BY ai_kb_reader;
+--    DROP OWNED requires membership in the role, hence the temporary grant.
+GRANT ai_query_user, ai_kb_reader TO postgres;
+DROP OWNED BY ai_query_user, ai_kb_reader;
+REVOKE ai_query_user, ai_kb_reader FROM postgres;
 DROP ROLE IF EXISTS ai_query_user;
 DROP ROLE IF EXISTS ai_kb_reader;

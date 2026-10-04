@@ -22,12 +22,16 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.supabase_config import get_target_keywords, get_title_filter_keywords
-from app.services.greenhouse_boards import get_shard, mark_crawled, mark_failed
+from app.services.greenhouse_boards import (
+    crawled_row,
+    failed_row,
+    get_shard,
+    save_crawl_results,
+)
 from app.services.greenhouse_jobs import upsert_greenhouse_job
 from app.services.job_queue import create_cache_entry, enqueue_job
 from app.services.job_queue_worker import store_description
 from app.services.scraper_greenhouse import (
-    FETCH_DEAD,
     FETCH_OK,
     ParsedJob,
     fetch_board_jobs,
@@ -48,20 +52,16 @@ async def _crawl_board(
     global_keywords: list[str],
     global_blocklist: list[str],
     sem: asyncio.Semaphore,
-) -> int:
-    """Crawl one board. Returns the number of newly-ingested jobs."""
+) -> tuple[int, dict]:
+    """Crawl one board. Returns (newly-ingested job count, registry row to
+    persist); the caller saves all rows for the round in one batch."""
     slug = board["slug"]
-    failures = board.get("consecutive_failures", 0) or 0
 
     async with sem:
         status, raw_jobs = await fetch_board_jobs(client, slug)
 
-    if status == FETCH_DEAD:
-        await mark_failed(supabase, slug, failures, settings.GREENHOUSE_MAX_FAILURES)
-        return 0
-    if status != FETCH_OK:
-        await mark_failed(supabase, slug, failures, settings.GREENHOUSE_MAX_FAILURES)
-        return 0
+    if status != FETCH_OK:  # FETCH_DEAD or a transient error
+        return 0, failed_row(board, settings.GREENHOUSE_MAX_FAILURES)
 
     # Phase 1: parse + filter (cheap, no descriptions yet).
     survivors: list[ParsedJob] = []
@@ -78,12 +78,30 @@ async def _crawl_board(
         survivors.append(job)
 
     # Board is healthy — stamp it even if nothing survived the filter.
-    await mark_crawled(supabase, slug, company_name)
+    board_row = crawled_row(board, company_name)
 
     if not survivors:
-        return 0
+        return 0, board_row
 
-    # Phase 2: fetch descriptions only for survivors, then persist + enqueue.
+    # Phase 2 failing must not drop the cursor row, or the board would stay
+    # oldest-crawled and be refetched every round.
+    try:
+        new_count = await _ingest_survivors(client, supabase, slug, survivors, sem)
+    except Exception as e:
+        logger.error(f"[Greenhouse] {slug}: ingest failed: {type(e).__name__}: {e}")
+        new_count = 0
+    return new_count, board_row
+
+
+async def _ingest_survivors(
+    client: httpx.AsyncClient,
+    supabase: Any,
+    slug: str,
+    survivors: list[ParsedJob],
+    sem: asyncio.Semaphore,
+) -> int:
+    """Fetch descriptions for survivors, then persist + enqueue genuinely-new
+    jobs. Returns the number newly ingested."""
     new_count = 0
     for job in survivors:
         async with sem:
@@ -144,7 +162,9 @@ async def run_greenhouse_crawler(supabase: Any) -> None:
                         ],
                         return_exceptions=True,
                     )
-                    total_new = sum(r for r in results if isinstance(r, int))
+                    ok = [r for r in results if isinstance(r, tuple)]
+                    await save_crawl_results(supabase, [row for _, row in ok])
+                    total_new = sum(n for n, _ in ok)
                     errors = sum(1 for r in results if isinstance(r, Exception))
                     elapsed = (datetime.now(timezone.utc) - round_started).total_seconds()
                     logger.info(

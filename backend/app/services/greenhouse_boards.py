@@ -11,6 +11,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from app.core.supabase_retry import retry_supabase
+
 logger = logging.getLogger("GreenhouseBoards")
 
 
@@ -76,51 +78,56 @@ async def get_shard(supabase: Any, limit: int) -> list[dict]:
         return []
 
 
-async def mark_crawled(
-    supabase: Any,
-    slug: str,
-    company_name: str | None = None,
-) -> None:
-    """Stamp a board as successfully crawled (resets failure counter)."""
-    updates = {
-        "last_crawled_at": datetime.now(timezone.utc).isoformat(),
+def crawled_row(board: dict, company_name: str | None = None) -> dict:
+    """Registry row stamping a board as successfully crawled (resets failures)."""
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        "slug": board["slug"],
+        "status": "live",
+        "company_name": company_name or board.get("company_name"),
+        "last_crawled_at": now,
         "consecutive_failures": 0,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": now,
     }
-    if company_name:
-        updates["company_name"] = company_name
-    try:
-        await asyncio.to_thread(
-            lambda: supabase.table("greenhouse_boards")
-            .update(updates)
-            .eq("slug", slug)
-            .execute()
-        )
-    except Exception as e:
-        logger.error(f"mark_crawled failed for {slug}: {e}")
 
 
-async def mark_failed(supabase: Any, slug: str, current_failures: int, max_failures: int) -> None:
-    """Increment a board's failure counter; flip to 'dead' past the threshold.
+def failed_row(board: dict, max_failures: int) -> dict:
+    """Registry row incrementing a board's failure counter; flips it to 'dead'
+    past the threshold.
 
     Still advances last_crawled_at so a failing board rotates to the back of
     the shard queue instead of being retried every round.
     """
-    next_failures = current_failures + 1
-    updates: dict[str, Any] = {
+    now = datetime.now(timezone.utc).isoformat()
+    next_failures = (board.get("consecutive_failures") or 0) + 1
+    dead = next_failures >= max_failures
+    if dead:
+        logger.info(f"[GreenhouseBoards] Marking board dead after {next_failures} failures: {board['slug']}")
+    return {
+        "slug": board["slug"],
+        "status": "dead" if dead else "live",
+        "company_name": board.get("company_name"),
+        "last_crawled_at": now,
         "consecutive_failures": next_failures,
-        "last_crawled_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": now,
     }
-    if next_failures >= max_failures:
-        updates["status"] = "dead"
-        logger.info(f"[GreenhouseBoards] Marking board dead after {next_failures} failures: {slug}")
+
+
+async def save_crawl_results(supabase: Any, rows: list[dict]) -> None:
+    """Persist a round's crawl cursors in one upsert.
+
+    One request per round instead of one PATCH per board: ~200 concurrent
+    single-row PATCHes each round were ~570k requests/day and kept tripping
+    "Server disconnected" on the shared Supabase HTTP/2 connection. Every row
+    carries the same keys, so the bulk upsert never nulls a column.
+    """
+    if not rows:
+        return
     try:
-        await asyncio.to_thread(
+        await retry_supabase(
             lambda: supabase.table("greenhouse_boards")
-            .update(updates)
-            .eq("slug", slug)
+            .upsert(rows, on_conflict="slug")
             .execute()
         )
     except Exception as e:
-        logger.error(f"mark_failed failed for {slug}: {e}")
+        logger.error(f"save_crawl_results failed for {len(rows)} boards: {e}")
